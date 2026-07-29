@@ -1,8 +1,8 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
+import { API_BASE_URL, atlasHeaders } from "./api-config";
 import { keysToCamel, keysToSnake } from "./case-transform";
 
-export const baseURL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const baseURL = API_BASE_URL;
 
 // Main API client
 export const api = axios.create({
@@ -26,9 +26,20 @@ interface AuthSession {
   };
 }
 
+function applyAtlasKey(config: InternalAxiosRequestConfig) {
+  const keyHeaders = atlasHeaders();
+  if (Object.keys(keyHeaders).length === 0) return;
+  config.headers = config.headers || {};
+  for (const [k, v] of Object.entries(keyHeaders)) {
+    config.headers[k] = v;
+  }
+}
+
 api.interceptors.request.use(
   async (config) => {
     try {
+      applyAtlasKey(config);
+
       let session: AuthSession | null = null;
       if (typeof window === "undefined") {
         const { auth } = await import("@/auth");
@@ -39,7 +50,6 @@ api.interceptors.request.use(
       }
       const token = session?.accessToken;
 
-      // Ensure headers object exists
       config.headers = config.headers || {};
 
       if (token) {
@@ -60,8 +70,13 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
+
+refreshClient.interceptors.request.use((config) => {
+  applyAtlasKey(config);
+  return config;
+});
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -118,8 +133,7 @@ api.interceptors.response.use(
         }
 
         const refreshToken =
-          session?.user?.refreshToken ||
-          session?.user?.refresh_token;
+          session?.user?.refreshToken || session?.user?.refresh_token;
 
         if (refreshToken) {
           const res = await refreshClient.post(`/auth/refresh`, {
@@ -169,5 +183,5 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );

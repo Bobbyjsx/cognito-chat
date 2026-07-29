@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { apiUrl, atlasHeaders } from "@/lib/api-config";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   providers: [
@@ -12,14 +13,11 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const baseURL =
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-          const res = await fetch(`${baseURL}/auth/login`, {
+          const res = await fetch(apiUrl("/auth/login"), {
             method: "POST",
-            headers: {
+            headers: atlasHeaders({
               "Content-Type": "application/json",
-            },
+            }),
             body: JSON.stringify({
               email: credentials.email,
               password: credentials.password,
@@ -37,10 +35,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           // Fetch user profile info using access token
           let userProfile = null;
           try {
-            const profileRes = await fetch(`${baseURL}/auth/me`, {
-              headers: {
+            const profileRes = await fetch(apiUrl("/auth/me"), {
+              headers: atlasHeaders({
                 Authorization: `Bearer ${tokens.access_token}`,
-              },
+              }),
             });
             if (profileRes.ok) {
               userProfile = await profileRes.json();

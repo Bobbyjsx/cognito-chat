@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { apiUrl, atlasHeaders } from "@/lib/api-config";
 import {
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -115,19 +116,19 @@ export async function POST(req: Request) {
     );
   }
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const url = `${backendUrl}/agent/chat/stream${
-    sessionId ? `?session_id=${sessionId}` : ""
-  }`;
+  const streamPath = sessionId
+    ? `/agent/chat/stream?session_id=${encodeURIComponent(sessionId)}`
+    : "/agent/chat/stream";
+  const url = apiUrl(streamPath);
 
   try {
     const backendResponse = await fetch(url, {
       method: "POST",
-      headers: {
+      headers: atlasHeaders({
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.accessToken}`,
         Accept: "text/event-stream",
-      },
+      }),
       body: JSON.stringify({
         message: lastMessage,
         model,
