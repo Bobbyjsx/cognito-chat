@@ -13,7 +13,7 @@ const ChatShell = dynamic(
     import("@/components/modules/chat/ChatShell").then((m) => m.ChatShell),
   {
     loading: () => <ChatShellLoading />,
-    ssr: true,
+    ssr: false,
   },
 );
 

@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ChatShellLoader } from "@/components/modules/chat/ChatShellLoader";
+import { ChatShellLoading } from "@/components/loading/page-skeletons";
 
 export const metadata: Metadata = {
   title: "Chat",
@@ -28,12 +30,12 @@ export default function ChatLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <Suspense fallback={<ChatShellLoading />}>
       <ChatShellLoader />
       {/* Route segments exist for URL/state only; UI is owned by ChatShell. */}
       <div className="hidden" aria-hidden>
         {children}
       </div>
-    </>
+    </Suspense>
   );
 }
