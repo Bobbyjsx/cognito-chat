@@ -1,117 +1,169 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { toast } from "sonner";
-import { useResetPassword } from "@/hooks/data/useAuth/useAuth";
-import { notifyServerError } from "@/lib/server-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Bot, Loader2, Lock, Mail } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
+import { useResetPassword } from "@/hooks/data/useAuth/useAuth";
+import { notifyServerError } from "@/lib/server-error";
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordFormValues,
+} from "@/lib/validations/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, filter: "blur(6px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { type: "spring" as const, stiffness: 300, damping: 30 },
+  },
+};
 
 export function ForgotPasswordForm() {
   const resetPasswordMutation = useResetPassword();
-  const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !newPassword) {
-      toast.error("Please fill in all fields");
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+      newPassword: "",
+    },
+  });
 
+  const onSubmit = (data: ForgotPasswordFormValues) => {
     resetPasswordMutation.mutate(
-      { email, newPassword },
+      { email: data.email, newPassword: data.newPassword },
       {
-        onSuccess: (data) => {
-          toast.success(data?.message || "Password updated successfully!");
-          setEmail("");
-          setNewPassword("");
+        onSuccess: (response) => {
+          toast.success(response?.message || "Password updated successfully!");
+          reset();
         },
         onError: (err) => {
           notifyServerError(err, "Failed to reset password");
         },
-      }
+      },
     );
   };
 
   return (
-    <Card className="w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-2xl">
-      <CardHeader className="space-y-3 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-lg shadow-indigo-500/30">
-          <Bot className="h-7 w-7 text-white" />
-        </div>
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-          Reset Password
-        </CardTitle>
-        <CardDescription className="text-slate-400 text-sm">
-          Enter your registered email and new password
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <Input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                disabled={resetPasswordMutation.isPending}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">New Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="pl-10"
-                disabled={resetPasswordMutation.isPending}
-                required
-              />
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            disabled={resetPasswordMutation.isPending}
-          >
-            {resetPasswordMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Resetting Password...
-              </>
-            ) : (
-              "Update Password"
-            )}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="justify-center border-t border-slate-800/60 pt-4">
-        <p className="text-sm text-slate-400">
-          Remembered your password?{" "}
-          <Link
-            href="/login"
-            className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
-          >
-            Back to login
-          </Link>
+    <motion.div
+      className="w-full max-w-[400px]"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div
+        variants={itemVariants}
+        className="mb-10 flex flex-col items-center text-center"
+      >
+        <Logo className="justify-center mb-3" />
+        <p className="text-gray-medium text-body-md leading-relaxed">
+          Enter your email and a new password.
         </p>
-      </CardFooter>
-    </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <div className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-8 md:p-10 ambient-shadow">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-5"
+            noValidate
+          >
+            <div className="space-y-2">
+              <label
+                className="block text-label-md font-medium text-on-surface"
+                htmlFor="email"
+              >
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                disabled={resetPasswordMutation.isPending}
+                autoComplete="email"
+                aria-invalid={!!errors.email}
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-label-md text-error" role="alert">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label
+                className="block text-label-md font-medium text-on-surface"
+                htmlFor="newPassword"
+              >
+                New password
+              </label>
+              <Input
+                id="newPassword"
+                type="password"
+                placeholder="Enter a new password"
+                disabled={resetPasswordMutation.isPending}
+                autoComplete="new-password"
+                aria-invalid={!!errors.newPassword}
+                {...register("newPassword")}
+              />
+              {errors.newPassword && (
+                <p className="text-label-md text-error" role="alert">
+                  {errors.newPassword.message}
+                </p>
+              )}
+            </div>
+
+            <div className="pt-3">
+              <Button
+                type="submit"
+                disabled={resetPasswordMutation.isPending}
+                className="w-full"
+              >
+                {resetPasswordMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update password"
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+
+      <motion.div variants={itemVariants} className="mt-8 text-center">
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 text-body-md text-gray-medium hover:text-on-surface transition-colors duration-200"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to sign in
+        </Link>
+      </motion.div>
+    </motion.div>
   );
 }

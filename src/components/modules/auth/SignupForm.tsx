@@ -1,45 +1,64 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { toast } from "sonner";
-import { useSignup } from "@/hooks/data/useAuth/useAuth";
-import { notifyServerError } from "@/lib/server-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Bot, Loader2, Lock, Mail } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
+import { useSignup } from "@/hooks/data/useAuth/useAuth";
+import { notifyServerError } from "@/lib/server-error";
+import { signupSchema, type SignupFormValues } from "@/lib/validations/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, filter: "blur(6px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { type: "spring" as const, stiffness: 300, damping: 30 },
+  },
+};
 
 export function SignupForm() {
   const router = useRouter();
   const signupMutation = useSignup();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
+  const onSubmit = (data: SignupFormValues) => {
     signupMutation.mutate(
-      { email, password },
+      { email: data.email, password: data.password },
       {
         onSuccess: async () => {
           toast.success("Account created successfully!");
-          // Automatically log the user in
           const res = await signIn("credentials", {
-            email,
-            password,
+            email: data.email,
+            password: data.password,
             redirect: false,
           });
 
@@ -53,101 +72,135 @@ export function SignupForm() {
         onError: (err) => {
           notifyServerError(err, "Failed to create account");
         },
-      }
+      },
     );
   };
 
   return (
-    <Card className="w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-2xl">
-      <CardHeader className="space-y-3 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-lg shadow-indigo-500/30">
-          <Bot className="h-7 w-7 text-white" />
-        </div>
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-          Create Account
-        </CardTitle>
-        <CardDescription className="text-slate-400 text-sm">
-          Get started with Cognito-Chat AI assistant
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <Input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                disabled={signupMutation.isPending}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
-                disabled={signupMutation.isPending}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Confirm Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10"
-                disabled={signupMutation.isPending}
-                required
-              />
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            disabled={signupMutation.isPending}
-          >
-            {signupMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Account...
-              </>
-            ) : (
-              "Sign Up"
-            )}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="justify-center border-t border-slate-800/60 pt-4">
-        <p className="text-sm text-slate-400">
-          Already have an account?{" "}
-          <Link
-            href="/login"
-            className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
-          >
-            Sign in
-          </Link>
+    <motion.div
+      className="w-full max-w-[400px]"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div
+        variants={itemVariants}
+        className="mb-10 flex flex-col items-center text-center"
+      >
+        <Logo className="justify-center mb-3" />
+        <p className="text-gray-medium text-body-md leading-relaxed">
+          Create your account to get started.
         </p>
-      </CardFooter>
-    </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <div className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-8 md:p-10 ambient-shadow">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-5"
+            noValidate
+          >
+            <div className="space-y-2">
+              <label
+                className="block text-label-md font-medium text-on-surface"
+                htmlFor="email"
+              >
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                disabled={signupMutation.isPending}
+                autoComplete="email"
+                aria-invalid={!!errors.email}
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-label-md text-error" role="alert">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label
+                className="block text-label-md font-medium text-on-surface"
+                htmlFor="password"
+              >
+                Password
+              </label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Create a password"
+                disabled={signupMutation.isPending}
+                autoComplete="new-password"
+                aria-invalid={!!errors.password}
+                {...register("password")}
+              />
+              {errors.password && (
+                <p className="text-label-md text-error" role="alert">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label
+                className="block text-label-md font-medium text-on-surface"
+                htmlFor="confirmPassword"
+              >
+                Confirm password
+              </label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                disabled={signupMutation.isPending}
+                autoComplete="new-password"
+                aria-invalid={!!errors.confirmPassword}
+                {...register("confirmPassword")}
+              />
+              {errors.confirmPassword && (
+                <p className="text-label-md text-error" role="alert">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
+            </div>
+
+            <div className="pt-3">
+              <Button
+                type="submit"
+                disabled={signupMutation.isPending}
+                className="w-full"
+              >
+                {signupMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  "Create account"
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+
+      <motion.p
+        variants={itemVariants}
+        className="mt-8 text-center text-body-md text-gray-medium"
+      >
+        Already have an account?{" "}
+        <Link
+          href="/login"
+          className="text-on-surface font-medium hover:underline underline-offset-4 transition-colors duration-200"
+        >
+          Sign in
+        </Link>
+      </motion.p>
+    </motion.div>
   );
 }

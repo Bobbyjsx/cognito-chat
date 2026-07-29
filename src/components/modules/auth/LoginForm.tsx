@@ -1,33 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Bot, Loader2, Lock, Mail } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
+import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, filter: "blur(6px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { type: "spring" as const, stiffness: 300, damping: 30 },
+  },
+};
 
 export function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please enter email and password");
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
+  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
       const res = await signIn("credentials", {
-        email,
-        password,
+        email: data.email,
+        password: data.password,
         redirect: false,
       });
 
@@ -46,83 +72,114 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-2xl">
-      <CardHeader className="space-y-3 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-lg shadow-indigo-500/30">
-          <Bot className="h-7 w-7 text-white" />
-        </div>
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-          Welcome to Cognito-Chat
-        </CardTitle>
-        <CardDescription className="text-slate-400 text-sm">
-          Sign in to access your AI sessions & tokens
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <Input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                disabled={isLoading}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300">Password</label>
-              <Link
-                href="/forgot-password"
-                className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
-              >
-                Forgot Password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
-                disabled={isLoading}
-                required
-              />
-            </div>
-          </div>
-
-          <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing In...
-              </>
-            ) : (
-              "Sign In"
-            )}
-          </Button>
-        </form>
-      </CardContent>
-      <CardFooter className="justify-center border-t border-slate-800/60 pt-4">
-        <p className="text-sm text-slate-400">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
-          >
-            Create account
-          </Link>
+    <motion.div
+      className="w-full max-w-[400px]"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div
+        variants={itemVariants}
+        className="mb-10 flex flex-col items-center text-center"
+      >
+        <Logo className="justify-center mb-3" />
+        <p className="text-gray-medium text-body-md leading-relaxed">
+          Sign in to continue to your workspace.
         </p>
-      </CardFooter>
-    </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <div className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-8 md:p-10 ambient-shadow">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-5"
+            noValidate
+          >
+            <div className="space-y-2">
+              <label
+                className="block text-label-md font-medium text-on-surface"
+                htmlFor="email"
+              >
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                disabled={isLoading}
+                autoComplete="email"
+                aria-invalid={!!errors.email}
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-label-md text-error" role="alert">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label
+                  className="block text-label-md font-medium text-on-surface"
+                  htmlFor="password"
+                >
+                  Password
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-label-md text-gray-medium hover:text-on-surface transition-colors duration-200"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                disabled={isLoading}
+                autoComplete="current-password"
+                aria-invalid={!!errors.password}
+                {...register("password")}
+              />
+              {errors.password && (
+                <p className="text-label-md text-error" role="alert">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            <div className="pt-3">
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+
+      <motion.p
+        variants={itemVariants}
+        className="mt-8 text-center text-body-md text-gray-medium"
+      >
+        No account yet?{" "}
+        <Link
+          href="/register"
+          className="text-on-surface font-medium hover:underline underline-offset-4 transition-colors duration-200"
+        >
+          Create one
+        </Link>
+      </motion.p>
+    </motion.div>
   );
 }
