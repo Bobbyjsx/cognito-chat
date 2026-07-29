@@ -15,19 +15,20 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           const baseURL =
             process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-          const bodyParams = new URLSearchParams();
-          bodyParams.append("username", credentials.email as string);
-          bodyParams.append("password", credentials.password as string);
-
           const res = await fetch(`${baseURL}/auth/login`, {
             method: "POST",
             headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
+              "Content-Type": "application/json",
             },
-            body: bodyParams.toString(),
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
           });
 
           if (!res.ok) {
+            const errorBody = await res.text().catch(() => "");
+            console.error("Auth login failed", res.status, errorBody);
             return null;
           }
 
@@ -67,7 +68,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (trigger === "update" && session) {
         if (session.user) {
-          token.user = { ...(token.user as Record<string, unknown>), ...session.user };
+          token.user = {
+            ...(token.user as Record<string, unknown>),
+            ...session.user,
+          };
           if (session.user.accessToken) {
             token.accessToken = session.user.accessToken;
           }
