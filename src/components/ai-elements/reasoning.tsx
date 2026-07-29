@@ -184,7 +184,55 @@ export type ReasoningContentProps = ComponentProps<
   children: string;
 };
 
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockCopyButton,
+  CodeBlockHeader,
+  CodeBlockTitle,
+} from "./code-block";
+
 const streamdownPlugins = { code, math };
+
+const streamdownComponents = {
+  code({ className, children, ...props }: Record<string, unknown>) {
+    const match = /language-(\w+)/.exec((className as string) || "");
+    const rawText = String(children || "").replace(/\n$/, "");
+    const isMultiLine = rawText.includes("\n") || Boolean(match);
+
+    if (isMultiLine) {
+      const language = (match ? match[1] : "") as BundledLanguage;
+      return (
+        <div className="my-3 overflow-hidden rounded-xl border border-[rgba(0,0,0,0.08)] bg-[#1e1e1e] shadow-md">
+          <CodeBlock code={rawText} language={language || ("text" as BundledLanguage)}>
+            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3.5 py-1.5 text-xs font-mono text-gray-300">
+              <CodeBlockTitle>
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  {language || "code"}
+                </span>
+              </CodeBlockTitle>
+              <CodeBlockActions>
+                <CodeBlockCopyButton className="h-7 px-2 text-xs text-gray-300 hover:bg-white/10 hover:text-white" />
+              </CodeBlockActions>
+            </CodeBlockHeader>
+          </CodeBlock>
+        </div>
+      );
+    }
+
+    return (
+      <code
+        className={cn(
+          "rounded bg-surface-container-high/80 px-1.5 py-0.5 font-code-sm text-[13px] font-medium text-on-surface border border-[rgba(0,0,0,0.06)]",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+};
 
 export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => (
@@ -196,7 +244,7 @@ export const ReasoningContent = memo(
       )}
       {...props}
     >
-      <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+      <Streamdown plugins={streamdownPlugins} components={streamdownComponents}>{children}</Streamdown>
     </CollapsibleContent>
   )
 );
