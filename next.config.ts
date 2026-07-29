@@ -1,8 +1,28 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  poweredByHeader: false,
+  compress: true,
+
+  // Tree-shake barrel imports from large packages (Next.js standard)
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "framer-motion",
+      "motion",
+      "@tanstack/react-query",
+      "sonner",
+      "class-variance-authority",
+    ],
+  },
+
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
+
+  // Avoid shipping source maps to clients in production
+  productionBrowserSourceMaps: false,
 };
 
 export default nextConfig;
