@@ -2,13 +2,17 @@ export interface UserProfile {
   id: string;
   email: string;
   tokensUsed: number;
-  tokenLimit: number;
+  tokenLimit?: number;
   tokensUsed6h: number;
   tokenLimit6h: number;
   resetAt: string | null;
+  pct6h?: number;
+  resetCountdown6h?: string;
   tokensUsedWeekly: number;
   tokenLimitWeekly: number;
   weeklyResetAt: string | null;
+  pctWeekly?: number;
+  resetCountdownWeekly?: string;
 }
 
 export interface UserCreateRequest {
@@ -27,21 +31,50 @@ export interface PasswordResetRequest {
   newPassword: string;
 }
 
+export type ChatMessagePart =
+  | {
+      type: "text";
+      text: string;
+      state?: "streaming" | "done";
+    }
+  | {
+      type: "reasoning";
+      text: string;
+      state?: "streaming" | "done";
+    }
+  | {
+      type: "tool";
+      toolCallId: string;
+      toolName: string;
+      state: string;
+      input?: unknown;
+      output?: unknown;
+    };
+
 export interface MessageSchema {
   id?: string;
   role: "user" | "model" | "assistant" | string;
+  /** Flattened text content (for previews / legacy). */
   content: string;
+  /** Structured parts for rich rendering (markdown, thoughts, tools). */
+  parts?: ChatMessagePart[];
 }
 
-export interface ChatSession {
+/** Session row from GET /agent/sessions (no full message history). */
+export interface ChatSessionListItem {
   id: string;
   userId: string;
-  messages: MessageSchema[];
-  lastMessageContent?: string;
-  lastMessageRole?: string;
-  readStatus?: "read" | "not read";
+  title?: string | null;
+  lastMessageContent?: string | null;
+  lastMessageRole?: string | null;
+  readStatus?: "read" | "not read" | string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Full session from GET /agent/sessions/:id. */
+export interface ChatSession extends ChatSessionListItem {
+  messages?: MessageSchema[];
 }
 
 export interface ChatRequest {
@@ -52,6 +85,7 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   sessionId: string;
+  title?: string | null;
   response: string;
 }
 
@@ -64,6 +98,7 @@ export interface AppConfig {
   defaultTextModel: string;
   allowedReasoningLevels: string[];
   defaultReasoningLevel: string;
+  modelReasoningModes?: Record<string, string[]>;
   allowedImageModels: string[];
   allowedVideoModels: string[];
   allowedTools: string[];

@@ -1,41 +1,20 @@
 "use server";
 
 import { api } from "@/lib/axios";
+import type { ChatSession, ChatSessionListItem } from "@/types";
 import { throwServerActionError } from "../server-error";
-import type { ChatResponse, ChatSession } from "@/types";
 
-export async function sendChatMessageAction(
-  message: string,
-  sessionId?: string,
-  model?: string,
-  reasoning?: string
-): Promise<ChatResponse> {
+export async function getSessionsAction(): Promise<ChatSessionListItem[]> {
   try {
-    const url = sessionId
-      ? `/agent/chat?session_id=${sessionId}`
-      : "/agent/chat";
-    const { data } = await api.post<ChatResponse>(url, {
-      message,
-      model,
-      reasoning,
-    });
+    const { data } = await api.get<ChatSessionListItem[]>("/agent/sessions");
     return data;
   } catch (err) {
-    return throwServerActionError(err) as unknown as ChatResponse;
-  }
-}
-
-export async function getSessionsAction(): Promise<ChatSession[]> {
-  try {
-    const { data } = await api.get<ChatSession[]>("/agent/sessions");
-    return data;
-  } catch (err) {
-    return throwServerActionError(err) as unknown as ChatSession[];
+    return throwServerActionError(err) as unknown as ChatSessionListItem[];
   }
 }
 
 export async function getSessionAction(
-  sessionId: string
+  sessionId: string,
 ): Promise<ChatSession> {
   try {
     const { data } = await api.get<ChatSession>(`/agent/sessions/${sessionId}`);

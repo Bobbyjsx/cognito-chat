@@ -1,10 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  sendChatMessageAction,
-  getSessionsAction,
-  getSessionAction,
-} from "@/lib/actions/chats";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getSessionsAction, getSessionAction } from "@/lib/actions/chats";
 import { isServerError } from "@/lib/server-error";
+import type { ChatSessionListItem } from "@/types";
 
 export function useGetSessions() {
   return useQuery({
@@ -21,6 +18,8 @@ export function useGetSessions() {
 }
 
 export function useGetSession(sessionId: string | null) {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ["chat-session", sessionId],
     queryFn: async () => {
@@ -28,40 +27,14 @@ export function useGetSession(sessionId: string | null) {
       if (isServerError(res)) {
         throw res;
       }
+      // Optimistically update sessions list in cache to mark as read
+      queryClient.setQueryData<ChatSessionListItem[]>(["chat-sessions"], (old) => {
+        if (!old) return old;
+        return old.map((s) => (s.id === sessionId ? { ...s, readStatus: "read" } : s));
+      });
       return res;
     },
     enabled: Boolean(sessionId),
     staleTime: 15 * 1000,
-  });
-}
-
-export function useSendChatMessage() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      message,
-      sessionId,
-      model,
-      reasoning,
-    }: {
-      message: string;
-      sessionId?: string;
-      model?: string;
-      reasoning?: string;
-    }) => {
-      const res = await sendChatMessageAction(message, sessionId, model, reasoning);
-      if (isServerError(res)) {
-        throw res;
-      }
-      return res;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
-      if (data?.sessionId) {
-        queryClient.invalidateQueries({ queryKey: ["chat-session", data.sessionId] });
-      }
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-    },
   });
 }

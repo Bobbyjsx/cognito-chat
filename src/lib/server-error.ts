@@ -68,7 +68,7 @@ export const parseServerActionError = (error: unknown): unknown => {
 };
 
 export const throwServerActionError = (
-  error: unknown
+  error: unknown,
 ): {
   error: string;
   isServerActionError: true;
@@ -80,7 +80,7 @@ export const throwServerActionError = (
 };
 
 export const isServerError = (
-  error: unknown
+  error: unknown,
 ): error is { error: string; isServerActionError: true } => {
   return (
     typeof error === "object" &&
@@ -92,7 +92,7 @@ export const isServerError = (
 
 export const getErrorMessage = (
   e: unknown,
-  fallbackErrorMessage = FALLBACK_ERROR_MESSAGE
+  fallbackErrorMessage = FALLBACK_ERROR_MESSAGE,
 ): string | string[] => {
   const error = parseServerActionError(e);
   if (error && typeof error === "object" && "statusCode" in error) {
@@ -136,7 +136,7 @@ const TOAST_DURATION = 7000;
 
 export const notifyServerError = (
   error: unknown,
-  fallbackErrorMessage = "An error occurred"
+  fallbackErrorMessage = "An error occurred",
 ) => {
   const messages = getErrorMessage(error, fallbackErrorMessage);
   if (Array.isArray(messages)) {
