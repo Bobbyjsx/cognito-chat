@@ -33,16 +33,6 @@ export function getAtlasApiKey(): string {
   return raw.trim().replace(/^["']|["']$/g, "");
 }
 
-/** True when API base looks like an Atlas service path for cognito. */
-export function isAtlasCognitoUrl(url: string = API_BASE_URL): boolean {
-  try {
-    const pathname = new URL(url).pathname.replace(/\/$/, "");
-    return pathname === "/cognito" || pathname.endsWith("/cognito");
-  } catch {
-    return url.includes("/cognito");
-  }
-}
-
 /**
  * Headers required to reach Atlas (+ optional extras).
  * Always set X-Atlas-Api-Key when a key is configured.
@@ -62,20 +52,4 @@ export function atlasHeaders(
 export function apiUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalized}`;
-}
-
-/** Safe debug snapshot (never logs the full key). */
-export function atlasDebugInfo(): {
-  baseUrl: string;
-  hasKey: boolean;
-  keyLength: number;
-  looksLikeAtlasCognito: boolean;
-} {
-  const key = getAtlasApiKey();
-  return {
-    baseUrl: API_BASE_URL,
-    hasKey: key.length > 0,
-    keyLength: key.length,
-    looksLikeAtlasCognito: isAtlasCognitoUrl(),
-  };
 }

@@ -18,25 +18,16 @@ function Bone({ className }: { className?: string }) {
   );
 }
 
-function AssistantHeader({ isWaiting }: { isWaiting?: boolean }) {
+function AssistantHeader() {
   return (
     <div className="mb-1 flex items-center gap-2">
       <Logo
         logoOnly
-        iconContainerClassName={cn(
-          "h-6 w-6 rounded bg-primary border-none shadow-none text-on-primary",
-          isWaiting && "animate-pulse",
-        )}
-        iconClassName={cn(
-          "h-[14px] w-[14px] text-on-primary",
-          isWaiting && "animate-spin",
-        )}
+        iconContainerClassName="h-6 w-6 rounded bg-primary border-none shadow-none text-on-primary"
+        iconClassName="h-[14px] w-[14px] text-on-primary"
       />
       <span className="font-label-md text-label-md font-bold text-primary">
         Cognito
-      </span>
-      <span className="rounded border border-border-subtle bg-gray-light px-2 py-0.5 font-label-md text-[10px] uppercase tracking-wider text-gray-medium">
-        Agent
       </span>
     </div>
   );
@@ -44,12 +35,11 @@ function AssistantHeader({ isWaiting }: { isWaiting?: boolean }) {
 
 /**
  * Loading state while generating a reply (stream open, no first token yet).
- * Active feel: spinning logo, shimmer “Thinking…”, short content bones.
  */
 export function AgentResponseSkeleton() {
   return (
     <Message from="assistant" className="max-w-full" aria-busy="true">
-      <AssistantHeader isWaiting />
+      <AssistantHeader />
       <MessageContent className="w-full max-w-full">
         <div
           className="w-full max-w-md space-y-3"
@@ -73,15 +63,12 @@ export function AgentResponseSkeleton() {
   );
 }
 
-/**
- * Inline body skeleton used inside an existing empty assistant message while streaming.
- */
+/** Body skeleton for an existing message shell waiting for first token */
 export function AgentResponseBodySkeleton() {
   return (
     <div
-      className="w-full max-w-md space-y-3"
-      aria-busy="true"
-      aria-label="Waiting for agent response"
+      className="w-full max-w-md space-y-3 py-1"
+      aria-label="Waiting for first tokens"
     >
       <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="size-3.5 animate-spin" />
@@ -99,61 +86,51 @@ export function AgentResponseBodySkeleton() {
   );
 }
 
-function SessionUserBubbleSkeleton({ widths }: { widths: string[] }) {
-  return (
-    <div className="flex w-full flex-col items-end">
-      <div className="w-full max-w-[70%] space-y-2 rounded-xl rounded-tr-sm border border-border-subtle bg-secondary px-4 py-3">
-        {widths.map((w, i) => (
-          <Bone key={i} className={cn("h-3.5", w)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SessionAssistantBubbleSkeleton({ widths }: { widths: string[] }) {
-  return (
-    <div className="flex w-full flex-col items-start gap-2">
-      <div className="flex items-center gap-2">
-        <Bone className="size-6 rounded" />
-        <Bone className="h-3 w-16" />
-        <Bone className="h-4 w-12 rounded" />
-      </div>
-      <div className="w-full max-w-[85%] space-y-2">
-        {widths.map((w, i) => (
-          <Bone key={i} className={cn("h-3.5", w)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Loading state while fetching a session’s message history.
- * Passive feel: full thread of user/assistant bones + “Loading conversation” label.
- * No agent “Thinking…” shimmer — that is reserved for generation.
- */
+/** Canvas loading skeleton while fetching past session messages */
 export function SessionMessagesSkeleton() {
   return (
-    <div
-      className="flex w-full flex-col gap-8"
-      aria-busy="true"
-      aria-label="Loading conversation"
-    >
-      <div className="flex items-center justify-center gap-2 text-muted-foreground">
-        <History className="size-3.5 animate-pulse" />
-        <span className="font-label-md text-sm">Loading conversation…</span>
+    <div className="mx-auto w-full max-w-[800px] space-y-8 px-4 py-4 md:px-0">
+      <div className="flex flex-col items-end gap-2">
+        <Bone className="h-4 w-28 self-end" />
+        <Bone className="h-16 w-3/4 rounded-2xl" />
       </div>
 
-      <SessionUserBubbleSkeleton widths={["w-[88%]", "w-[55%]"]} />
-      <SessionAssistantBubbleSkeleton
-        widths={["w-full", "w-[94%]", "w-[86%]", "w-[72%]", "w-[48%]"]}
-      />
-      <SessionUserBubbleSkeleton widths={["w-[70%]"]} />
-      <SessionAssistantBubbleSkeleton
-        widths={["w-[96%]", "w-[90%]", "w-[62%]"]}
-      />
-      <SessionUserBubbleSkeleton widths={["w-[80%]", "w-[40%]"]} />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Bone className="h-6 w-6 rounded" />
+          <Bone className="h-4 w-20" />
+        </div>
+        <div className="space-y-2 pl-8">
+          <Bone className="h-4 w-[95%]" />
+          <Bone className="h-4 w-[88%]" />
+          <Bone className="h-4 w-[72%]" />
+        </div>
+      </div>
+
+      <div className="flex flex-col items-end gap-2">
+        <Bone className="h-4 w-24 self-end" />
+        <Bone className="h-12 w-2/3 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
+/** Sidebar recent conversations loading skeleton */
+export function RecentConversationsSkeleton() {
+  return (
+    <div className="space-y-1 px-1 py-1">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between gap-2.5 rounded-lg px-3 py-2.5"
+        >
+          <div className="flex flex-1 items-center gap-2.5">
+            <History className="h-4 w-4 shrink-0 text-gray-medium/50" />
+            <Bone className="h-3.5 w-3/4 rounded" />
+          </div>
+          <Bone className="h-3 w-8 rounded" />
+        </div>
+      ))}
     </div>
   );
 }

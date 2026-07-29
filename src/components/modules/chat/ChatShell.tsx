@@ -93,26 +93,26 @@ export function ChatShell() {
 
     if (!routeSessionId) {
       if (isNewChatRoute && !streamSessionId) {
-        setAiMessages([]);
+        queueMicrotask(() => {
+          setHydratedSessionId(null);
+          setAiMessages([]);
+        });
       }
       return;
     }
 
-    if (hydratedSessionId === routeSessionId) return;
-
-    if (streamSessionId === routeSessionId && aiMessages.length > 0) {
-      return;
-    }
-
-    if (sessionData?.messages) {
-      const formatted: UIMessage[] = sessionData.messages.map((m, idx) => ({
-        id: m.id || `hist-${idx}`,
-        role: toAssistantRole(m.role),
-        parts: [{ type: "text" as const, text: m.content }],
-      }));
-      setAiMessages(formatted);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setHydratedSessionId(routeSessionId);
+    if (sessionData && sessionData.id === routeSessionId) {
+      if (hydratedSessionId !== routeSessionId) {
+        const formatted: UIMessage[] = (sessionData.messages || []).map((m, idx) => ({
+          id: m.id || `hist-${idx}`,
+          role: toAssistantRole(m.role),
+          parts: [{ type: "text" as const, text: m.content }],
+        }));
+        queueMicrotask(() => {
+          setAiMessages(formatted);
+          setHydratedSessionId(routeSessionId);
+        });
+      }
     }
   }, [
     routeSessionId,
@@ -120,7 +120,6 @@ export function ChatShell() {
     setAiMessages,
     isNewChatRoute,
     streamSessionId,
-    aiMessages.length,
     isStreaming,
     hydratedSessionId,
   ]);
@@ -154,11 +153,10 @@ export function ChatShell() {
       if (id === routeSessionId) return;
       if (isStreaming) return;
       setHydratedSessionId(null);
-      setStreamSessionId(id);
+      setStreamSessionId(null);
       setAiMessages([]);
-      router.push(`/chat/${id}`);
     },
-    [router, routeSessionId, setAiMessages, isStreaming],
+    [routeSessionId, setAiMessages, isStreaming],
   );
 
   const streamingMessageId =
@@ -172,8 +170,7 @@ export function ChatShell() {
     Boolean(routeSessionId) &&
     !isStreaming &&
     hydratedSessionId !== routeSessionId &&
-    (isSessionLoading || isSessionFetching) &&
-    aiMessages.length === 0;
+    (isSessionLoading || isSessionFetching || !sessionData || sessionData.id !== routeSessionId);
 
   const showSuggestions =
     isNewChatRoute && !streamSessionId && aiMessages.length === 0 && !isStreaming;
