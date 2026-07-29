@@ -6,10 +6,23 @@ import {
   QueryCache,
   MutationCache,
 } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import type React from "react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { signOut } from "next-auth/react";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+// Devtools only in development — never in production bundle usage path
+const ReactQueryDevtools =
+  process.env.NODE_ENV === "development"
+    ? dynamic(
+        () =>
+          import("@tanstack/react-query-devtools").then(
+            (m) => m.ReactQueryDevtools,
+          ),
+        { ssr: false },
+      )
+    : () => null;
 
 let isRedirecting = false;
 
@@ -57,33 +70,31 @@ function makeQueryClient() {
     }),
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
+        gcTime: 15 * 60 * 1000,
+        refetchOnWindowFocus: false,
         retry: (failureCount, error: unknown) => {
           if (getErrorMessage(error) === "Unauthorized") return false;
           if (getErrorStatus(error) === 404) return false;
-          return failureCount < 3;
+          return failureCount < 2;
         },
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
       },
       mutations: {
-        retry: (_failureCount, error: unknown) => {
-          if (getErrorMessage(error) === "Unauthorized") return false;
-          return false;
-        },
+        retry: false,
       },
     },
   });
 }
 
-let browserQueryClient: QueryClient | undefined = undefined;
+let browserQueryClient: QueryClient | undefined;
 
 function getQueryClient() {
   if (typeof window === "undefined") {
     return makeQueryClient();
-  } else {
-    if (!browserQueryClient) browserQueryClient = makeQueryClient();
-    return browserQueryClient;
   }
+  if (!browserQueryClient) browserQueryClient = makeQueryClient();
+  return browserQueryClient;
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -91,8 +102,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      <TooltipProvider delay={200}>
+        {children}
+        <ReactQueryDevtools initialIsOpen={false} />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }
