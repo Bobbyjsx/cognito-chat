@@ -4,11 +4,18 @@ import {
   getSessionsAction,
   getSessionAction,
 } from "@/lib/actions/chats";
+import { isServerError } from "@/lib/server-error";
 
 export function useGetSessions() {
   return useQuery({
     queryKey: ["chat-sessions"],
-    queryFn: () => getSessionsAction(),
+    queryFn: async () => {
+      const res = await getSessionsAction();
+      if (isServerError(res)) {
+        throw res;
+      }
+      return res;
+    },
     staleTime: 15 * 1000,
   });
 }
@@ -16,7 +23,13 @@ export function useGetSessions() {
 export function useGetSession(sessionId: string | null) {
   return useQuery({
     queryKey: ["chat-session", sessionId],
-    queryFn: () => getSessionAction(sessionId!),
+    queryFn: async () => {
+      const res = await getSessionAction(sessionId!);
+      if (isServerError(res)) {
+        throw res;
+      }
+      return res;
+    },
     enabled: Boolean(sessionId),
     staleTime: 15 * 1000,
   });
@@ -26,7 +39,7 @@ export function useSendChatMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       message,
       sessionId,
       model,
@@ -36,9 +49,14 @@ export function useSendChatMessage() {
       sessionId?: string;
       model?: string;
       reasoning?: string;
-    }) => sendChatMessageAction(message, sessionId, model, reasoning),
+    }) => {
+      const res = await sendChatMessageAction(message, sessionId, model, reasoning);
+      if (isServerError(res)) {
+        throw res;
+      }
+      return res;
+    },
     onSuccess: (data) => {
-      // Invalidate sessions list and specific session details
       queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       if (data?.sessionId) {
         queryClient.invalidateQueries({ queryKey: ["chat-session", data.sessionId] });
