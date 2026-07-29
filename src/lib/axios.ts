@@ -1,5 +1,9 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
-import { API_BASE_URL, atlasHeaders } from "./api-config";
+import {
+  API_BASE_URL,
+  ATLAS_API_KEY_HEADER,
+  getAtlasApiKey,
+} from "./api-config";
 import { keysToCamel, keysToSnake } from "./case-transform";
 
 export const baseURL = API_BASE_URL;
@@ -26,12 +30,21 @@ interface AuthSession {
   };
 }
 
+/** Match KeySentry: use AxiosHeaders.set when available. */
 function applyAtlasKey(config: InternalAxiosRequestConfig) {
-  const keyHeaders = atlasHeaders();
-  if (Object.keys(keyHeaders).length === 0) return;
-  config.headers = config.headers || {};
-  for (const [k, v] of Object.entries(keyHeaders)) {
-    config.headers[k] = v;
+  const atlasKey = getAtlasApiKey();
+  if (!atlasKey) return;
+
+  config.headers = config.headers ?? {};
+  const headers = config.headers as {
+    set?: (name: string, value: string) => void;
+    [key: string]: unknown;
+  };
+
+  if (typeof headers.set === "function") {
+    headers.set(ATLAS_API_KEY_HEADER, atlasKey);
+  } else {
+    headers[ATLAS_API_KEY_HEADER] = atlasKey;
   }
 }
 
@@ -53,7 +66,15 @@ api.interceptors.request.use(
       config.headers = config.headers || {};
 
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        const headers = config.headers as {
+          set?: (name: string, value: string) => void;
+          Authorization?: string;
+        };
+        if (typeof headers.set === "function") {
+          headers.set("Authorization", `Bearer ${token}`);
+        } else {
+          headers.Authorization = `Bearer ${token}`;
+        }
       }
 
       if (config.data) {

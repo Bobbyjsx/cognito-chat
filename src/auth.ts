@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { apiUrl, atlasHeaders } from "@/lib/api-config";
+import { apiUrl, atlasDebugInfo, atlasHeaders } from "@/lib/api-config";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   providers: [
@@ -13,7 +13,8 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const res = await fetch(apiUrl("/auth/login"), {
+          const loginUrl = apiUrl("/auth/login");
+          const res = await fetch(loginUrl, {
             method: "POST",
             headers: atlasHeaders({
               "Content-Type": "application/json",
@@ -26,7 +27,11 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
           if (!res.ok) {
             const errorBody = await res.text().catch(() => "");
-            console.error("Auth login failed", res.status, errorBody);
+            // Safe debug: never log the full API key
+            console.error("Auth login failed", res.status, errorBody, {
+              ...atlasDebugInfo(),
+              loginUrl,
+            });
             return null;
           }
 
