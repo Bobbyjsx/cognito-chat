@@ -18,7 +18,7 @@ function Bone({ className }: { className?: string }) {
   );
 }
 
-function AssistantHeader() {
+function AssistantHeader({ isWaiting: _isWaiting }: { isWaiting?: boolean } = {}) {
   return (
     <div className="mb-1 flex items-center gap-2">
       <Logo

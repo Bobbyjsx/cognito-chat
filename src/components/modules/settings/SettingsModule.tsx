@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { useProfile } from "@/hooks/data/useAuth/useAuth";
 import { getQuotaSnapshot } from "@/lib/quota";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
 import {
-  Zap,
+  ArrowLeft,
   Calendar,
-  LogOut,
-  UserCheck,
   Clock,
+  LogOut,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,17 +24,17 @@ const containerVariants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 16, filter: "blur(4px)" },
+  hidden: { opacity: 0, y: 12, filter: "blur(4px)" },
   show: {
     opacity: 1,
     y: 0,
     filter: "blur(0px)",
-    transition: { type: "spring" as const, stiffness: 300, damping: 30 },
+    transition: { type: "spring" as const, stiffness: 300, damping: 28 },
   },
 };
 
@@ -46,149 +48,133 @@ export function SettingsModule() {
     return () => clearInterval(timer);
   }, []);
 
-  const userEmail = profile?.email || session?.user?.email || "developer@example.com";
+  const userEmail = profile?.email || session?.user?.email || "user@example.com";
   const userName = session?.user?.name || userEmail.split("@")[0];
   const q = getQuotaSnapshot(profile, nowMs, "long");
 
   return (
     <motion.div
-      className="mx-auto w-full max-w-[800px] px-4 py-8 md:px-8 md:py-12"
+      className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 md:py-10"
       variants={containerVariants}
       initial="hidden"
       animate="show"
     >
-      {/* Header */}
-      <motion.header variants={itemVariants} className="mb-8">
-        <h1 className="text-headline-lg font-semibold tracking-tight-editorial text-on-surface">
-          Account & Plan
-        </h1>
-        <p className="mt-1.5 text-body-md text-gray-medium">
-          Manage your account profile, authentication details, and token usage limits.
-        </p>
-      </motion.header>
-
-      {/* Account & Plan Content */}
-      <motion.div variants={itemVariants} className="space-y-6">
-        <div className="flex items-center justify-between border-b border-[rgba(0,0,0,0.06)] pb-3">
-          <h2 className="text-headline-md font-semibold text-on-surface">
-            Profile Overview
-          </h2>
-          <Badge variant="outline" className="border-[rgba(0,0,0,0.08)] bg-white text-on-surface uppercase">
-            Free Tier
-          </Badge>
+      {/* Header & Back Navigation */}
+      <motion.div variants={itemVariants} className="mb-6 flex items-center justify-between">
+        <div>
+          <Link
+            href="/chat"
+            className="mb-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-gray-medium transition-colors hover:bg-surface-container hover:text-on-surface"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Chat
+          </Link>
+          <h1 className="text-headline-lg font-bold tracking-tight text-on-surface">
+            Account & Quota Settings
+          </h1>
+          <p className="mt-1 text-body-md text-gray-medium">
+            Manage your account details and view your token usage quotas.
+          </p>
         </div>
 
-        <Card className="p-6 md:p-8">
-          {/* User Info Header */}
-          <div className="mb-8 flex flex-col justify-between gap-6 border-b border-[rgba(0,0,0,0.06)] pb-8 md:flex-row md:items-center">
-            <div className="flex items-start gap-4">
-              <Avatar className="h-16 w-16 border border-[rgba(0,0,0,0.06)]">
-                <AvatarFallback className="bg-surface-container text-headline-md font-semibold text-on-surface uppercase">
+        <Badge
+          variant="outline"
+          className="border-[rgba(0,0,0,0.08)] bg-white px-3 py-1 text-xs font-semibold text-on-surface shadow-sm"
+        >
+          <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
+          Active Account
+        </Badge>
+      </motion.div>
+
+      {/* Main Settings Body */}
+      <motion.div variants={itemVariants} className="space-y-6">
+        {/* Profile Card */}
+        <Card className="p-6 border-[rgba(0,0,0,0.06)] bg-white shadow-sm">
+          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-14 w-14 border border-[rgba(0,0,0,0.08)] shadow-sm">
+                <AvatarFallback className="bg-primary text-on-primary text-lg font-bold uppercase">
                   {userName.slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="font-body-lg text-body-lg font-medium text-on-surface">
-                  {userEmail}
-                </h3>
-                <p className="mt-0.5 text-body-md text-gray-medium">
+                <h2 className="text-body-lg font-bold text-on-surface">{userEmail}</h2>
+                <p className="mt-0.5 text-xs text-gray-medium">
                   Cognito Member
                 </p>
-                <button
-                  type="button"
-                  onClick={() => toast.info("Profile details synced with account authentication")}
-                  className="mt-2 inline-flex items-center gap-1.5 text-body-md font-medium text-gray-medium hover:text-on-surface transition-colors underline underline-offset-4"
-                >
-                  <UserCheck className="h-3.5 w-3.5" />
-                  Account Verified
-                </button>
               </div>
             </div>
 
+            <Button
+              variant="outline"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="border-error/20 text-error hover:bg-error/10 hover:text-error"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
+        </Card>
+
+        {/* Real-time Usage & Quotas Card */}
+        <Card className="p-6 border-[rgba(0,0,0,0.06)] bg-white shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-[rgba(0,0,0,0.06)] pb-3">
             <div>
-              <Button
-                variant="outline"
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="w-full text-error hover:bg-error/5 hover:text-error md:w-auto"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
+              <h3 className="text-sm font-semibold text-on-surface">Token Quota & Usage</h3>
+              <p className="text-xs text-gray-medium">Real-time usage across active API time windows.</p>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Real-time tracking active</span>
             </div>
           </div>
 
-          {/* Quota Usage Box */}
-          <div className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-surface-container-low p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h4 className="font-body-md text-body-md font-semibold text-on-surface">
-                Current Usage & Quotas
-              </h4>
-              <span className="font-code-sm text-code-sm text-gray-medium flex items-center gap-1">
-                <Clock className="h-3 w-3" /> Real-time tracking
+          {/* 6-Hour Quota Window */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-semibold">
+              <span className="flex items-center gap-1.5 text-gray-medium">
+                <Zap className="h-3.5 w-3.5 text-primary" /> 6-Hour Quota Window
+              </span>
+              <span className="text-on-surface">
+                {q.used6h.toLocaleString()} / {q.limit6h.toLocaleString()} ({q.pct6h}%)
               </span>
             </div>
-
-            <div className="space-y-6">
-              {/* 6-Hour Window */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-label-md font-medium">
-                  <span className="flex items-center gap-1.5 text-gray-medium">
-                    <Zap className="h-3.5 w-3.5 text-on-surface/70" /> 6-Hour Quota Window
-                  </span>
-                  <span className="font-semibold text-on-surface">
-                    {q.used6h.toLocaleString()} / {q.limit6h.toLocaleString()} ({q.pct6h}%)
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
-                  <div
-                    className="h-full rounded-full bg-on-surface transition-all duration-500"
-                    style={{ width: `${q.pct6h}%` }}
-                  />
-                </div>
-                <div className="text-right text-[11px] font-medium text-gray-medium italic">
-                  ⏱ 6-Hour limit {q.reset6hText}
-                </div>
-              </div>
-
-              {/* Weekly Window */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-label-md font-medium">
-                  <span className="flex items-center gap-1.5 text-gray-medium">
-                    <Calendar className="h-3.5 w-3.5 text-on-surface/70" /> Weekly Quota Cap
-                  </span>
-                  <span className="font-semibold text-on-surface">
-                    {q.usedWeekly.toLocaleString()} / {q.limitWeekly.toLocaleString()} ({q.pctWeekly}%)
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
-                  <div
-                    className="h-full rounded-full bg-on-surface/80 transition-all duration-500"
-                    style={{ width: `${q.pctWeekly}%` }}
-                  />
-                </div>
-                <div className="text-right text-[11px] font-medium text-gray-medium italic">
-                  ⏱ Weekly limit {q.resetWeeklyText}
-                </div>
-              </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface-container-high">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  q.pct6h > 85 ? "bg-error" : q.pct6h > 60 ? "bg-amber-500" : "bg-primary",
+                )}
+                style={{ width: `${q.pct6h}%` }}
+              />
             </div>
+            <p className="text-right text-[11px] text-gray-medium italic">
+              ⏱ Resets {q.reset6hText}
+            </p>
+          </div>
 
-            <div className="mt-6 flex flex-col gap-3 md:flex-row">
-              <Button
-                type="button"
-                onClick={() => toast.info("Pro plan upgrades available soon")}
-                className="flex-1"
-              >
-                Upgrade to Pro
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => toast.info("Free plan includes 60k tokens / 6h and 300k weekly")}
-                className="flex-1"
-              >
-                View Usage Limits
-              </Button>
+          {/* Weekly Quota Cap */}
+          <div className="space-y-2 pt-2">
+            <div className="flex justify-between text-xs font-semibold">
+              <span className="flex items-center gap-1.5 text-gray-medium">
+                <Calendar className="h-3.5 w-3.5 text-primary" /> Weekly Quota Cap
+              </span>
+              <span className="text-on-surface">
+                {q.usedWeekly.toLocaleString()} / {q.limitWeekly.toLocaleString()} ({q.pctWeekly}%)
+              </span>
             </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface-container-high">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  q.pctWeekly > 85 ? "bg-error" : q.pctWeekly > 60 ? "bg-amber-500" : "bg-primary/80",
+                )}
+                style={{ width: `${q.pctWeekly}%` }}
+              />
+            </div>
+            <p className="text-right text-[11px] text-gray-medium italic">
+              ⏱ Resets {q.resetWeeklyText}
+            </p>
           </div>
         </Card>
       </motion.div>

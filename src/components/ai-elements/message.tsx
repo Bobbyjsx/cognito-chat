@@ -17,6 +17,7 @@ import { math } from "@streamdown/math";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
+import type { BundledLanguage } from "shiki";
 import {
   createContext,
   memo,
@@ -330,7 +331,7 @@ import {
 const streamdownPlugins = { code, math };
 
 const streamdownComponents = {
-  code({ className, children, ...props }: Record<string, unknown>) {
+  code({ className, children, ...props }: ComponentProps<"code">) {
     const match = /language-(\w+)/.exec((className as string) || "");
     const rawText = String(children || "").replace(/\n$/, "");
     const isMultiLine = rawText.includes("\n") || Boolean(match);

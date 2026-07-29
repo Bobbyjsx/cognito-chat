@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Logo } from "@/components/ui/logo";
 import { useGetSessions, useDeleteSession } from "@/hooks/data/useChats/useChats";
 import { cn } from "@/lib/utils";
-import { HelpCircle, History, Loader2, Plus, Search, Settings, Trash2, X } from "lucide-react";
+import { History, Loader2, Plus, Search, Settings, Trash2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -232,7 +232,7 @@ export function ChatSidebar({
         )}
       </div>
 
-      <div className="mt-auto space-y-1 border-t border-[rgba(0,0,0,0.06)] pt-4">
+      <div className="mt-auto border-t border-[rgba(0,0,0,0.06)] pt-4">
         <Link
           href="/settings"
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-body-md text-gray-medium transition-colors duration-200 hover:bg-surface-container hover:text-on-surface"
@@ -240,13 +240,6 @@ export function ChatSidebar({
           <Settings className="h-4 w-4" />
           <span className="font-body-md text-body-md">Settings</span>
         </Link>
-        <button
-          type="button"
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-body-md text-gray-medium transition-colors duration-200 hover:bg-surface-container hover:text-on-surface"
-        >
-          <HelpCircle className="h-4 w-4" />
-          <span className="font-body-md text-body-md">Support</span>
-        </button>
       </div>
     </nav>
   );

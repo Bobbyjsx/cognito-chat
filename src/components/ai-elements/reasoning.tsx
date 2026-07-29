@@ -11,6 +11,7 @@ import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
+import type { BundledLanguage } from "shiki";
 import {
   createContext,
   memo,
@@ -195,7 +196,7 @@ import {
 const streamdownPlugins = { code, math };
 
 const streamdownComponents = {
-  code({ className, children, ...props }: Record<string, unknown>) {
+  code({ className, children, ...props }: ComponentProps<"code">) {
     const match = /language-(\w+)/.exec((className as string) || "");
     const rawText = String(children || "").replace(/\n$/, "");
     const isMultiLine = rawText.includes("\n") || Boolean(match);
