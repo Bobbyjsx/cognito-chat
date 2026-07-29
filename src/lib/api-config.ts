@@ -15,7 +15,7 @@ export const API_BASE_URL =
   "http://localhost:8000";
 
 /** Server-only key for Atlas gateway. Empty when calling the API directly. */
-export const ATLAS_API_KEY = process.env.ATLAS_API_KEY || "";
+export const ATLAS_API_KEY = process.env.NEXT_PUBLIC_ATLAS_API_KEY || "";
 
 /** Canonical header name (HTTP is case-insensitive; gateway reads x-atlas-api-key). */
 export const ATLAS_API_KEY_HEADER = "X-Atlas-Api-Key";
