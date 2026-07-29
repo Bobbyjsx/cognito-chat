@@ -1,0 +1,214 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
+import { useGetSession } from "@/hooks/data/useChats/useChats";
+import { notifyServerError } from "@/lib/server-error";
+import { Navbar } from "./Navbar";
+import { ChatSidebar } from "./ChatSidebar";
+import { ChatMessageList } from "./ChatMessageList";
+import { ChatInput } from "./ChatInput";
+
+function toAssistantRole(role: string): "user" | "assistant" {
+  if (role === "user") return "user";
+  return "assistant";
+}
+
+function sessionIdFromParams(
+  params: ReturnType<typeof useParams>,
+): string | null {
+  const raw = params?.sessionId;
+  if (typeof raw === "string" && raw.length > 0) return raw;
+  if (Array.isArray(raw) && raw[0]) return raw[0];
+  return null;
+}
+
+export function ChatShell() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useParams();
+  const queryClient = useQueryClient();
+  const { data: config } = useGetConfig();
+
+  const routeSessionId = sessionIdFromParams(params);
+  const isNewChatRoute = pathname === "/chat" || pathname === "/chat/";
+
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const [userSelectedReasoning, setUserSelectedReasoning] = useState<string | null>(null);
+  const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hydratedSessionId, setHydratedSessionId] = useState<string | null>(null);
+
+  const activeSessionId = routeSessionId ?? streamSessionId;
+  const activeModel = userSelectedModel || config?.defaultTextModel || "gemini-3.6-flash";
+  const activeReasoning = userSelectedReasoning || config?.defaultReasoningLevel || "medium";
+
+  const {
+    data: sessionData,
+    isLoading: isSessionLoading,
+    isFetching: isSessionFetching,
+  } = useGetSession(routeSessionId);
+
+  const {
+    messages: aiMessages,
+    setMessages: setAiMessages,
+    sendMessage,
+    stop,
+    status,
+  } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+    }),
+    onData: (dataPart) => {
+      if (dataPart.type !== "data-session") return;
+      const data = dataPart.data as { sessionId?: string };
+      const nextId = data?.sessionId;
+      if (!nextId) return;
+
+      setStreamSessionId(nextId);
+
+      if (isNewChatRoute || routeSessionId !== nextId) {
+        router.replace(`/chat/${nextId}`, { scroll: false });
+      }
+    },
+    onFinish: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-session"] });
+    },
+    onError: (err) => {
+      notifyServerError(err, "Streaming error occurred");
+    },
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
+
+  // Hydrate from session history when navigating between existing sessions
+  useEffect(() => {
+    if (isStreaming) return;
+
+    if (!routeSessionId) {
+      if (isNewChatRoute && !streamSessionId) {
+        setAiMessages([]);
+      }
+      return;
+    }
+
+    if (hydratedSessionId === routeSessionId) return;
+
+    if (streamSessionId === routeSessionId && aiMessages.length > 0) {
+      return;
+    }
+
+    if (sessionData?.messages) {
+      const formatted: UIMessage[] = sessionData.messages.map((m, idx) => ({
+        id: m.id || `hist-${idx}`,
+        role: toAssistantRole(m.role),
+        parts: [{ type: "text" as const, text: m.content }],
+      }));
+      setAiMessages(formatted);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHydratedSessionId(routeSessionId);
+    }
+  }, [
+    routeSessionId,
+    sessionData,
+    setAiMessages,
+    isNewChatRoute,
+    streamSessionId,
+    aiMessages.length,
+    isStreaming,
+    hydratedSessionId,
+  ]);
+
+  const handleSendMessage = useCallback(
+    (text: string, model?: string, reasoning?: string) => {
+      sendMessage(
+        { text },
+        {
+          body: {
+            model: model || activeModel,
+            reasoning: reasoning || activeReasoning,
+            sessionId: activeSessionId || undefined,
+          },
+        },
+      );
+    },
+    [sendMessage, activeModel, activeReasoning, activeSessionId],
+  );
+
+  const handleNewChat = useCallback(() => {
+    if (isStreaming) return;
+    setStreamSessionId(null);
+    setHydratedSessionId(null);
+    setAiMessages([]);
+    router.push("/chat");
+  }, [router, setAiMessages, isStreaming]);
+
+  const handleSelectSession = useCallback(
+    (id: string) => {
+      if (id === routeSessionId) return;
+      if (isStreaming) return;
+      setHydratedSessionId(null);
+      setStreamSessionId(id);
+      setAiMessages([]);
+      router.push(`/chat/${id}`);
+    },
+    [router, routeSessionId, setAiMessages, isStreaming],
+  );
+
+  const streamingMessageId =
+    isStreaming && aiMessages.length > 0
+      ? aiMessages[aiMessages.length - 1]?.role === "assistant"
+        ? aiMessages[aiMessages.length - 1].id
+        : null
+      : null;
+
+  const showSessionLoading =
+    Boolean(routeSessionId) &&
+    !isStreaming &&
+    hydratedSessionId !== routeSessionId &&
+    (isSessionLoading || isSessionFetching) &&
+    aiMessages.length === 0;
+
+  const showSuggestions =
+    isNewChatRoute && !streamSessionId && aiMessages.length === 0 && !isStreaming;
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background font-body-md text-body-md text-on-surface">
+      <ChatSidebar
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onNewChat={handleNewChat}
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+      />
+
+      <main className="relative flex h-screen min-w-0 flex-1 flex-col bg-background">
+        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+
+        <ChatMessageList
+          messages={aiMessages}
+          isStreaming={isStreaming}
+          isSessionLoading={showSessionLoading}
+          streamingMessageId={streamingMessageId}
+        />
+
+        <ChatInput
+          onSend={handleSendMessage}
+          onStop={stop}
+          status={status}
+          selectedModel={activeModel}
+          onSelectModel={setUserSelectedModel}
+          selectedReasoning={activeReasoning}
+          onSelectReasoning={setUserSelectedReasoning}
+          showSuggestions={showSuggestions}
+        />
+      </main>
+    </div>
+  );
+}
