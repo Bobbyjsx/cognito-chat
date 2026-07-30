@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
   return (
-    <div className="flex h-screen overflow-hidden bg-background font-body-md text-body-md text-on-surface">
-      <main className="relative flex h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-background">
+    <div className="flex h-screen h-dvh overflow-hidden bg-background font-body-md text-body-md text-on-surface">
+      <main className="relative flex h-screen h-dvh min-w-0 flex-1 flex-col overflow-y-auto bg-background">
         <Suspense fallback={<SettingsPageLoading />}>
           <SettingsModule />
         </Suspense>

@@ -186,7 +186,7 @@ export function ChatShell() {
     isNewChatRoute && !streamSessionId && aiMessages.length === 0 && !isStreaming;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background font-body-md text-body-md text-on-surface">
+    <div className="flex h-screen h-dvh overflow-hidden bg-background font-body-md text-body-md text-on-surface">
       <ChatSidebar
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
@@ -195,7 +195,7 @@ export function ChatShell() {
         onOpenChange={setSidebarOpen}
       />
 
-      <main className="relative flex h-screen min-w-0 flex-1 flex-col bg-background">
+      <main className="relative flex h-screen h-dvh min-w-0 flex-1 flex-col bg-background">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
 
         <ChatMessageList

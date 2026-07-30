@@ -61,12 +61,17 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Mobile Safari dynamic viewport height support */
+    min-height: 100vh;
+    min-height: 100dvh;
   }
   * {
     @apply border-border outline-ring/50;
   }
   html {
     @apply font-sans;
+    height: 100vh;
+    height: 100dvh;
   }
 }
 

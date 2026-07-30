@@ -68,6 +68,8 @@ export function ChatSidebar({
   activeSessionId,
   onSelectSession,
   onNewChat,
+  open = false,
+  onOpenChange,
 }: ChatSidebarProps) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
@@ -102,17 +104,41 @@ export function ChatSidebar({
     });
   };
 
-  return (
-    <nav className="relative z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-[rgba(0,0,0,0.06)] bg-surface-container-low p-4 md:flex">
-      <div className="mb-4 flex items-center gap-3 px-1">
-        <Link href="/chat" onClick={onNewChat} className="flex items-center gap-2">
+  const closeSidebar = () => {
+    onOpenChange?.(false);
+  };
+
+  const sidebarContent = (
+    <div className="flex h-full w-full flex-col p-4">
+      <div className="mb-4 flex items-center justify-between px-1">
+        <Link
+          href="/chat"
+          onClick={() => {
+            onNewChat();
+            closeSidebar();
+          }}
+          className="flex items-center gap-2"
+        >
           <Logo />
         </Link>
+        {onOpenChange && (
+          <button
+            type="button"
+            onClick={closeSidebar}
+            className="rounded-lg p-1.5 text-gray-medium hover:bg-surface-container hover:text-on-surface md:hidden"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       <motion.button
         type="button"
-        onClick={onNewChat}
+        onClick={() => {
+          onNewChat();
+          closeSidebar();
+        }}
         whileTap={{ scale: 0.98 }}
         className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-label-md text-label-md font-medium text-on-primary shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 hover:bg-[#3d3f42] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
       >
@@ -235,12 +261,47 @@ export function ChatSidebar({
       <div className="mt-auto border-t border-[rgba(0,0,0,0.06)] pt-4">
         <Link
           href="/settings"
+          onClick={closeSidebar}
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-body-md text-gray-medium transition-colors duration-200 hover:bg-surface-container hover:text-on-surface"
         >
           <Settings className="h-4 w-4" />
           <span className="font-body-md text-body-md">Settings</span>
         </Link>
       </div>
-    </nav>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop fixed sidebar */}
+      <nav className="relative z-20 hidden h-screen h-dvh w-64 shrink-0 flex-col border-r border-[rgba(0,0,0,0.06)] bg-surface-container-low md:flex">
+        {sidebarContent}
+      </nav>
+
+      {/* Mobile drawer with slide-over overlay */}
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={closeSidebar}
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs md:hidden"
+            />
+            <motion.nav
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed inset-y-0 left-0 z-50 flex h-full h-dvh w-72 max-w-[85vw] flex-col border-r border-[rgba(0,0,0,0.08)] bg-surface-container-low shadow-2xl md:hidden"
+            >
+              {sidebarContent}
+            </motion.nav>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
