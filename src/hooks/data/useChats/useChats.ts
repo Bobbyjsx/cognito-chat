@@ -17,7 +17,9 @@ export function useGetSessions(searchQuery?: string) {
       }
       return res;
     },
-    staleTime: 15 * 1000,
+    staleTime: 60 * 1000, // 1 minute stale time for session lists
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -42,7 +44,9 @@ export function useGetSession(sessionId: string | null) {
       return res;
     },
     enabled: Boolean(sessionId),
-    staleTime: 15 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes stale time for loaded sessions
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

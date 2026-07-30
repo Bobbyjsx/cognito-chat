@@ -41,6 +41,8 @@ export function useProfile() {
       }
       return res;
     },
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes stale time
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
