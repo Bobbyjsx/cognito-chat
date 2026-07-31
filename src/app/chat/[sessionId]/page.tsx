@@ -2,6 +2,8 @@
  * Existing session — URL: /chat/[sessionId]
  * UI is rendered by the parent ChatShell (layout) so streams survive navigation.
  */
+export const runtime = "edge";
+
 export default async function SessionChatPage({
   params,
 }: {
