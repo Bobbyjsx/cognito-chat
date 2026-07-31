@@ -8,13 +8,13 @@
     "pages:build": "npx @cloudflare/next-on-pages",
     "pages:preview": "npx @cloudflare/next-on-pages && npx wrangler pages dev .vercel/output/static",
     "start": "next start",
-    "lint": "eslint",
-    "lint:fix": "eslint . --fix",
+    "lint": "npx eslint",
+    "lint:fix": "npx eslint . --fix",
     "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
+      "npx eslint --fix"
     ]
   },
   "dependencies": {
