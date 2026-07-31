@@ -3,15 +3,22 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { useSignup } from "@/hooks/data/useAuth/useAuth";
 import { notifyServerError } from "@/lib/server-error";
 import { signupSchema, type SignupFormValues } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -36,6 +43,8 @@ const itemVariants = {
 export function SignupForm() {
   const router = useRouter();
   const signupMutation = useSignup();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -130,15 +139,32 @@ export function SignupForm() {
               >
                 Password
               </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Create a password"
-                disabled={signupMutation.isPending}
-                autoComplete="new-password"
-                aria-invalid={!!errors.password}
-                {...register("password")}
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a password"
+                  disabled={signupMutation.isPending}
+                  autoComplete="new-password"
+                  aria-invalid={!!errors.password}
+                  {...register("password")}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
               {errors.password && (
                 <p className="text-label-md text-error" role="alert">
                   {errors.password.message}
@@ -153,15 +179,32 @@ export function SignupForm() {
               >
                 Confirm password
               </label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                disabled={signupMutation.isPending}
-                autoComplete="new-password"
-                aria-invalid={!!errors.confirmPassword}
-                {...register("confirmPassword")}
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  disabled={signupMutation.isPending}
+                  autoComplete="new-password"
+                  aria-invalid={!!errors.confirmPassword}
+                  {...register("confirmPassword")}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
               {errors.confirmPassword && (
                 <p className="text-label-md text-error" role="alert">
                   {errors.confirmPassword.message}

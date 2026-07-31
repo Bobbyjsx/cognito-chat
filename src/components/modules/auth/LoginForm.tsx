@@ -6,7 +6,13 @@ import { Logo } from "@/components/ui/logo";
 import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { ArrowRight, Loader2 } from "lucide-react";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,6 +41,7 @@ const itemVariants = {
 export function LoginForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -133,15 +140,32 @@ export function LoginForm() {
                   Forgot password?
                 </Link>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                disabled={isLoading}
-                autoComplete="current-password"
-                aria-invalid={!!errors.password}
-                {...register("password")}
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                  aria-invalid={!!errors.password}
+                  {...register("password")}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
               {errors.password && (
                 <p className="text-label-md text-error" role="alert">
                   {errors.password.message}
