@@ -64,6 +64,17 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      // 1. Initial login: attach user and tokens to JWT
+      if (user) {
+        token.accessToken = (user as { accessToken?: string }).accessToken;
+        token.refreshToken = (user as { refreshToken?: string }).refreshToken;
+        token.user = user as unknown as Record<string, unknown>;
+        // Assume access token expires in 30 mins (1800 sec). Store absolute expiry timestamp in ms
+        token.accessTokenExpires = Date.now() + 25 * 60 * 1000;
+        return token;
+      }
+
+      // 2. Client manual trigger updates
       if (trigger === "update" && session) {
         if (session.user) {
           token.user = {
@@ -72,14 +83,58 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           };
           if (session.user.accessToken) {
             token.accessToken = session.user.accessToken;
+            token.accessTokenExpires = Date.now() + 25 * 60 * 1000;
+          }
+          if (session.user.refreshToken) {
+            token.refreshToken = session.user.refreshToken;
           }
         }
+        return token;
       }
-      if (user) {
-        token.accessToken = (user as { accessToken?: string }).accessToken;
-        token.user = user as unknown as Record<string, unknown>;
+
+      // 3. Return previous token if it has not expired yet
+      if (
+        typeof token.accessTokenExpires === "number" &&
+        Date.now() < token.accessTokenExpires
+      ) {
+        return token;
       }
-      return token;
+
+      // 4. Access token has expired -> attempt to refresh it automatically via refresh_token
+      try {
+        if (!token.refreshToken) {
+          return { ...token, error: "RefreshAccessTokenError" };
+        }
+
+        const res = await fetch(apiUrl("/auth/refresh"), {
+          method: "POST",
+          headers: atlasHeaders({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            refresh_token: token.refreshToken,
+          }),
+        });
+
+        const refreshedTokens = await res.json();
+
+        if (!res.ok) {
+          throw refreshedTokens;
+        }
+
+        return {
+          ...token,
+          accessToken: refreshedTokens.access_token,
+          accessTokenExpires: Date.now() + 25 * 60 * 1000,
+          refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+        };
+      } catch (error) {
+        console.error("Error refreshing access token in NextAuth jwt callback:", error);
+        return {
+          ...token,
+          error: "RefreshAccessTokenError",
+        };
+      }
     },
     async session({ session, token }) {
       if (token?.accessToken) {
@@ -87,6 +142,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
       }
       if (token?.user) {
         session.user = token.user as unknown as typeof session.user;
+      }
+      if (token?.error) {
+        (session as unknown as { error?: string }).error = token.error as string;
       }
       return session;
     },

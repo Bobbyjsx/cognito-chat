@@ -24,18 +24,26 @@ const ReactQueryDevtools =
       )
     : () => null;
 
+import { useState, useEffect } from "react";
+import { SessionExpiredDialog } from "@/components/modules/auth/SessionExpiredDialog";
+
 let isRedirecting = false;
+let setGlobalSessionExpired: ((expired: boolean) => void) | null = null;
 
 const handleUnauthorized = () => {
   if (isRedirecting) return;
   isRedirecting = true;
 
-  signOut({ redirect: false }).finally(() => {
-    toast.error("Your session has expired. Redirecting to login...");
-    setTimeout(() => {
-      window.location.href = "/login";
-    }, 1500);
-  });
+  if (setGlobalSessionExpired) {
+    setGlobalSessionExpired(true);
+  } else {
+    signOut({ redirect: false }).finally(() => {
+      toast.error("Your session has expired. Redirecting to login...");
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1500);
+    });
+  }
 };
 
 function getErrorMessage(error: unknown): string | undefined {
@@ -56,14 +64,14 @@ function makeQueryClient() {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error: unknown) => {
-        if (getErrorMessage(error) === "Unauthorized") {
+        if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) {
           handleUnauthorized();
         }
       },
     }),
     mutationCache: new MutationCache({
       onError: (error: unknown) => {
-        if (getErrorMessage(error) === "Unauthorized") {
+        if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) {
           handleUnauthorized();
         }
       },
@@ -74,7 +82,7 @@ function makeQueryClient() {
         gcTime: 15 * 60 * 1000,
         refetchOnWindowFocus: false,
         retry: (failureCount, error: unknown) => {
-          if (getErrorMessage(error) === "Unauthorized") return false;
+          if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) return false;
           if (getErrorStatus(error) === 404) return false;
           return failureCount < 2;
         },
@@ -99,11 +107,20 @@ function getQueryClient() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    setGlobalSessionExpired = setSessionExpired;
+    return () => {
+      setGlobalSessionExpired = null;
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delay={200}>
         {children}
+        <SessionExpiredDialog isOpen={sessionExpired} />
         <ReactQueryDevtools initialIsOpen={false} />
       </TooltipProvider>
     </QueryClientProvider>
