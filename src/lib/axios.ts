@@ -22,7 +22,9 @@ declare module "axios" {
   }
 }
 
-export const baseURL = API_BASE_URL;
+// Use the proxy on the client to avoid CORS, and the direct URL on the server
+export const baseURL =
+  typeof window !== "undefined" ? "/api/proxy" : API_BASE_URL;
 
 export const api = axios.create({
   baseURL,
