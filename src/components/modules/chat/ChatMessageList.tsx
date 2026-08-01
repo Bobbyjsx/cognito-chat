@@ -34,9 +34,9 @@ export function ChatMessageList({
   const lastMessage = messages[messages.length - 1];
   const lastIsAssistant = lastMessage?.role === "assistant";
 
-  // Session history takes over the canvas (don't mix with live stream UI)
-  const showSessionSkeleton =
-    Boolean(isSessionLoading) && !isStreaming && messages.length === 0;
+  // Session history takes over the canvas. We intentionally hide any stale
+  // messages while the next session is loading so the transition stays local.
+  const showSessionSkeleton = Boolean(isSessionLoading) && !isStreaming;
 
   // Agent reply placeholder before first tokens
   const showAgentSkeleton = Boolean(isStreaming) && !lastIsAssistant;

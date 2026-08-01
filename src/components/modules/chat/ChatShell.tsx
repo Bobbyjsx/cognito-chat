@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { useGetSession } from "@/hooks/data/useChats/useChats";
 import { notifyServerError } from "@/lib/server-error";
+import type { MessageSchema } from "@/types";
 import { Navbar } from "./Navbar";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatMessageList } from "./ChatMessageList";
@@ -28,7 +29,6 @@ function sessionIdFromParams(
 }
 
 export function ChatShell() {
-  const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
   const queryClient = useQueryClient();
@@ -48,8 +48,9 @@ export function ChatShell() {
   const [hydratedSessionId, setHydratedSessionId] = useState<string | null>(
     null,
   );
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
 
-  const activeSessionId = routeSessionId ?? streamSessionId;
+  const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
   const activeModel =
     userSelectedModel || config?.defaultTextModel || "gemini-3.6-flash";
   const activeReasoning =
@@ -95,12 +96,18 @@ export function ChatShell() {
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+  const isSessionSwitchPending =
+    pendingSessionId !== null && pendingSessionId !== routeSessionId;
 
   // Hydrate from session history when navigating between existing sessions
   useEffect(() => {
     if (isStreaming) return;
 
     if (!routeSessionId) {
+      queueMicrotask(() => {
+        setPendingSessionId(null);
+      });
+
       if (isNewChatRoute && !streamSessionId) {
         queueMicrotask(() => {
           setHydratedSessionId(null);
@@ -116,12 +123,13 @@ export function ChatShell() {
         if (streamSessionId === routeSessionId) {
           queueMicrotask(() => {
             setHydratedSessionId(routeSessionId);
+            setPendingSessionId(null);
           });
           return;
         }
 
         const formatted: UIMessage[] = (sessionData.messages || []).map(
-          (m: any, idx: number) => ({
+          (m: MessageSchema, idx: number) => ({
             id: m.id || `hist-${idx}`,
             role: toAssistantRole(m.role),
             parts: [{ type: "text" as const, text: m.content }],
@@ -130,6 +138,7 @@ export function ChatShell() {
         queueMicrotask(() => {
           setAiMessages(formatted);
           setHydratedSessionId(routeSessionId);
+          setPendingSessionId(null);
         });
       }
     }
@@ -163,6 +172,7 @@ export function ChatShell() {
     if (isStreaming) return;
     setStreamSessionId(null);
     setHydratedSessionId(null);
+    setPendingSessionId(null);
     setAiMessages([]);
   }, [setAiMessages, isStreaming]);
 
@@ -170,11 +180,9 @@ export function ChatShell() {
     (id: string) => {
       if (id === routeSessionId) return;
       if (isStreaming) return;
-      setHydratedSessionId(null);
-      setStreamSessionId(null);
-      setAiMessages([]);
+      setPendingSessionId(id);
     },
-    [routeSessionId, setAiMessages, isStreaming],
+    [routeSessionId, isStreaming],
   );
 
   const streamingMessageId =
@@ -187,15 +195,16 @@ export function ChatShell() {
   const showSessionLoading =
     Boolean(routeSessionId) &&
     !isStreaming &&
-    streamSessionId !== routeSessionId &&
-    hydratedSessionId !== routeSessionId &&
-    (isSessionLoading ||
+    (isSessionSwitchPending ||
+      hydratedSessionId !== routeSessionId ||
+      isSessionLoading ||
       isSessionFetching ||
       !sessionData ||
       sessionData.id !== routeSessionId);
 
   const showSuggestions =
     isNewChatRoute &&
+    !pendingSessionId &&
     !streamSessionId &&
     aiMessages.length === 0 &&
     !isStreaming;
