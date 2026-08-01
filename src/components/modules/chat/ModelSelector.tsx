@@ -32,20 +32,21 @@ export function ModelSelector({
     null,
   );
 
-  const allowedModels = config?.allowedTextModels ?? [];
-
-  // Global source of truth for reasoning levels
+  const modelsList = config?.modelsList ?? {};
   const globalAllowedReasoning = (config?.allowedReasoningLevels ?? []).map(
     (r) => r.toLowerCase(),
   );
 
-  const modelReasoningMap = config?.modelReasoningModes ?? {};
-  const modelDescriptions = config?.modelDescriptions ?? {};
+  // Derive enabled models from modelsList
+  const allowedModels = Object.entries(modelsList)
+    .filter(([, cfg]) => cfg.enabled)
+    .map(([name]) => name);
 
-  // Get allowed reasoning modes for a specific model (filtered against global source of truth)
+  // Intersect a model's own reasoning_modes with the global list
   const getModesForModel = (modelName: string) => {
-    const modes = modelReasoningMap[modelName] ?? globalAllowedReasoning;
-    return modes
+    const modelCfg = modelsList[modelName];
+    if (!modelCfg) return globalAllowedReasoning;
+    return modelCfg.reasoningModes
       .map((m) => m.toLowerCase())
       .filter((m) => globalAllowedReasoning.includes(m));
   };
@@ -111,7 +112,7 @@ export function ModelSelector({
           <div className="space-y-0.5">
             {allowedModels.map((m) => {
               const isSelected = selectedModel === m;
-              const desc = modelDescriptions[m] ?? "Powered by Gemini AI";
+              const desc = modelsList[m]?.description ?? "Powered by Gemini AI";
               const modes = getModesForModel(m);
               const isSubOpen = subReasoningModel === m;
 

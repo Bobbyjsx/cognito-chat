@@ -135,9 +135,11 @@ export function ChatShell() {
         const { model, reasoning } = JSON.parse(saved);
 
         queueMicrotask(() => {
-          const allowedModels = config.allowedTextModels;
+          const modelsList = config.modelsList ?? {};
           const globalAllowedReasoning = config.allowedReasoningLevels;
-          const modelReasoningMap = config.modelReasoningModes ?? {};
+          const allowedModels = Object.entries(modelsList)
+            .filter(([, cfg]) => cfg.enabled)
+            .map(([name]) => name);
 
           let validModel: string | null = null;
           if (model && allowedModels.includes(model)) {
@@ -148,8 +150,12 @@ export function ChatShell() {
           }
 
           const modelToUse = validModel ?? config.defaultTextModel;
-          const allowedReasoningForModel =
-            modelReasoningMap[modelToUse] ?? globalAllowedReasoning;
+          const modelCfg = modelsList[modelToUse];
+          const allowedReasoningForModel = modelCfg
+            ? modelCfg.reasoningModes.filter((m) =>
+                globalAllowedReasoning.includes(m),
+              )
+            : globalAllowedReasoning;
 
           if (
             reasoning &&
