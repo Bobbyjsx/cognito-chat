@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import * as Sentry from "@sentry/nextjs";
+import { Analytics } from "@/lib/analytics";
 
 declare global {
   interface Window {
@@ -43,7 +43,9 @@ export function useSpeechToText() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionRef.current.onerror = (event: any) => {
           console.error("Speech recognition error:", event.error);
-          Sentry.captureMessage(`Speech recognition error: ${event.error}`);
+          Analytics.captureError(
+            new Error(`Speech recognition error: ${event.error}`),
+          );
           setError(event.error);
           setIsListening(false);
           if (mediaStream) {
@@ -65,7 +67,7 @@ export function useSpeechToText() {
         queueMicrotask(() => {
           const msg = "Speech recognition is not supported in this browser.";
           setError(msg);
-          Sentry.captureMessage(msg);
+          Analytics.captureError(new Error(msg));
         });
       }
     }
@@ -91,7 +93,7 @@ export function useSpeechToText() {
       }
     } catch (err: unknown) {
       console.error("Error starting speech recognition:", err);
-      Sentry.captureException(err);
+      Analytics.captureError(err);
       if (err instanceof Error) {
         setError(err.message);
       } else {
