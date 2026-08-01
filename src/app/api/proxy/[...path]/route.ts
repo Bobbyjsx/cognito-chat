@@ -1,10 +1,10 @@
 export const runtime = "edge";
 
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import {
   API_BASE_URL,
-  getAtlasApiKey,
   ATLAS_API_KEY_HEADER,
+  getAtlasApiKey,
 } from "@/lib/api-config";
 
 async function handleProxy(
