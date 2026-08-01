@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { apiUrl, atlasHeaders } from "@/lib/api-config";
+import { Analytics } from "@/lib/analytics";
+import { api } from "@/lib/axios";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   // Required when AUTH_URL is unset / behind Cloudflare's reverse proxy.
@@ -17,50 +18,57 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const res = await fetch(apiUrl("/auth/login"), {
-            method: "POST",
-            headers: atlasHeaders({
-              "Content-Type": "application/json",
-            }),
-            body: JSON.stringify({
+          const res = await api.post(
+            "/auth/login",
+            {
               email: credentials.email,
               password: credentials.password,
-            }),
-          });
+            },
+            { isAuthReq: true },
+          );
 
-          if (!res.ok) {
-            const errorBody = await res.text().catch(() => "");
-            console.error("Auth login failed", res.status, errorBody);
-            return null;
-          }
-
-          const tokens = await res.json();
+          const tokens = res.data;
 
           // Fetch user profile info using access token
           let userProfile = null;
           try {
-            const profileRes = await fetch(apiUrl("/auth/me"), {
-              headers: atlasHeaders({
-                Authorization: `Bearer ${tokens.access_token}`,
-              }),
+            const profileRes = await api.get("/auth/me", {
+              headers: {
+                Authorization: `Bearer ${tokens.accessToken}`,
+              },
+              isAuthReq: true,
             });
-            if (profileRes.ok) {
-              userProfile = await profileRes.json();
-            }
+            userProfile = profileRes.data;
           } catch (e) {
             console.error("Failed to fetch profile during auth:", e);
+            Analytics.captureError(e, {
+              context: "Auth profile fetch",
+              email: credentials?.email,
+            });
           }
 
           return {
-            id: userProfile?.id || tokens.access_token,
+            id: userProfile?.id || tokens.accessToken,
             email: userProfile?.email || (credentials.email as string),
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token,
-            tokensUsed: userProfile?.tokens_used ?? 0,
-            tokenLimit: userProfile?.token_limit ?? 50000,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            tokensUsed: userProfile?.tokensUsed ?? 0,
+            tokenLimit: userProfile?.tokenLimit ?? 50000,
           };
-        } catch (error) {
+        } catch (error: any) {
           console.error("Auth authorize error:", error);
+          if (error.response?.status === 401) {
+            Analytics.captureEvent(error, {
+              context: "Auth login failed",
+              status: 401,
+              email: credentials?.email,
+            });
+          } else {
+            Analytics.captureError(error, {
+              context: "Auth authorize",
+              email: credentials?.email,
+            });
+          }
           return null;
         }
       },
@@ -110,33 +118,28 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           return { ...token, error: "RefreshAccessTokenError" };
         }
 
-        const res = await fetch(apiUrl("/auth/refresh"), {
-          method: "POST",
-          headers: atlasHeaders({
-            "Content-Type": "application/json",
-          }),
-          body: JSON.stringify({
-            refresh_token: token.refreshToken,
-          }),
-        });
+        const res = await api.post(
+          "/auth/refresh",
+          {
+            refreshToken: token.refreshToken,
+          },
+          { isAuthReq: true },
+        );
 
-        const refreshedTokens = await res.json();
-
-        if (!res.ok) {
-          throw refreshedTokens;
-        }
+        const refreshedTokens = res.data;
 
         return {
           ...token,
-          accessToken: refreshedTokens.access_token,
+          accessToken: refreshedTokens.accessToken,
           accessTokenExpires: Date.now() + 25 * 60 * 1000,
-          refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+          refreshToken: refreshedTokens.refreshToken ?? token.refreshToken,
         };
       } catch (error) {
         console.error(
           "Error refreshing access token in NextAuth jwt callback:",
           error,
         );
+        Analytics.captureError(error, { context: "NextAuth jwt refresh" });
         return {
           ...token,
           error: "RefreshAccessTokenError",
