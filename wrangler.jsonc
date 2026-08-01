@@ -1,7 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "cognito-chat",
-  "pages_build_output_dir": ".vercel/output/static",
   "main": ".vercel/output/static/_worker.js/index.js",
   "assets": {
     "directory": ".vercel/output/static",
