@@ -193,14 +193,14 @@ export function ChatShell() {
       : null;
 
   const showSessionLoading =
-    Boolean(routeSessionId) &&
     !isStreaming &&
     (isSessionSwitchPending ||
-      hydratedSessionId !== routeSessionId ||
-      isSessionLoading ||
-      isSessionFetching ||
-      !sessionData ||
-      sessionData.id !== routeSessionId);
+      (Boolean(routeSessionId) &&
+        (hydratedSessionId !== routeSessionId ||
+          isSessionLoading ||
+          isSessionFetching ||
+          !sessionData ||
+          sessionData.id !== routeSessionId)));
 
   const showSuggestions =
     isNewChatRoute &&

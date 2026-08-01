@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Logo } from "@/components/ui/logo";
 import {
   useGetSessions,
@@ -22,9 +22,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 interface ChatSidebarProps {
-  activeSessionId: string | null;
-  onSelectSession: (id: string) => void;
-  onNewChat: () => void;
+  activeSessionId?: string | null;
+  onSelectSession?: (id: string) => void;
+  onNewChat?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -76,13 +76,14 @@ function RecentConversationsSkeleton() {
 }
 
 export function ChatSidebar({
-  activeSessionId,
+  activeSessionId = null,
   onSelectSession,
   onNewChat,
   open = false,
   onOpenChange,
 }: ChatSidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -105,7 +106,7 @@ export function ChatSidebar({
       onSuccess: () => {
         toast.success("Conversation deleted");
         if (activeSessionId === sessionId) {
-          onNewChat();
+          onNewChat?.();
           router.push("/chat");
         }
       },
@@ -126,7 +127,7 @@ export function ChatSidebar({
           href="/chat"
           scroll={false}
           onClick={() => {
-            onNewChat();
+            onNewChat?.();
             closeSidebar();
           }}
           className="flex items-center gap-2"
@@ -149,7 +150,7 @@ export function ChatSidebar({
         href="/chat"
         scroll={false}
         onClick={(e) => {
-          onNewChat();
+          onNewChat?.();
           closeSidebar();
         }}
         className="bg-primary font-label-md text-label-md text-on-primary mb-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-medium shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 hover:bg-[#3d3f42] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-[0.98]"
@@ -219,7 +220,8 @@ export function ChatSidebar({
                         e.preventDefault();
                         return;
                       }
-                      onSelectSession(session.id);
+                      // Escape React's transition batching so the active state updates immediately
+                      setTimeout(() => onSelectSession?.(session.id), 0);
                     }}
                     className={cn(
                       "group text-body-md relative flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-all duration-200",
@@ -293,7 +295,12 @@ export function ChatSidebar({
         <Link
           href="/settings"
           onClick={closeSidebar}
-          className="text-body-md text-gray-medium hover:bg-surface-container hover:text-on-surface flex w-full items-center gap-2.5 rounded-lg px-3 py-2 transition-colors duration-200"
+          className={cn(
+            "text-body-md flex w-full items-center gap-2.5 rounded-lg px-3 py-2 transition-colors duration-200",
+            pathname === "/settings"
+              ? "text-on-surface bg-surface-container font-semibold"
+              : "text-gray-medium hover:bg-surface-container hover:text-on-surface",
+          )}
         >
           <Settings className="h-4 w-4" />
           <span className="font-body-md text-body-md">Settings</span>

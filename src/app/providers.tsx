@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { signOut } from "next-auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { authManager } from "@/lib/auth-manager";
+import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 
 // Devtools only in development — never in production bundle usage path
 const ReactQueryDevtools =
@@ -142,6 +143,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delay={200}>
         {children}
+        <ProgressBar
+          height="3px"
+          color="#1a73e8"
+          options={{ showSpinner: false }}
+          shallowRouting
+        />
         <SessionExpiredDialog isOpen={sessionExpired} />
         <ReactQueryDevtools initialIsOpen={false} />
       </TooltipProvider>
