@@ -194,7 +194,7 @@ export function ChatSidebar({
         ) : (
           <div className="space-y-0.5">
             <AnimatePresence initial={false}>
-              {sessions.map((session) => {
+              {sessions.map((session: any) => {
                 const sessionTitle =
                   session.title?.trim() ||
                   session.lastMessageContent?.trim() ||

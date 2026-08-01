@@ -7,8 +7,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import type { BundledLanguage } from "shiki";
@@ -21,7 +19,11 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { Streamdown } from "streamdown";
+import dynamic from "next/dynamic";
+
+const StreamdownWrapper = dynamic(() => import("./streamdown-wrapper"), {
+  ssr: false,
+});
 
 import { Shimmer } from "./shimmer";
 
@@ -185,15 +187,27 @@ export type ReasoningContentProps = ComponentProps<
   children: string;
 };
 
-import {
-  CodeBlock,
-  CodeBlockActions,
-  CodeBlockCopyButton,
-  CodeBlockHeader,
-  CodeBlockTitle,
-} from "./code-block";
-
-const streamdownPlugins = { code, math };
+// Dynamic import for CodeBlock components to avoid shiki in Edge Worker
+const CodeBlock = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlock),
+  { ssr: false },
+);
+const CodeBlockActions = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockActions),
+  { ssr: false },
+);
+const CodeBlockCopyButton = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockCopyButton),
+  { ssr: false },
+);
+const CodeBlockHeader = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockHeader),
+  { ssr: false },
+);
+const CodeBlockTitle = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockTitle),
+  { ssr: false },
+);
 
 const streamdownComponents = {
   code({ className, children, ...props }: ComponentProps<"code">) {
@@ -248,9 +262,9 @@ export const ReasoningContent = memo(
       )}
       {...props}
     >
-      <Streamdown plugins={streamdownPlugins} components={streamdownComponents}>
+      <StreamdownWrapper components={streamdownComponents}>
         {children}
-      </Streamdown>
+      </StreamdownWrapper>
     </CollapsibleContent>
   ),
 );

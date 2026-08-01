@@ -121,7 +121,7 @@ export function ChatShell() {
         }
 
         const formatted: UIMessage[] = (sessionData.messages || []).map(
-          (m, idx) => ({
+          (m: any, idx: number) => ({
             id: m.id || `hist-${idx}`,
             role: toAssistantRole(m.role),
             parts: [{ type: "text" as const, text: m.content }],

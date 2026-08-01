@@ -27,7 +27,7 @@ import type {
   HighlighterGeneric,
   ThemedToken,
 } from "shiki";
-import { createHighlighter } from "shiki";
+// Removed static import of createHighlighter
 
 // Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 // oxlint-disable-next-line eslint(no-bitwise)
@@ -146,13 +146,16 @@ const getTokensCacheKey = (code: string, language: BundledLanguage) => {
   return `${language}:${code.length}:${start}:${end}`;
 };
 
-const getHighlighter = (
+const getHighlighter = async (
   language: BundledLanguage,
 ): Promise<HighlighterGeneric<BundledLanguage, BundledTheme>> => {
   const cached = highlighterCache.get(language);
   if (cached) {
     return cached;
   }
+
+  // Dynamically import shiki so it's not bundled statically into the edge worker
+  const { createHighlighter } = await import("shiki");
 
   const highlighterPromise = createHighlighter({
     langs: [language],

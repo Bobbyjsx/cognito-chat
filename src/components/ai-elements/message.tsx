@@ -9,12 +9,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
-import type { BundledLanguage } from "shiki";
 import {
   createContext,
   memo,
@@ -24,7 +21,13 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Streamdown } from "streamdown";
+import dynamic from "next/dynamic";
+import type { Streamdown } from "streamdown";
+import type { BundledLanguage } from "shiki";
+
+const StreamdownWrapper = dynamic(() => import("./streamdown-wrapper"), {
+  ssr: false,
+});
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -317,15 +320,27 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
-import {
-  CodeBlock,
-  CodeBlockActions,
-  CodeBlockCopyButton,
-  CodeBlockHeader,
-  CodeBlockTitle,
-} from "./code-block";
-
-const streamdownPlugins = { code, math };
+// Dynamic import for CodeBlock components to avoid shiki in Edge Worker
+const CodeBlock = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlock),
+  { ssr: false },
+);
+const CodeBlockActions = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockActions),
+  { ssr: false },
+);
+const CodeBlockCopyButton = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockCopyButton),
+  { ssr: false },
+);
+const CodeBlockHeader = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockHeader),
+  { ssr: false },
+);
+const CodeBlockTitle = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockTitle),
+  { ssr: false },
+);
 
 const streamdownComponents = {
   code({ className, children, ...props }: ComponentProps<"code">) {
@@ -372,12 +387,11 @@ const streamdownComponents = {
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
+    <StreamdownWrapper
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className,
       )}
-      plugins={streamdownPlugins}
       components={streamdownComponents}
       {...props}
     />

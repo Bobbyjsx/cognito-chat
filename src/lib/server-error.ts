@@ -94,6 +94,23 @@ export const getErrorMessage = (
   e: unknown,
   fallbackErrorMessage = FALLBACK_ERROR_MESSAGE,
 ): string | string[] => {
+  if (axios.isAxiosError(e)) {
+    const detail = e.response?.data?.detail ?? e.response?.data?.message;
+    const statusCode = e.response?.status;
+    if (typeof detail === "string") {
+      return detail;
+    }
+    if (statusCode === 422 && Array.isArray(detail) && detail.length) {
+      return detail.map((err: any) => {
+        const errorField = err.loc?.[err.loc.length - 1]?.replace(/_/g, " ");
+        return capitalizeFirstLetter(`${errorField} ${err.msg}.`);
+      });
+    }
+    if (e.message) {
+      return e.message;
+    }
+  }
+
   const error = parseServerActionError(e);
   if (error && typeof error === "object" && "statusCode" in error) {
     const serverError = error as {

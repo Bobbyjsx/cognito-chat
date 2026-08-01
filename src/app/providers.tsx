@@ -54,8 +54,13 @@ function getErrorMessage(error: unknown): string | undefined {
 }
 
 function getErrorStatus(error: unknown): number | undefined {
-  if (typeof error === "object" && error !== null && "status" in error) {
-    return Number((error as { status: unknown }).status);
+  if (typeof error === "object" && error !== null) {
+    if ("response" in error && typeof (error as any).response === "object") {
+      return Number((error as any).response?.status);
+    }
+    if ("status" in error) {
+      return Number((error as { status: unknown }).status);
+    }
   }
   return undefined;
 }

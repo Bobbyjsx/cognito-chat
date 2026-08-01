@@ -43,9 +43,6 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-export const dynamic = "force-dynamic";
-export const runtime = "edge";
-
 export default function RootLayout({
   children,
 }: {
