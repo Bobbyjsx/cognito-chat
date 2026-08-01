@@ -80,7 +80,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
       if (user) {
         token.accessToken = (user as { accessToken?: string }).accessToken;
         token.refreshToken = (user as { refreshToken?: string }).refreshToken;
-        token.user = user as unknown as Record<string, unknown>;
+
+        const { accessToken, refreshToken, ...userWithoutTokens } = user as any;
+        token.user = userWithoutTokens;
         // Assume access token expires in 30 mins (1800 sec). Store absolute expiry timestamp in ms
         token.accessTokenExpires = Date.now() + 25 * 60 * 1000;
         return token;
@@ -109,6 +111,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         typeof token.accessTokenExpires === "number" &&
         Date.now() < token.accessTokenExpires
       ) {
+        if (token.error) {
+          delete token.error;
+        }
         return token;
       }
 
@@ -128,8 +133,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
         const refreshedTokens = res.data;
 
+        const { error, ...tokenWithoutError } = token;
+
         return {
-          ...token,
+          ...tokenWithoutError,
           accessToken: refreshedTokens.accessToken,
           accessTokenExpires: Date.now() + 25 * 60 * 1000,
           refreshToken: refreshedTokens.refreshToken ?? token.refreshToken,
