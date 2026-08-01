@@ -40,6 +40,7 @@ export function ModelSelector({
   );
 
   const modelReasoningMap = config?.modelReasoningModes ?? {};
+  const modelDescriptions = config?.modelDescriptions ?? {};
 
   // Get allowed reasoning modes for a specific model (filtered against global source of truth)
   const getModesForModel = (modelName: string) => {
@@ -110,7 +111,7 @@ export function ModelSelector({
           <div className="space-y-0.5">
             {allowedModels.map((m) => {
               const isSelected = selectedModel === m;
-              const desc = "Powered by Gemini AI";
+              const desc = modelDescriptions[m] ?? "Powered by Gemini AI";
               const modes = getModesForModel(m);
               const isSubOpen = subReasoningModel === m;
 

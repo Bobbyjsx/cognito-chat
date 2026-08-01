@@ -99,6 +99,7 @@ export interface AppConfig {
   allowedReasoningLevels: string[];
   defaultReasoningLevel: string;
   modelReasoningModes?: Record<string, string[]>;
+  modelDescriptions?: Record<string, string>;
   allowedImageModels: string[];
   allowedVideoModels: string[];
   allowedTools: string[];
