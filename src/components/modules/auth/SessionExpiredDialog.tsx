@@ -16,10 +16,14 @@ interface SessionExpiredDialogProps {
   isOpen?: boolean;
 }
 
-export function SessionExpiredDialog({ isOpen: explicitOpen }: SessionExpiredDialogProps) {
+export function SessionExpiredDialog({
+  isOpen: explicitOpen,
+}: SessionExpiredDialogProps) {
   const { data: session } = useSession();
 
-  const isSessionError = (session as unknown as { error?: string })?.error === "RefreshAccessTokenError";
+  const isSessionError =
+    (session as unknown as { error?: string })?.error ===
+    "RefreshAccessTokenError";
   const open = Boolean(explicitOpen || isSessionError);
 
   const handleReauthenticate = async () => {
@@ -32,14 +36,15 @@ export function SessionExpiredDialog({ isOpen: explicitOpen }: SessionExpiredDia
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent showCloseButton={false} className="sm:max-w-md">
         <DialogHeader className="flex flex-col items-center gap-3 text-center sm:text-left">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <div className="bg-destructive/10 text-destructive flex h-12 w-12 items-center justify-center rounded-full">
             <ShieldAlert className="h-6 w-6" />
           </div>
-          <DialogTitle className="text-lg font-semibold text-foreground">
+          <DialogTitle className="text-foreground text-lg font-semibold">
             Session Expired
           </DialogTitle>
-          <DialogDescription className="text-center text-sm text-muted-foreground">
-            Your authentication session has expired or could not be refreshed automatically. Please sign in again to continue using Cognito Chat.
+          <DialogDescription className="text-muted-foreground text-center text-sm">
+            Your authentication session has expired or could not be refreshed
+            automatically. Please sign in again to continue using Cognito Chat.
           </DialogDescription>
         </DialogHeader>
 

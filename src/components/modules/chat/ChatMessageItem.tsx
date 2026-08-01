@@ -79,12 +79,12 @@ function CopyMessageButton({ text }: { text: string }) {
   if (!text) return null;
 
   return (
-    <MessageActions className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+    <MessageActions className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
       <MessageAction
         tooltip={copied ? "Copied" : "Copy"}
         label={copied ? "Copied" : "Copy message"}
         onClick={handleCopy}
-        className="h-8 w-8 text-gray-medium hover:text-on-surface"
+        className="text-gray-medium hover:text-on-surface h-8 w-8"
       >
         {copied ? (
           <Check className="h-3.5 w-3.5" />
@@ -188,9 +188,7 @@ function MessageParts({
                 ) : null}
                 <ToolOutput
                   output={"output" in part ? part.output : undefined}
-                  errorText={
-                    "errorText" in part ? part.errorText : undefined
-                  }
+                  errorText={"errorText" in part ? part.errorText : undefined}
                 />
               </ToolContent>
             </Tool>
@@ -208,7 +206,10 @@ export function AssistantMessageSkeleton() {
   return <AgentResponseSkeleton />;
 }
 
-export function ChatMessageItem({ message, isStreaming }: ChatMessageItemProps) {
+export function ChatMessageItem({
+  message,
+  isStreaming,
+}: ChatMessageItemProps) {
   const from = message.role === "user" ? "user" : "assistant";
   const plainText = getMessagePlainText(message);
   const showCopy = Boolean(plainText) && !isStreaming;
@@ -240,8 +241,8 @@ export function ChatMessageItem({ message, isStreaming }: ChatMessageItemProps) 
       <MessageContent className="w-full max-w-full">
         {hasFailed ? (
           <div className="my-2 space-y-1 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-left">
-            <div className="flex items-center gap-2 font-medium text-sm text-red-900 dark:text-red-200">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+            <div className="flex items-center gap-2 text-sm font-medium text-red-900 dark:text-red-200">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
               <span>There was a problem responding to your message.</span>
             </div>
             <p className="pl-6 font-mono text-xs text-red-700/80 dark:text-red-300/70">

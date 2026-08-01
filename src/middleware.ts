@@ -5,8 +5,7 @@ export default auth((request) => {
   const session = request.auth;
   const { pathname } = request.nextUrl;
 
-  const isChatRoute =
-    pathname === "/chat" || pathname.startsWith("/chat/");
+  const isChatRoute = pathname === "/chat" || pathname.startsWith("/chat/");
   const isProtectedRoute =
     pathname === "/" ||
     isChatRoute ||

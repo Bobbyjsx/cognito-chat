@@ -2,9 +2,15 @@
 
 import { api } from "@/lib/axios";
 import { throwServerActionError } from "../server-error";
-import type { UserCreateRequest, PasswordResetRequest, UserProfile } from "@/types";
+import type {
+  UserCreateRequest,
+  PasswordResetRequest,
+  UserProfile,
+} from "@/types";
 
-export async function signupAction(request: UserCreateRequest): Promise<UserProfile> {
+export async function signupAction(
+  request: UserCreateRequest,
+): Promise<UserProfile> {
   try {
     const { data } = await api.post<UserProfile>("/auth/signup", request);
     return data;
@@ -14,12 +20,12 @@ export async function signupAction(request: UserCreateRequest): Promise<UserProf
 }
 
 export async function resetPasswordAction(
-  request: PasswordResetRequest
+  request: PasswordResetRequest,
 ): Promise<{ message: string }> {
   try {
     const { data } = await api.post<{ message: string }>(
       "/auth/reset-password",
-      request
+      request,
     );
     return data;
   } catch (err) {

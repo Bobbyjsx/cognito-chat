@@ -37,15 +37,23 @@ export function ChatShell() {
   const routeSessionId = sessionIdFromParams(params);
   const isNewChatRoute = pathname === "/chat" || pathname === "/chat/";
 
-  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
-  const [userSelectedReasoning, setUserSelectedReasoning] = useState<string | null>(null);
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(
+    null,
+  );
+  const [userSelectedReasoning, setUserSelectedReasoning] = useState<
+    string | null
+  >(null);
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [hydratedSessionId, setHydratedSessionId] = useState<string | null>(null);
+  const [hydratedSessionId, setHydratedSessionId] = useState<string | null>(
+    null,
+  );
 
   const activeSessionId = routeSessionId ?? streamSessionId;
-  const activeModel = userSelectedModel || config?.defaultTextModel || "gemini-3.6-flash";
-  const activeReasoning = userSelectedReasoning || config?.defaultReasoningLevel || "medium";
+  const activeModel =
+    userSelectedModel || config?.defaultTextModel || "gemini-3.6-flash";
+  const activeReasoning =
+    userSelectedReasoning || config?.defaultReasoningLevel || "medium";
 
   const {
     data: sessionData,
@@ -112,11 +120,13 @@ export function ChatShell() {
           return;
         }
 
-        const formatted: UIMessage[] = (sessionData.messages || []).map((m, idx) => ({
-          id: m.id || `hist-${idx}`,
-          role: toAssistantRole(m.role),
-          parts: [{ type: "text" as const, text: m.content }],
-        }));
+        const formatted: UIMessage[] = (sessionData.messages || []).map(
+          (m, idx) => ({
+            id: m.id || `hist-${idx}`,
+            role: toAssistantRole(m.role),
+            parts: [{ type: "text" as const, text: m.content }],
+          }),
+        );
         queueMicrotask(() => {
           setAiMessages(formatted);
           setHydratedSessionId(routeSessionId);
@@ -180,13 +190,19 @@ export function ChatShell() {
     !isStreaming &&
     streamSessionId !== routeSessionId &&
     hydratedSessionId !== routeSessionId &&
-    (isSessionLoading || isSessionFetching || !sessionData || sessionData.id !== routeSessionId);
+    (isSessionLoading ||
+      isSessionFetching ||
+      !sessionData ||
+      sessionData.id !== routeSessionId);
 
   const showSuggestions =
-    isNewChatRoute && !streamSessionId && aiMessages.length === 0 && !isStreaming;
+    isNewChatRoute &&
+    !streamSessionId &&
+    aiMessages.length === 0 &&
+    !isStreaming;
 
   return (
-    <div className="flex h-screen h-dvh overflow-hidden bg-background font-body-md text-body-md text-on-surface">
+    <div className="bg-background font-body-md text-body-md text-on-surface flex h-dvh h-screen overflow-hidden">
       <ChatSidebar
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
@@ -195,7 +211,7 @@ export function ChatShell() {
         onOpenChange={setSidebarOpen}
       />
 
-      <main className="relative flex h-screen h-dvh min-w-0 flex-1 flex-col bg-background">
+      <main className="bg-background relative flex h-dvh h-screen min-w-0 flex-1 flex-col">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
 
         <ChatMessageList

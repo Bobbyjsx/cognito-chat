@@ -39,20 +39,18 @@ export function ChatMessageList({
     Boolean(isSessionLoading) && !isStreaming && messages.length === 0;
 
   // Agent reply placeholder before first tokens
-  const showAgentSkeleton =
-    Boolean(isStreaming) && !lastIsAssistant;
+  const showAgentSkeleton = Boolean(isStreaming) && !lastIsAssistant;
 
-  const isEmpty =
-    messages.length === 0 && !isStreaming && !isSessionLoading;
+  const isEmpty = messages.length === 0 && !isStreaming && !isSessionLoading;
 
   return (
     <Conversation className="min-h-0 flex-1">
-      <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pb-8 pt-6 md:px-0">
+      <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pt-6 pb-8 md:px-0">
         {showSessionSkeleton ? (
           <SessionMessagesSkeleton />
         ) : isEmpty ? (
           <ConversationEmptyState
-            className="min-h-[50vh] flex flex-col items-center justify-center text-center"
+            className="flex min-h-[50vh] flex-col items-center justify-center text-center"
             title="How can I assist you today?"
             description="Ask anything. Powered by Gemini with reasoning and tools."
             icon={<Logo logoOnly iconClassName="h-10 w-10 text-on-surface" />}

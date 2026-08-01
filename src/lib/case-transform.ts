@@ -18,7 +18,7 @@ export function keysToCamel<T = unknown>(obj: unknown): T {
         ...result,
         [toCamelCase(key)]: keysToCamel(record[key]),
       }),
-      {}
+      {},
     ) as unknown as T;
   }
   return obj as T;
@@ -34,7 +34,7 @@ export function keysToSnake<T = unknown>(obj: unknown): T {
         ...result,
         [toSnakeCase(key)]: keysToSnake(record[key]),
       }),
-      {}
+      {},
     ) as unknown as T;
   }
   return obj as T;

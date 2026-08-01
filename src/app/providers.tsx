@@ -64,14 +64,20 @@ function makeQueryClient() {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error: unknown) => {
-        if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) {
+        if (
+          getErrorMessage(error) === "Unauthorized" ||
+          getErrorStatus(error) === 401
+        ) {
           handleUnauthorized();
         }
       },
     }),
     mutationCache: new MutationCache({
       onError: (error: unknown) => {
-        if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) {
+        if (
+          getErrorMessage(error) === "Unauthorized" ||
+          getErrorStatus(error) === 401
+        ) {
           handleUnauthorized();
         }
       },
@@ -82,7 +88,11 @@ function makeQueryClient() {
         gcTime: 15 * 60 * 1000,
         refetchOnWindowFocus: false,
         retry: (failureCount, error: unknown) => {
-          if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) return false;
+          if (
+            getErrorMessage(error) === "Unauthorized" ||
+            getErrorStatus(error) === 401
+          )
+            return false;
           if (getErrorStatus(error) === 404) return false;
           return failureCount < 2;
         },

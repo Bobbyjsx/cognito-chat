@@ -16,12 +16,12 @@ function Bone({ className }: { className?: string }) {
 export function ChatShellLoading() {
   return (
     <div
-      className="flex h-screen overflow-hidden bg-background"
+      className="bg-background flex h-screen overflow-hidden"
       aria-busy="true"
       aria-label="Loading chat"
     >
       {/* Desktop sidebar placeholder */}
-      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r border-[rgba(0,0,0,0.06)] bg-surface-container-low p-4 md:flex">
+      <aside className="bg-surface-container-low hidden h-screen w-64 shrink-0 flex-col border-r border-[rgba(0,0,0,0.06)] p-4 md:flex">
         <Bone className="mb-6 h-8 w-28" />
         <Bone className="mb-6 h-10 w-full rounded-lg" />
         <div className="space-y-2">
@@ -41,7 +41,7 @@ export function ChatShellLoading() {
           <Bone className="h-8 w-8 rounded-lg" />
         </div>
 
-        <div className="mx-auto flex w-full max-w-[800px] flex-1 flex-col gap-8 px-4 pb-8 pt-6">
+        <div className="mx-auto flex w-full max-w-[800px] flex-1 flex-col gap-8 px-4 pt-6 pb-8">
           <div className="flex flex-col items-end gap-2">
             <Bone className="h-16 w-[70%] rounded-xl" />
           </div>
@@ -71,7 +71,7 @@ export function ChatShellLoading() {
 export function AuthPageLoading() {
   return (
     <div
-      className="flex min-h-[100dvh] w-full items-center justify-center bg-surface-container-low px-4 py-12"
+      className="bg-surface-container-low flex min-h-[100dvh] w-full items-center justify-center px-4 py-12"
       aria-busy="true"
       aria-label="Loading"
     >
@@ -95,11 +95,11 @@ export function AuthPageLoading() {
 export function SettingsPageLoading() {
   return (
     <div
-      className="flex h-screen overflow-hidden bg-background"
+      className="bg-background flex h-screen overflow-hidden"
       aria-busy="true"
       aria-label="Loading settings"
     >
-      <aside className="hidden h-screen w-64 shrink-0 border-r border-[rgba(0,0,0,0.06)] bg-surface-container-low p-4 md:block">
+      <aside className="bg-surface-container-low hidden h-screen w-64 shrink-0 border-r border-[rgba(0,0,0,0.06)] p-4 md:block">
         <Bone className="mb-6 h-8 w-28" />
         <Bone className="mb-4 h-10 w-full rounded-lg" />
         <div className="space-y-2">
@@ -123,7 +123,7 @@ export function SettingsPageLoading() {
 export function RootLoading() {
   return (
     <div
-      className="flex min-h-[100dvh] items-center justify-center bg-background"
+      className="bg-background flex min-h-[100dvh] items-center justify-center"
       aria-busy="true"
       aria-label="Loading"
     >

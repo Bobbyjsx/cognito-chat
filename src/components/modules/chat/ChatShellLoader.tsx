@@ -9,8 +9,7 @@ import { ChatShellLoading } from "@/components/loading/page-skeletons";
  * until this boundary hydrates.
  */
 const ChatShell = dynamic(
-  () =>
-    import("@/components/modules/chat/ChatShell").then((m) => m.ChatShell),
+  () => import("@/components/modules/chat/ChatShell").then((m) => m.ChatShell),
   {
     loading: () => <ChatShellLoading />,
     ssr: false,

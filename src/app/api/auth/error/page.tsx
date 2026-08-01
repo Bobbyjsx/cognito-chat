@@ -5,8 +5,14 @@ export const runtime = "edge";
 
 export default function AuthErrorPage() {
   return (
-    <div className="flex min-h-[100dvh] w-full items-center justify-center bg-surface-container-low px-4 py-12">
-      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading error details...</div>}>
+    <div className="bg-surface-container-low flex min-h-[100dvh] w-full items-center justify-center px-4 py-12">
+      <Suspense
+        fallback={
+          <div className="text-muted-foreground text-sm">
+            Loading error details...
+          </div>
+        }
+      >
         <AuthErrorContent />
       </Suspense>
     </div>

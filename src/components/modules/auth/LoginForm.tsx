@@ -89,14 +89,14 @@ export function LoginForm() {
         variants={itemVariants}
         className="mb-10 flex flex-col items-center text-center"
       >
-        <Logo className="justify-center mb-3" />
+        <Logo className="mb-3 justify-center" />
         <p className="text-gray-medium text-body-md leading-relaxed">
           Sign in to continue to your workspace.
         </p>
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <div className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-8 md:p-10 ambient-shadow">
+        <div className="ambient-shadow rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-8 md:p-10">
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-5"
@@ -104,7 +104,7 @@ export function LoginForm() {
           >
             <div className="space-y-2">
               <label
-                className="block text-label-md font-medium text-on-surface"
+                className="text-label-md text-on-surface block font-medium"
                 htmlFor="email"
               >
                 Email
@@ -128,7 +128,7 @@ export function LoginForm() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label
-                  className="block text-label-md font-medium text-on-surface"
+                  className="text-label-md text-on-surface block font-medium"
                   htmlFor="password"
                 >
                   Password
@@ -155,13 +155,15 @@ export function LoginForm() {
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                     onClick={() => setShowPassword((prev) => !prev)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      <EyeOff className="text-muted-foreground h-4 w-4" />
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <Eye className="text-muted-foreground h-4 w-4" />
                     )}
                   </InputGroupButton>
                 </InputGroupAddon>
@@ -194,12 +196,12 @@ export function LoginForm() {
 
       <motion.p
         variants={itemVariants}
-        className="mt-8 text-center text-body-md text-gray-medium"
+        className="text-body-md text-gray-medium mt-8 text-center"
       >
         No account yet?{" "}
         <Link
           href="/register"
-          className="text-on-surface font-medium hover:underline underline-offset-4 transition-colors duration-200"
+          className="text-on-surface font-medium underline-offset-4 transition-colors duration-200 hover:underline"
         >
           Create one
         </Link>

@@ -133,7 +133,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
         };
       } catch (error) {
-        console.error("Error refreshing access token in NextAuth jwt callback:", error);
+        console.error(
+          "Error refreshing access token in NextAuth jwt callback:",
+          error,
+        );
         return {
           ...token,
           error: "RefreshAccessTokenError",
@@ -148,7 +151,8 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         session.user = token.user as unknown as typeof session.user;
       }
       if (token?.error) {
-        (session as unknown as { error?: string }).error = token.error as string;
+        (session as unknown as { error?: string }).error =
+          token.error as string;
       }
       return session;
     },

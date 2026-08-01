@@ -76,9 +76,7 @@ export function getQuotaSnapshot(
     Math.min(Math.round((used6h / Math.max(limit6h, 1)) * 100), 100),
   );
 
-  const usedWeekly = num(
-    profile?.tokensUsedWeekly ?? raw?.tokensUsed_weekly,
-  );
+  const usedWeekly = num(profile?.tokensUsedWeekly ?? raw?.tokensUsed_weekly);
   const limitWeekly = num(
     profile?.tokenLimitWeekly ?? raw?.tokenLimit_weekly,
     300_000,

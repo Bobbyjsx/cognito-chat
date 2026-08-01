@@ -9,12 +9,16 @@
     "pages:preview": "npx @cloudflare/next-on-pages && npx wrangler pages dev .vercel/output/static",
     "start": "next start",
     "lint": "npx eslint",
-    "lint:fix": "npx eslint . --fix",
+    "lint:fix": "npx eslint . --fix && npx prettier . --write",
     "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "npx eslint --fix"
+      "npx eslint --fix",
+      "npx prettier --write"
+    ],
+    "*.{json,css,md,yml,yaml}": [
+      "npx prettier --write"
     ]
   },
   "dependencies": {
@@ -66,8 +70,11 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.116.0"

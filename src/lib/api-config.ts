@@ -27,9 +27,7 @@ export const ATLAS_API_KEY_HEADER = "X-Atlas-Api-Key";
  */
 export function getAtlasApiKey(): string {
   const raw =
-    process.env.ATLAS_API_KEY ||
-    process.env.NEXT_PUBLIC_ATLAS_API_KEY ||
-    "";
+    process.env.ATLAS_API_KEY || process.env.NEXT_PUBLIC_ATLAS_API_KEY || "";
   return raw.trim().replace(/^["']|["']$/g, "");
 }
 

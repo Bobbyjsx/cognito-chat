@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  Message,
-  MessageContent,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
@@ -12,13 +9,15 @@ import { History, Loader2 } from "lucide-react";
 function Bone({ className }: { className?: string }) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      className={cn("bg-muted animate-pulse rounded-md", className)}
       aria-hidden
     />
   );
 }
 
-function AssistantHeader({ isWaiting: _isWaiting }: { isWaiting?: boolean } = {}) {
+function AssistantHeader({
+  isWaiting: _isWaiting,
+}: { isWaiting?: boolean } = {}) {
   return (
     <div className="mb-1 flex items-center gap-2">
       <Logo
@@ -26,7 +25,7 @@ function AssistantHeader({ isWaiting: _isWaiting }: { isWaiting?: boolean } = {}
         iconContainerClassName="h-6 w-6 rounded bg-primary border-none shadow-none text-on-primary"
         iconClassName="h-[14px] w-[14px] text-on-primary"
       />
-      <span className="font-label-md text-label-md font-bold text-primary">
+      <span className="font-label-md text-label-md text-primary font-bold">
         Cognito
       </span>
     </div>
@@ -45,7 +44,7 @@ export function AgentResponseSkeleton() {
           className="w-full max-w-md space-y-3"
           aria-label="Waiting for agent response"
         >
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-2">
             <Loader2 className="size-3.5 animate-spin" />
             <Shimmer className="text-sm" duration={1.2}>
               Thinking...
@@ -70,7 +69,7 @@ export function AgentResponseBodySkeleton() {
       className="w-full max-w-md space-y-3 py-1"
       aria-label="Waiting for first tokens"
     >
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-2">
         <Loader2 className="size-3.5 animate-spin" />
         <Shimmer className="text-sm" duration={1.2}>
           Thinking...
@@ -125,7 +124,7 @@ export function RecentConversationsSkeleton() {
           className="flex items-center justify-between gap-2.5 rounded-lg px-3 py-2.5"
         >
           <div className="flex flex-1 items-center gap-2.5">
-            <History className="h-4 w-4 shrink-0 text-gray-medium/50" />
+            <History className="text-gray-medium/50 h-4 w-4 shrink-0" />
             <Bone className="h-3.5 w-3/4 rounded" />
           </div>
           <Bone className="h-3 w-8 rounded" />

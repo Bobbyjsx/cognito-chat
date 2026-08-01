@@ -38,7 +38,9 @@ export function useGetSession(sessionId: string | null) {
         { queryKey: ["chat-sessions"] },
         (old) => {
           if (!old || !Array.isArray(old)) return old;
-          return old.map((s) => (s.id === sessionId ? { ...s, readStatus: "read" } : s));
+          return old.map((s) =>
+            s.id === sessionId ? { ...s, readStatus: "read" } : s,
+          );
         },
       );
       return res;
