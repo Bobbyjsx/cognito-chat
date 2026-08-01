@@ -12,85 +12,89 @@ declare global {
   }
 }
 
+// Check support once at module level (safe for SSR — runs only when imported client-side)
+function checkSpeechSupport(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+export const isSpeechRecognitionSupported = checkSpeechSupport();
+
 export function useSpeechToText() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Separate stream used only for the visualizer — acquired AFTER recognition starts
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!isSpeechRecognitionSupported) return;
 
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        recognitionRef.current.onresult = (event: any) => {
-          let currentTranscript = "";
-          for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
-          }
-          setTranscript(currentTranscript);
-        };
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionRef.current = recognition;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        recognitionRef.current.onerror = (event: any) => {
-          console.error("Speech recognition error:", event.error);
-          Analytics.captureError(
-            new Error(`Speech recognition error: ${event.error}`),
-          );
-          setError(event.error);
-          setIsListening(false);
-          if (mediaStream) {
-            mediaStream.getTracks().forEach((track) => track.stop());
-            setMediaStream(null);
-          }
-        };
-
-        recognitionRef.current.onend = () => {
-          setIsListening(false);
-          setMediaStream((prev) => {
-            if (prev) {
-              prev.getTracks().forEach((track) => track.stop());
-            }
-            return null;
-          });
-        };
-      } else {
-        queueMicrotask(() => {
-          const msg = "Speech recognition is not supported in this browser.";
-          setError(msg);
-          Analytics.captureError(new Error(msg));
-        });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      let currentTranscript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        currentTranscript += event.results[i][0].transcript;
       }
-    }
+      setTranscript(currentTranscript);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
+      // "aborted" fires when we call stop() ourselves — not a real error
+      if (event.error === "aborted") return;
+
+      console.error("Speech recognition error:", event.error);
+      Analytics.captureError(
+        new Error(`Speech recognition error: ${event.error}`),
+      );
+      setError(event.error);
+      setIsListening(false);
+      setMediaStream((prev) => {
+        prev?.getTracks().forEach((t) => t.stop());
+        return null;
+      });
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setMediaStream((prev) => {
+        prev?.getTracks().forEach((t) => t.stop());
+        return null;
+      });
+    };
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      recognition.abort();
     };
-  }, [mediaStream]);
+  }, []);
 
   const startListening = useCallback(async () => {
+    if (!recognitionRef.current) return;
+
     setError(null);
+    setTranscript("");
+
     try {
-      // Explicitly request microphone access to trigger permission prompt
-      // and get the stream for our visualizer
+      // Start recognition first — it manages its own mic access
+      recognitionRef.current.start();
+      setIsListening(true);
+
+      // Then acquire a separate stream purely for the visualizer
+      // This will reuse the same mic track the browser already opened
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
-
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        setIsListening(true);
-      }
     } catch (err: unknown) {
       console.error("Error starting speech recognition:", err);
       Analytics.captureError(err);
@@ -99,18 +103,21 @@ export function useSpeechToText() {
       } else {
         setError(String(err));
       }
+      // Clean up if visualizer stream acquisition failed
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+      setIsListening(false);
     }
   }, []);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+    setIsListening(false);
     setMediaStream((prev) => {
-      if (prev) {
-        prev.getTracks().forEach((track) => track.stop());
-      }
+      prev?.getTracks().forEach((t) => t.stop());
       return null;
     });
   }, []);
