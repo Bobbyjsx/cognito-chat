@@ -55,7 +55,7 @@ export default function RootLayout({
         className={cn(
           geist.variable,
           geistMono.variable,
-          "h-[calc(100dvh - 10px)] sm:h-dvh",
+          "h-[calc(100dvh-10px)] sm:h-dvh",
         )}
       >
         <SessionProvider refetchInterval={0}>
