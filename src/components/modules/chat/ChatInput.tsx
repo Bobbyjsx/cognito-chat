@@ -90,10 +90,6 @@ export function ChatInput({
                 onStop={onStop}
                 isBusy={isBusy}
                 canStop={canStop}
-                onSubmit={() => {
-                  const form = document.querySelector("form");
-                  if (form) form.requestSubmit();
-                }}
               />
             </PromptInputFooter>
           </PromptInput>

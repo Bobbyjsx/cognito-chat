@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, Send, X } from "lucide-react";
+import { Check, Mic, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +32,6 @@ interface DictationToolbarProps {
   onStop?: () => void;
   isBusy: boolean;
   canStop: boolean;
-  onSubmit: () => void;
 }
 
 export function DictationToolbar({
@@ -44,7 +43,6 @@ export function DictationToolbar({
   onStop,
   isBusy,
   canStop,
-  onSubmit,
 }: DictationToolbarProps) {
   const {
     isListening,
@@ -74,13 +72,10 @@ export function DictationToolbar({
     resetTranscript();
   };
 
-  const handleSend = () => {
+  const handleDone = () => {
     stopListening();
     const spacer = initialTextRef.current && transcript ? " " : "";
     controller.textInput.setInput(initialTextRef.current + spacer + transcript);
-    setTimeout(() => {
-      onSubmit();
-    }, 50);
   };
 
   // Sync live transcript into the prompt input while speaking
@@ -126,16 +121,16 @@ export function DictationToolbar({
               <Button
                 type="button"
                 size="icon"
-                onClick={handleSend}
+                onClick={handleDone}
                 className="bg-primary text-on-primary shrink-0 rounded-full hover:bg-[#3d3f42] active:scale-[0.96] sm:size-auto sm:px-3 sm:py-1.5"
-                aria-label="Send dictated prompt"
+                aria-label="Finish dictation and keep transcript"
               >
-                <Send className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden text-sm sm:inline">Send</span>
+                <Check className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden text-sm sm:inline">Done</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs sm:hidden">
-              Send
+              Done
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
