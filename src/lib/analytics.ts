@@ -1,28 +1,32 @@
-import * as Sentry from "@sentry/nextjs";
-
 export class Analytics {
-  /**
-   * Capture a generic event or message.
-   */
-  static captureEvent(message: string, context?: Record<string, any>) {
-    Sentry.captureMessage(message, {
-      extra: context,
-    });
+  private static async getSentry() {
+    if (process.env.NEXT_RUNTIME === "edge") {
+      // Return a dummy object for edge to avoid Edge bundle bloat issues with Sentry
+      return {
+        captureMessage: () => {},
+        captureException: () => {},
+        setUser: () => {},
+      };
+    }
+    // Dynamically import Sentry only when not on edge runtime
+    return import("@sentry/nextjs");
   }
 
-  /**
-   * Capture an error exception.
-   */
-  static captureError(error: Error | unknown, context?: Record<string, any>) {
-    Sentry.captureException(error, {
-      extra: context,
-    });
+  static async captureEvent(message: string, context?: Record<string, any>) {
+    const Sentry = await this.getSentry();
+    Sentry.captureMessage(message, { extra: context });
   }
 
-  /**
-   * Capture an API error specifically, preserving the response details.
-   */
-  static captureApiError(error: any, url?: string, method?: string) {
+  static async captureError(
+    error: Error | unknown,
+    context?: Record<string, any>,
+  ) {
+    const Sentry = await this.getSentry();
+    Sentry.captureException(error, { extra: context });
+  }
+
+  static async captureApiError(error: any, url?: string, method?: string) {
+    const Sentry = await this.getSentry();
     const errorDetails = {
       url,
       method,
@@ -30,9 +34,7 @@ export class Analytics {
       data: error?.response?.data,
       message: error?.message,
     };
-
     console.error(`[API Error] ${method?.toUpperCase()} ${url}`, errorDetails);
-
     Sentry.captureException(error, {
       extra: { apiErrorDetails: errorDetails },
       tags: {
@@ -44,17 +46,13 @@ export class Analytics {
     });
   }
 
-  /**
-   * Identify the user in analytics
-   */
-  static identifyUser(userId: string, email?: string) {
+  static async identifyUser(userId: string, email?: string) {
+    const Sentry = await this.getSentry();
     Sentry.setUser({ id: userId, email });
   }
 
-  /**
-   * Clear the current user from analytics
-   */
-  static clearUser() {
+  static async clearUser() {
+    const Sentry = await this.getSentry();
     Sentry.setUser(null);
   }
 }
