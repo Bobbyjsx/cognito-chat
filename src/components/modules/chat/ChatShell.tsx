@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useParams, usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useGetSession } from "@/hooks/data/useChats/useChats";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { notifyServerError } from "@/lib/server-error";
@@ -56,6 +56,15 @@ export function ChatShell() {
   const activeReasoning =
     userSelectedReasoning || config?.defaultReasoningLevel || "medium";
 
+  // Use refs to avoid stale closures in useChat callbacks
+  const currentModelRef = useRef(userSelectedModel);
+  const currentReasoningRef = useRef(userSelectedReasoning);
+
+  useEffect(() => {
+    currentModelRef.current = userSelectedModel;
+    currentReasoningRef.current = userSelectedReasoning;
+  }, [userSelectedModel, userSelectedReasoning]);
+
   const {
     data: sessionData,
     isLoading: isSessionLoading,
@@ -78,6 +87,21 @@ export function ChatShell() {
       const nextId = data?.sessionId;
       if (!nextId) return;
 
+      // Copy current settings to the new session
+      try {
+        const modelToSave = currentModelRef.current;
+        const reasoningToSave = currentReasoningRef.current;
+        if (modelToSave || reasoningToSave) {
+          localStorage.setItem(
+            `chat_settings_${nextId}`,
+            JSON.stringify({
+              model: modelToSave,
+              reasoning: reasoningToSave,
+            }),
+          );
+        }
+      } catch {}
+
       setStreamSessionId(nextId);
       setHydratedSessionId(nextId);
 
@@ -98,6 +122,85 @@ export function ChatShell() {
   const isStreaming = status === "streaming" || status === "submitted";
   const isSessionSwitchPending =
     pendingSessionId !== null && pendingSessionId !== routeSessionId;
+
+  // Load from localStorage when activeSessionId or config changes
+  useEffect(() => {
+    if (!config || isStreaming) return;
+    const storageKey = activeSessionId
+      ? `chat_settings_${activeSessionId}`
+      : "chat_settings_default";
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const { model, reasoning } = JSON.parse(saved);
+
+        queueMicrotask(() => {
+          let validModel = null;
+          if (model && config.allowedTextModels.includes(model)) {
+            validModel = model;
+            setUserSelectedModel(model);
+          } else {
+            setUserSelectedModel(null);
+          }
+
+          const modelToUse = validModel || config.defaultTextModel;
+          const allowedReasoningForModel =
+            config.modelReasoningModes?.[modelToUse] ||
+            config.allowedReasoningLevels;
+
+          if (
+            reasoning &&
+            config.allowedReasoningLevels.includes(reasoning) &&
+            allowedReasoningForModel.includes(reasoning)
+          ) {
+            setUserSelectedReasoning(reasoning);
+          } else {
+            setUserSelectedReasoning(null);
+          }
+        });
+      } else {
+        queueMicrotask(() => {
+          setUserSelectedModel(null);
+          setUserSelectedReasoning(null);
+        });
+      }
+    } catch (err) {
+      console.error("Failed to parse saved chat settings", err);
+    }
+  }, [activeSessionId, config, isStreaming]);
+
+  const handleSelectModel = useCallback(
+    (model: string) => {
+      setUserSelectedModel(model);
+      const storageKey = activeSessionId
+        ? `chat_settings_${activeSessionId}`
+        : "chat_settings_default";
+      try {
+        const saved = localStorage.getItem(storageKey);
+        const data = saved ? JSON.parse(saved) : {};
+        localStorage.setItem(storageKey, JSON.stringify({ ...data, model }));
+      } catch {}
+    },
+    [activeSessionId],
+  );
+
+  const handleSelectReasoning = useCallback(
+    (reasoning: string) => {
+      setUserSelectedReasoning(reasoning);
+      const storageKey = activeSessionId
+        ? `chat_settings_${activeSessionId}`
+        : "chat_settings_default";
+      try {
+        const saved = localStorage.getItem(storageKey);
+        const data = saved ? JSON.parse(saved) : {};
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ ...data, reasoning }),
+        );
+      } catch {}
+    },
+    [activeSessionId],
+  );
 
   // Hydrate from session history when navigating between existing sessions
   useEffect(() => {
@@ -234,9 +337,9 @@ export function ChatShell() {
           onStop={stop}
           status={status}
           selectedModel={activeModel}
-          onSelectModel={setUserSelectedModel}
+          onSelectModel={handleSelectModel}
           selectedReasoning={activeReasoning}
-          onSelectReasoning={setUserSelectedReasoning}
+          onSelectReasoning={handleSelectReasoning}
           showSuggestions={showSuggestions}
         />
       </main>
