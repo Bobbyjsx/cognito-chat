@@ -1,5 +1,6 @@
 "use client";
 
+import type { UIMessage } from "ai";
 import {
   Conversation,
   ConversationContent,
@@ -7,7 +8,6 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Logo } from "@/components/ui/logo";
-import type { UIMessage } from "ai";
 import {
   AssistantMessageSkeleton,
   ChatMessageItem,

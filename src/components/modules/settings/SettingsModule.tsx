@@ -1,11 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
-import { useProfile } from "@/hooks/data/useAuth/useAuth";
-import { getQuotaSnapshot } from "@/lib/quota";
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -15,12 +9,16 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Navbar } from "@/components/modules/chat/Navbar";
-import { ChatSidebar } from "@/components/modules/chat/ChatSidebar";
+import { useProfile } from "@/hooks/data/useAuth/useAuth";
+import { getQuotaSnapshot } from "@/lib/quota";
+import { cn } from "@/lib/utils";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -44,8 +42,6 @@ export function SettingsModule() {
   const { data: session } = useSession();
   const { data: profile } = useProfile();
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(timer);
@@ -57,12 +53,8 @@ export function SettingsModule() {
   const q = getQuotaSnapshot(profile, nowMs, "long");
 
   return (
-    <div className="bg-background font-body-md text-body-md text-on-surface flex h-dvh h-screen w-full overflow-hidden">
-      <ChatSidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
-
-      <main className="bg-background relative flex h-dvh h-screen min-w-0 flex-1 flex-col">
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
-
+    <div className="bg-background font-body-md text-body-md text-on-surface flex h-full w-full overflow-hidden">
+      <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
         <div className="flex-1 overflow-y-auto">
           <motion.div
             className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 md:py-10"

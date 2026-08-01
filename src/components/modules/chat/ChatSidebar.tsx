@@ -1,14 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
-import { Logo } from "@/components/ui/logo";
-import {
-  useGetSessions,
-  useDeleteSession,
-} from "@/hooks/data/useChats/useChats";
-import { cn } from "@/lib/utils";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   History,
   Loader2,
@@ -18,8 +10,16 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Logo } from "@/components/ui/logo";
+import {
+  useDeleteSession,
+  useGetSessions,
+} from "@/hooks/data/useChats/useChats";
+import { cn } from "@/lib/utils";
 
 interface ChatSidebarProps {
   activeSessionId?: string | null;
@@ -196,7 +196,7 @@ export function ChatSidebar({
         ) : (
           <div className="space-y-0.5">
             <AnimatePresence initial={false}>
-              {sessions.map((session: any) => {
+              {sessions.map((session: any, idx: number) => {
                 const sessionTitle =
                   session.title?.trim() ||
                   session.lastMessageContent?.trim() ||
@@ -215,6 +215,7 @@ export function ChatSidebar({
                     href={`/chat/${session.id}`}
                     scroll={false}
                     key={session.id}
+                    prefetch={idx <= 5}
                     onClick={(e) => {
                       if (isDeleting) {
                         e.preventDefault();
@@ -273,7 +274,7 @@ export function ChatSidebar({
                           "text-gray-medium/70 hover:text-error hover:bg-error/10 rounded p-1 transition-colors",
                           isDeleting
                             ? "text-error block"
-                            : "hidden group-hover:block",
+                            : "block md:hidden md:group-hover:block",
                         )}
                       >
                         {isDeleting ? (

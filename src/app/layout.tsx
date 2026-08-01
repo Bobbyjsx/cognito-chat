@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
+import { Toaster as SonnerToaster } from "sonner";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 import { Providers } from "./providers";
-import { Toaster as SonnerToaster } from "sonner";
-import { SessionProvider } from "next-auth/react";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -50,12 +51,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${geist.variable} ${geistMono.variable}`}>
-        <SessionProvider
-          // Avoid extra /api/auth/session round-trips on every focus
-          refetchOnWindowFocus={false}
-          refetchInterval={0}
-        >
+      <body
+        className={cn(
+          geist.variable,
+          geistMono.variable,
+          "h-[calc(100dvh - 10px)] sm:h-dvh",
+        )}
+      >
+        <SessionProvider refetchInterval={0}>
           <Providers>
             {children}
             <SonnerToaster richColors theme="light" />

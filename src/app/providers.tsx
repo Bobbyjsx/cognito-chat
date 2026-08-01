@@ -1,18 +1,18 @@
 "use client";
 
 import {
+  MutationCache,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
-  QueryCache,
-  MutationCache,
 } from "@tanstack/react-query";
-import type React from "react";
 import dynamic from "next/dynamic";
-import { toast } from "sonner";
 import { signOut } from "next-auth/react";
+import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
+import type React from "react";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { authManager } from "@/lib/auth-manager";
-import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 
 // Devtools only in development — never in production bundle usage path
 const ReactQueryDevtools =
@@ -26,7 +26,7 @@ const ReactQueryDevtools =
       )
     : () => null;
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SessionExpiredDialog } from "@/components/modules/auth/SessionExpiredDialog";
 
 let isRedirecting = false;

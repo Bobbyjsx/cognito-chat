@@ -1,6 +1,7 @@
 export const runtime = "edge";
 
 import type { Metadata } from "next";
+import { DynamicChatShell } from "@/components/modules/chat/ChatClient";
 
 export const metadata: Metadata = {
   title: "Chat",
@@ -17,8 +18,6 @@ export const metadata: Metadata = {
     },
   },
 };
-
-import { DynamicChatShell } from "@/components/modules/chat/ChatClient";
 
 export default function ChatPage() {
   return <DynamicChatShell />;

@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams, usePathname } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
+import { DefaultChatTransport, type UIMessage } from "ai";
+import { useParams, usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { useGetSession } from "@/hooks/data/useChats/useChats";
+import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { notifyServerError } from "@/lib/server-error";
 import type { MessageSchema } from "@/types";
-import { Navbar } from "./Navbar";
-import { ChatSidebar } from "./ChatSidebar";
-import { ChatMessageList } from "./ChatMessageList";
 import { ChatInput } from "./ChatInput";
+import { ChatMessageList } from "./ChatMessageList";
+import { ChatSidebar } from "./ChatSidebar";
+import { Navbar } from "./Navbar";
 
 function toAssistantRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
@@ -210,7 +210,7 @@ export function ChatShell() {
     !isStreaming;
 
   return (
-    <div className="bg-background font-body-md text-body-md text-on-surface flex h-dvh h-screen overflow-hidden">
+    <div className="bg-background font-body-md text-body-md text-on-surface flex h-full overflow-hidden">
       <ChatSidebar
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
@@ -219,7 +219,7 @@ export function ChatShell() {
         onOpenChange={setSidebarOpen}
       />
 
-      <main className="bg-background relative flex h-dvh h-screen min-w-0 flex-1 flex-col">
+      <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
 
         <ChatMessageList
