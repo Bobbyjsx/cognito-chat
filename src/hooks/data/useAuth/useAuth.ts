@@ -1,20 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  signupAction,
-  resetPasswordAction,
-  getProfileAction,
-} from "@/lib/actions/auth";
-import { isServerError } from "@/lib/server-error";
-import type { UserCreateRequest, PasswordResetRequest } from "@/types";
+import { api } from "@/lib/axios";
+import type {
+  UserCreateRequest,
+  PasswordResetRequest,
+  UserProfile,
+} from "@/types";
 
 export function useSignup() {
   return useMutation({
     mutationFn: async (request: UserCreateRequest) => {
-      const res = await signupAction(request);
-      if (isServerError(res)) {
-        throw res;
-      }
-      return res;
+      const { data } = await api.post<UserProfile>("/auth/signup", request);
+      return data;
     },
   });
 }
@@ -22,11 +18,11 @@ export function useSignup() {
 export function useResetPassword() {
   return useMutation({
     mutationFn: async (request: PasswordResetRequest) => {
-      const res = await resetPasswordAction(request);
-      if (isServerError(res)) {
-        throw res;
-      }
-      return res;
+      const { data } = await api.post<{ message: string }>(
+        "/auth/reset-password",
+        request,
+      );
+      return data;
     },
   });
 }
@@ -35,11 +31,8 @@ export function useProfile() {
   return useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
-      const res = await getProfileAction();
-      if (isServerError(res)) {
-        throw res;
-      }
-      return res;
+      const { data } = await api.get<UserProfile>("/auth/me");
+      return data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes stale time
     gcTime: 15 * 60 * 1000,

@@ -36,7 +36,8 @@
   --color-error: #eb5757;
 
   /* Typography */
-  --font-geist: "Geist", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+  --font-geist:
+    "Geist", "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
   --font-jetbrains: "JetBrains Mono", "SF Mono", monospace;
 
   --font-headline-lg: var(--font-geist);
@@ -56,7 +57,7 @@
 
 @layer base {
   body {
-    @apply bg-background text-on-surface antialiased selection:bg-primary/10 selection:text-primary;
+    @apply bg-background text-on-surface selection:bg-primary/10 selection:text-primary antialiased;
     font-family: var(--font-geist);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;

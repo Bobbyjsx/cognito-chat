@@ -1,5 +1,6 @@
 "use client";
 
+import type { UIMessage } from "ai";
 import {
   Conversation,
   ConversationContent,
@@ -7,7 +8,6 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Logo } from "@/components/ui/logo";
-import type { UIMessage } from "ai";
 import {
   AssistantMessageSkeleton,
   ChatMessageItem,
@@ -34,25 +34,23 @@ export function ChatMessageList({
   const lastMessage = messages[messages.length - 1];
   const lastIsAssistant = lastMessage?.role === "assistant";
 
-  // Session history takes over the canvas (don't mix with live stream UI)
-  const showSessionSkeleton =
-    Boolean(isSessionLoading) && !isStreaming && messages.length === 0;
+  // Session history takes over the canvas. We intentionally hide any stale
+  // messages while the next session is loading so the transition stays local.
+  const showSessionSkeleton = Boolean(isSessionLoading) && !isStreaming;
 
   // Agent reply placeholder before first tokens
-  const showAgentSkeleton =
-    Boolean(isStreaming) && !lastIsAssistant;
+  const showAgentSkeleton = Boolean(isStreaming) && !lastIsAssistant;
 
-  const isEmpty =
-    messages.length === 0 && !isStreaming && !isSessionLoading;
+  const isEmpty = messages.length === 0 && !isStreaming && !isSessionLoading;
 
   return (
     <Conversation className="min-h-0 flex-1">
-      <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pb-8 pt-6 md:px-0">
+      <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pt-6 pb-8 md:px-0">
         {showSessionSkeleton ? (
           <SessionMessagesSkeleton />
         ) : isEmpty ? (
           <ConversationEmptyState
-            className="min-h-[50vh] flex flex-col items-center justify-center text-center"
+            className="flex min-h-[50vh] flex-col items-center justify-center text-center"
             title="How can I assist you today?"
             description="Ask anything. Powered by Gemini with reasoning and tools."
             icon={<Logo logoOnly iconClassName="h-10 w-10 text-on-surface" />}

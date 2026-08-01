@@ -120,28 +120,28 @@ export function ModelSelector({
           if (!open) setSubReasoningModel(null);
         }}
       >
-        <PopoverTrigger className="group inline-flex max-w-[min(100%,14rem)] sm:max-w-none items-center gap-1 sm:gap-1.5 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2 sm:px-3 py-1.5 text-xs font-semibold text-on-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-200 hover:border-[rgba(0,0,0,0.12)] hover:bg-surface-container-low active:scale-[0.98]">
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-on-surface/80" />
-          <span className="truncate font-headline-md text-label-md tracking-tight-editorial">
+        <PopoverTrigger className="group text-on-surface hover:bg-surface-container-low inline-flex max-w-[min(100%,14rem)] items-center gap-1 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2 py-1.5 text-xs font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-200 hover:border-[rgba(0,0,0,0.12)] active:scale-[0.98] sm:max-w-none sm:gap-1.5 sm:px-3">
+          <Sparkles className="text-on-surface/80 h-3.5 w-3.5 shrink-0" />
+          <span className="font-headline-md text-label-md tracking-tight-editorial truncate">
             {selectedModel}
           </span>
           {selectedReasoning && (
-            <span className="shrink-0 font-normal text-gray-medium/70 text-[11px] capitalize">
+            <span className="text-gray-medium/70 shrink-0 text-[11px] font-normal capitalize">
               · {selectedReasoning}
             </span>
           )}
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-medium transition-transform duration-200 group-data-[state=open]:rotate-180" />
+          <ChevronDown className="text-gray-medium h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
         </PopoverTrigger>
 
         <PopoverContent
           align="start"
           side="top"
           sideOffset={6}
-          className="w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5 ambient-shadow"
+          className="ambient-shadow w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
         >
-          <div className="flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-medium">
+          <div className="text-gray-medium flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium tracking-wider uppercase">
             <span>Select AI Model</span>
-            <span className="text-[10px] text-gray-medium/80">
+            <span className="text-gray-medium/80 text-[10px]">
               Reasoning Options ➔
             </span>
           </div>
@@ -157,9 +157,9 @@ export function ModelSelector({
                 <div key={m} className="relative">
                   <div
                     className={cn(
-                      "flex w-full items-center justify-between rounded-lg px-2.5 py-2 transition-colors duration-150 group/row",
+                      "group/row flex w-full items-center justify-between rounded-lg px-2.5 py-2 transition-colors duration-150",
                       isSelected
-                        ? "bg-surface-container-low font-semibold text-on-surface"
+                        ? "bg-surface-container-low text-on-surface font-semibold"
                         : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
                     )}
                   >
@@ -169,15 +169,15 @@ export function ModelSelector({
                       onClick={() => handleSelectModel(m)}
                       className="flex flex-1 items-start gap-2.5 text-left"
                     >
-                      <Cpu className="h-4 w-4 shrink-0 text-gray-medium mt-0.5" />
+                      <Cpu className="text-gray-medium mt-0.5 h-4 w-4 shrink-0" />
                       <div className="space-y-0.5">
-                        <div className="flex items-center gap-1.5 font-code-sm text-xs font-medium text-on-surface">
+                        <div className="font-code-sm text-on-surface flex items-center gap-1.5 text-xs font-medium">
                           {m}
                           {isSelected && (
-                            <Check className="h-3.5 w-3.5 text-on-surface" />
+                            <Check className="text-on-surface h-3.5 w-3.5" />
                           )}
                         </div>
-                        <p className="text-[11px] font-normal text-gray-medium leading-tight">
+                        <p className="text-gray-medium text-[11px] leading-tight font-normal">
                           {desc}
                         </p>
                       </div>
@@ -190,7 +190,7 @@ export function ModelSelector({
                         setSubReasoningModel(open ? m : null)
                       }
                     >
-                      <PopoverTrigger className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(0,0,0,0.06)] bg-white text-gray-medium transition-colors hover:border-[rgba(0,0,0,0.15)] hover:bg-surface-container-high hover:text-on-surface">
+                      <PopoverTrigger className="text-gray-medium hover:bg-surface-container-high hover:text-on-surface ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(0,0,0,0.06)] bg-white transition-colors hover:border-[rgba(0,0,0,0.15)]">
                         <BrainCircuit className="h-3.5 w-3.5" />
                       </PopoverTrigger>
 
@@ -198,9 +198,9 @@ export function ModelSelector({
                         align="start"
                         side="right"
                         sideOffset={8}
-                        className="w-48 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5 ambient-shadow"
+                        className="ambient-shadow w-48 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
                       >
-                        <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-medium">
+                        <div className="text-gray-medium px-2 py-1 text-[10px] font-semibold tracking-wider uppercase">
                           {m} Reasoning
                         </div>
                         <div className="space-y-0.5">
@@ -219,13 +219,13 @@ export function ModelSelector({
                                 className={cn(
                                   "flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs capitalize transition-colors",
                                   isCurrent
-                                    ? "bg-surface-container-high font-semibold text-on-surface"
+                                    ? "bg-surface-container-high text-on-surface font-semibold"
                                     : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
                                 )}
                               >
                                 <span>{level}</span>
                                 {isCurrent && (
-                                  <Check className="h-3.5 w-3.5 text-on-surface" />
+                                  <Check className="text-on-surface h-3.5 w-3.5" />
                                 )}
                               </button>
                             );

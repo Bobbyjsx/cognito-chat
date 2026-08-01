@@ -1,9 +1,6 @@
 import { auth } from "@/auth";
 import { apiUrl, atlasHeaders } from "@/lib/api-config";
-import {
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-} from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 
 export const runtime = "edge";
 
@@ -227,7 +224,10 @@ export async function POST(req: Request) {
                 continue;
               }
 
-              if (parsed.event === "session" && typeof payload.session_id === "string") {
+              if (
+                parsed.event === "session" &&
+                typeof payload.session_id === "string"
+              ) {
                 writer.write({
                   type: "data-session",
                   data: { sessionId: payload.session_id },

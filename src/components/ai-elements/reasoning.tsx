@@ -7,8 +7,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import type { BundledLanguage } from "shiki";
@@ -21,7 +19,11 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { Streamdown } from "streamdown";
+import dynamic from "next/dynamic";
+
+const StreamdownWrapper = dynamic(() => import("./streamdown-wrapper"), {
+  ssr: false,
+});
 
 import { Shimmer } from "./shimmer";
 
@@ -106,12 +108,12 @@ export const Reasoning = memo(
       (newOpen: boolean) => {
         setIsOpen(newOpen);
       },
-      [setIsOpen]
+      [setIsOpen],
     );
 
     const contextValue = useMemo(
       () => ({ duration, isOpen, isStreaming, setIsOpen }),
-      [duration, isOpen, isStreaming, setIsOpen]
+      [duration, isOpen, isStreaming, setIsOpen],
     );
 
     return (
@@ -126,7 +128,7 @@ export const Reasoning = memo(
         </Collapsible>
       </ReasoningContext.Provider>
     );
-  }
+  },
 );
 
 export type ReasoningTriggerProps = ComponentProps<
@@ -157,8 +159,8 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
-          className
+          "text-muted-foreground hover:text-foreground flex w-full items-center gap-2 text-sm transition-colors",
+          className,
         )}
         {...props}
       >
@@ -169,14 +171,14 @@ export const ReasoningTrigger = memo(
             <ChevronDownIcon
               className={cn(
                 "size-4 transition-transform",
-                isOpen ? "rotate-180" : "rotate-0"
+                isOpen ? "rotate-180" : "rotate-0",
               )}
             />
           </>
         )}
       </CollapsibleTrigger>
     );
-  }
+  },
 );
 
 export type ReasoningContentProps = ComponentProps<
@@ -185,15 +187,27 @@ export type ReasoningContentProps = ComponentProps<
   children: string;
 };
 
-import {
-  CodeBlock,
-  CodeBlockActions,
-  CodeBlockCopyButton,
-  CodeBlockHeader,
-  CodeBlockTitle,
-} from "./code-block";
-
-const streamdownPlugins = { code, math };
+// Dynamic import for CodeBlock components to avoid shiki in Edge Worker
+const CodeBlock = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlock),
+  { ssr: false },
+);
+const CodeBlockActions = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockActions),
+  { ssr: false },
+);
+const CodeBlockCopyButton = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockCopyButton),
+  { ssr: false },
+);
+const CodeBlockHeader = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockHeader),
+  { ssr: false },
+);
+const CodeBlockTitle = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockTitle),
+  { ssr: false },
+);
 
 const streamdownComponents = {
   code({ className, children, ...props }: ComponentProps<"code">) {
@@ -205,10 +219,13 @@ const streamdownComponents = {
       const language = (match ? match[1] : "") as BundledLanguage;
       return (
         <div className="my-3 overflow-hidden rounded-xl border border-[rgba(0,0,0,0.08)] bg-[#1e1e1e] shadow-md">
-          <CodeBlock code={rawText} language={language || ("text" as BundledLanguage)}>
-            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3.5 py-1.5 text-xs font-mono text-gray-300">
+          <CodeBlock
+            code={rawText}
+            language={language || ("text" as BundledLanguage)}
+          >
+            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3.5 py-1.5 font-mono text-xs text-gray-300">
               <CodeBlockTitle>
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <span className="font-mono text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
                   {language || "code"}
                 </span>
               </CodeBlockTitle>
@@ -224,8 +241,8 @@ const streamdownComponents = {
     return (
       <code
         className={cn(
-          "rounded bg-surface-container-high/80 px-1.5 py-0.5 font-code-sm text-[13px] font-medium text-on-surface border border-[rgba(0,0,0,0.06)]",
-          className
+          "bg-surface-container-high/80 font-code-sm text-on-surface rounded border border-[rgba(0,0,0,0.06)] px-1.5 py-0.5 text-[13px] font-medium",
+          className,
         )}
         {...props}
       >
@@ -240,14 +257,16 @@ export const ReasoningContent = memo(
     <CollapsibleContent
       className={cn(
         "mt-4 text-sm",
-        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
-        className
+        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground data-[state=closed]:animate-out data-[state=open]:animate-in outline-none",
+        className,
       )}
       {...props}
     >
-      <Streamdown plugins={streamdownPlugins} components={streamdownComponents}>{children}</Streamdown>
+      <StreamdownWrapper components={streamdownComponents}>
+        {children}
+      </StreamdownWrapper>
     </CollapsibleContent>
-  )
+  ),
 );
 
 Reasoning.displayName = "Reasoning";

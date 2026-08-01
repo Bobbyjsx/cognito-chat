@@ -1,16 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { getConfigAction } from "@/lib/actions/config";
-import { isServerError } from "@/lib/server-error";
+import { api } from "@/lib/axios";
+import type { AppConfig } from "@/types";
 
 export function useGetConfig() {
   return useQuery({
     queryKey: ["app-config"],
     queryFn: async () => {
-      const res = await getConfigAction();
-      if (isServerError(res)) {
-        throw res;
-      }
-      return res;
+      const { data } = await api.get<AppConfig>("/config");
+      return data;
     },
     staleTime: 5 * 60 * 1000,
   });

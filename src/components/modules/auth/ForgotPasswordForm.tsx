@@ -76,14 +76,14 @@ export function ForgotPasswordForm() {
         variants={itemVariants}
         className="mb-10 flex flex-col items-center text-center"
       >
-        <Logo className="justify-center mb-3" />
+        <Logo className="mb-3 justify-center" />
         <p className="text-gray-medium text-body-md leading-relaxed">
           Enter your email and a new password.
         </p>
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <div className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-8 md:p-10 ambient-shadow">
+        <div className="ambient-shadow rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-8 md:p-10">
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-5"
@@ -91,7 +91,7 @@ export function ForgotPasswordForm() {
           >
             <div className="space-y-2">
               <label
-                className="block text-label-md font-medium text-on-surface"
+                className="text-label-md text-on-surface block font-medium"
                 htmlFor="email"
               >
                 Email
@@ -114,7 +114,7 @@ export function ForgotPasswordForm() {
 
             <div className="space-y-2">
               <label
-                className="block text-label-md font-medium text-on-surface"
+                className="text-label-md text-on-surface block font-medium"
                 htmlFor="newPassword"
               >
                 New password
@@ -158,7 +158,7 @@ export function ForgotPasswordForm() {
       <motion.div variants={itemVariants} className="mt-8 text-center">
         <Link
           href="/login"
-          className="inline-flex items-center gap-1.5 text-body-md text-gray-medium hover:text-on-surface transition-colors duration-200"
+          className="text-body-md text-gray-medium hover:text-on-surface inline-flex items-center gap-1.5 transition-colors duration-200"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to sign in

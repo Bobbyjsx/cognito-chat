@@ -1,16 +1,18 @@
 "use client";
 
 import {
+  MutationCache,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
-  QueryCache,
-  MutationCache,
 } from "@tanstack/react-query";
-import type React from "react";
 import dynamic from "next/dynamic";
-import { toast } from "sonner";
 import { signOut } from "next-auth/react";
+import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
+import type React from "react";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { authManager } from "@/lib/auth-manager";
 
 // Devtools only in development — never in production bundle usage path
 const ReactQueryDevtools =
@@ -24,7 +26,7 @@ const ReactQueryDevtools =
       )
     : () => null;
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SessionExpiredDialog } from "@/components/modules/auth/SessionExpiredDialog";
 
 let isRedirecting = false;
@@ -33,6 +35,7 @@ let setGlobalSessionExpired: ((expired: boolean) => void) | null = null;
 const handleUnauthorized = () => {
   if (isRedirecting) return;
   isRedirecting = true;
+  authManager.clearBrowserSessionCache();
 
   if (setGlobalSessionExpired) {
     setGlobalSessionExpired(true);
@@ -54,8 +57,18 @@ function getErrorMessage(error: unknown): string | undefined {
 }
 
 function getErrorStatus(error: unknown): number | undefined {
-  if (typeof error === "object" && error !== null && "status" in error) {
-    return Number((error as { status: unknown }).status);
+  if (typeof error === "object" && error !== null) {
+    if (
+      "response" in error &&
+      typeof (error as { response?: unknown }).response === "object"
+    ) {
+      return Number(
+        (error as { response?: { status?: unknown } }).response?.status,
+      );
+    }
+    if ("status" in error) {
+      return Number((error as { status: unknown }).status);
+    }
   }
   return undefined;
 }
@@ -64,14 +77,20 @@ function makeQueryClient() {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error: unknown) => {
-        if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) {
+        if (
+          getErrorMessage(error) === "Unauthorized" ||
+          getErrorStatus(error) === 401
+        ) {
           handleUnauthorized();
         }
       },
     }),
     mutationCache: new MutationCache({
       onError: (error: unknown) => {
-        if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) {
+        if (
+          getErrorMessage(error) === "Unauthorized" ||
+          getErrorStatus(error) === 401
+        ) {
           handleUnauthorized();
         }
       },
@@ -82,7 +101,11 @@ function makeQueryClient() {
         gcTime: 15 * 60 * 1000,
         refetchOnWindowFocus: false,
         retry: (failureCount, error: unknown) => {
-          if (getErrorMessage(error) === "Unauthorized" || getErrorStatus(error) === 401) return false;
+          if (
+            getErrorMessage(error) === "Unauthorized" ||
+            getErrorStatus(error) === 401
+          )
+            return false;
           if (getErrorStatus(error) === 404) return false;
           return failureCount < 2;
         },
@@ -120,6 +143,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delay={200}>
         {children}
+        <ProgressBar
+          height="3px"
+          color="#1a73e8"
+          options={{ showSpinner: false }}
+          shallowRouting
+        />
         <SessionExpiredDialog isOpen={sessionExpired} />
         <ReactQueryDevtools initialIsOpen={false} />
       </TooltipProvider>

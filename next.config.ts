@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
 
   // Tree-shake barrel imports from large packages (Next.js standard)
   experimental: {
+    serverActions: {
+      allowedOrigins: ["cognito-chat.pages.dev", "*.pages.dev"],
+    },
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",

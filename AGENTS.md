@@ -3,6 +3,7 @@
 Cognito-Chat is the Next.js App Router frontend for the FastAPI backend (`nifty-archimedes`).
 
 ## 📦 Package Management
+
 - **pnpm ONLY**: Always use `pnpm` for installing and managing dependencies. Never use `npm` or `yarn` as it will break the lockfile.
 
 ## 🏗️ Architecture & Data Access Layer (DAL) Pattern

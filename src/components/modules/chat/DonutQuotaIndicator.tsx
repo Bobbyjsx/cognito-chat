@@ -25,33 +25,33 @@ export function DonutQuotaIndicator() {
 
   return (
     <Context usedTokens={q.used6h} maxTokens={q.limit6h}>
-      <ContextTrigger className="h-8 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2.5 py-1 font-label-md text-xs hover:border-[rgba(0,0,0,0.12)] hover:bg-surface-container-low transition-all duration-200" />
+      <ContextTrigger className="font-label-md hover:bg-surface-container-low h-8 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2.5 py-1 text-xs transition-all duration-200 hover:border-[rgba(0,0,0,0.12)]" />
 
       <ContextContent
         align="end"
         side="top"
         sideOffset={8}
-        className="w-72 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white ambient-shadow"
+        className="ambient-shadow w-72 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white"
       >
         <ContextContentHeader className="border-b border-[rgba(0,0,0,0.06)]" />
 
         <ContextContentBody className="space-y-3 p-3 text-xs">
-          <div className="flex items-center justify-between font-semibold text-on-surface">
+          <div className="text-on-surface flex items-center justify-between font-semibold">
             <span>Quota Windows</span>
-            <Clock className="h-3.5 w-3.5 text-gray-medium" />
+            <Clock className="text-gray-medium h-3.5 w-3.5" />
           </div>
 
           <div className="space-y-0.5">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-medium text-on-surface">
-                <Zap className="h-3.5 w-3.5 text-on-surface/70" /> 6-Hour Limit
+              <span className="text-on-surface flex items-center gap-1.5 font-medium">
+                <Zap className="text-on-surface/70 h-3.5 w-3.5" /> 6-Hour Limit
               </span>
-              <span className="font-semibold text-on-surface">{q.pct6h}%</span>
+              <span className="text-on-surface font-semibold">{q.pct6h}%</span>
             </div>
-            <div className="text-[11px] text-gray-medium">
+            <div className="text-gray-medium text-[11px]">
               {q.used6h.toLocaleString()} / {q.limit6h.toLocaleString()} tokens
             </div>
-            <div className="text-[11px] font-medium text-gray-medium italic">
+            <div className="text-gray-medium text-[11px] font-medium italic">
               ⏱ 6-Hour {q.reset6hText}
             </div>
           </div>
@@ -60,15 +60,19 @@ export function DonutQuotaIndicator() {
 
           <div className="space-y-0.5">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-medium text-on-surface">
-                <Calendar className="h-3.5 w-3.5 text-on-surface/70" /> Weekly Quota
+              <span className="text-on-surface flex items-center gap-1.5 font-medium">
+                <Calendar className="text-on-surface/70 h-3.5 w-3.5" /> Weekly
+                Quota
               </span>
-              <span className="font-semibold text-on-surface">{q.pctWeekly}%</span>
+              <span className="text-on-surface font-semibold">
+                {q.pctWeekly}%
+              </span>
             </div>
-            <div className="text-[11px] text-gray-medium">
-              {q.usedWeekly.toLocaleString()} / {q.limitWeekly.toLocaleString()} tokens
+            <div className="text-gray-medium text-[11px]">
+              {q.usedWeekly.toLocaleString()} / {q.limitWeekly.toLocaleString()}{" "}
+              tokens
             </div>
-            <div className="text-[11px] font-medium text-gray-medium italic">
+            <div className="text-gray-medium text-[11px] font-medium italic">
               ⏱ Weekly {q.resetWeeklyText}
             </div>
           </div>

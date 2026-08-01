@@ -1,10 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  ButtonGroup,
-  ButtonGroupText,
-} from "@/components/ui/button-group";
+import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import {
   Tooltip,
   TooltipContent,
@@ -12,12 +9,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
-import type { BundledLanguage } from "shiki";
 import {
   createContext,
   memo,
@@ -27,7 +21,13 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Streamdown } from "streamdown";
+import dynamic from "next/dynamic";
+import type { Streamdown } from "streamdown";
+import type { BundledLanguage } from "shiki";
+
+const StreamdownWrapper = dynamic(() => import("./streamdown-wrapper"), {
+  ssr: false,
+});
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -38,7 +38,7 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
     className={cn(
       "group flex w-full max-w-[95%] flex-col gap-2",
       from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
-      className
+      className,
     )}
     {...props}
   />
@@ -53,10 +53,10 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
+      "is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm",
+      "group-[.is-user]:bg-secondary group-[.is-user]:text-foreground group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:px-4 group-[.is-user]:py-3",
       "group-[.is-assistant]:text-foreground",
-      className
+      className,
     )}
     {...props}
   >
@@ -122,7 +122,7 @@ interface MessageBranchContextType {
 }
 
 const MessageBranchContext = createContext<MessageBranchContextType | null>(
-  null
+  null,
 );
 
 const useMessageBranch = () => {
@@ -130,7 +130,7 @@ const useMessageBranch = () => {
 
   if (!context) {
     throw new Error(
-      "MessageBranch components must be used within MessageBranch"
+      "MessageBranch components must be used within MessageBranch",
     );
   }
 
@@ -156,7 +156,7 @@ export const MessageBranch = ({
       setCurrentBranch(newBranch);
       onBranchChange?.(newBranch);
     },
-    [onBranchChange]
+    [onBranchChange],
   );
 
   const goToPrevious = useCallback(() => {
@@ -180,7 +180,7 @@ export const MessageBranch = ({
       setBranches,
       totalBranches: branches.length,
     }),
-    [branches, currentBranch, goToNext, goToPrevious]
+    [branches, currentBranch, goToNext, goToPrevious],
   );
 
   return (
@@ -202,7 +202,7 @@ export const MessageBranchContent = ({
   const { currentBranch, setBranches, branches } = useMessageBranch();
   const childrenArray = useMemo(
     () => (Array.isArray(children) ? children : [children]),
-    [children]
+    [children],
   );
 
   // Use useEffect to update branches when they change
@@ -216,7 +216,7 @@ export const MessageBranchContent = ({
     <div
       className={cn(
         "grid gap-2 overflow-hidden [&>div]:pb-0",
-        index === currentBranch ? "block" : "hidden"
+        index === currentBranch ? "block" : "hidden",
       )}
       key={branch.key}
       {...props}
@@ -243,7 +243,7 @@ export const MessageBranchSelector = ({
     <ButtonGroup
       className={cn(
         "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
-        className
+        className,
       )}
       orientation="horizontal"
       {...props}
@@ -308,8 +308,8 @@ export const MessageBranchPage = ({
   return (
     <ButtonGroupText
       className={cn(
-        "border-none bg-transparent text-muted-foreground shadow-none",
-        className
+        "text-muted-foreground border-none bg-transparent shadow-none",
+        className,
       )}
       {...props}
     >
@@ -320,15 +320,27 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
-import {
-  CodeBlock,
-  CodeBlockActions,
-  CodeBlockCopyButton,
-  CodeBlockHeader,
-  CodeBlockTitle,
-} from "./code-block";
-
-const streamdownPlugins = { code, math };
+// Dynamic import for CodeBlock components to avoid shiki in Edge Worker
+const CodeBlock = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlock),
+  { ssr: false },
+);
+const CodeBlockActions = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockActions),
+  { ssr: false },
+);
+const CodeBlockCopyButton = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockCopyButton),
+  { ssr: false },
+);
+const CodeBlockHeader = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockHeader),
+  { ssr: false },
+);
+const CodeBlockTitle = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockTitle),
+  { ssr: false },
+);
 
 const streamdownComponents = {
   code({ className, children, ...props }: ComponentProps<"code">) {
@@ -340,10 +352,13 @@ const streamdownComponents = {
       const language = (match ? match[1] : "") as BundledLanguage;
       return (
         <div className="my-3 overflow-hidden rounded-xl border border-[rgba(0,0,0,0.08)] bg-[#1e1e1e] shadow-md">
-          <CodeBlock code={rawText} language={language || ("text" as BundledLanguage)}>
-            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3.5 py-1.5 text-xs font-mono text-gray-300">
+          <CodeBlock
+            code={rawText}
+            language={language || ("text" as BundledLanguage)}
+          >
+            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3.5 py-1.5 font-mono text-xs text-gray-300">
               <CodeBlockTitle>
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <span className="font-mono text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
                   {language || "code"}
                 </span>
               </CodeBlockTitle>
@@ -359,8 +374,8 @@ const streamdownComponents = {
     return (
       <code
         className={cn(
-          "rounded bg-surface-container-high/80 px-1.5 py-0.5 font-code-sm text-[13px] font-medium text-on-surface border border-[rgba(0,0,0,0.06)]",
-          className
+          "bg-surface-container-high/80 font-code-sm text-on-surface rounded border border-[rgba(0,0,0,0.06)] px-1.5 py-0.5 text-[13px] font-medium",
+          className,
         )}
         {...props}
       >
@@ -372,19 +387,18 @@ const streamdownComponents = {
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
+    <StreamdownWrapper
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className
+        className,
       )}
-      plugins={streamdownPlugins}
       components={streamdownComponents}
       {...props}
     />
   ),
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
-    nextProps.isAnimating === prevProps.isAnimating
+    nextProps.isAnimating === prevProps.isAnimating,
 );
 
 MessageResponse.displayName = "MessageResponse";
@@ -399,7 +413,7 @@ export const MessageToolbar = ({
   <div
     className={cn(
       "mt-4 flex w-full items-center justify-between gap-4",
-      className
+      className,
     )}
     {...props}
   >

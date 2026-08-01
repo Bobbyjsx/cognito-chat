@@ -1,17 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
+import { DefaultChatTransport, type UIMessage } from "ai";
+import { useParams, usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { useGetSession } from "@/hooks/data/useChats/useChats";
+import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { notifyServerError } from "@/lib/server-error";
-import { Navbar } from "./Navbar";
-import { ChatSidebar } from "./ChatSidebar";
-import { ChatMessageList } from "./ChatMessageList";
+import type { MessageSchema } from "@/types";
 import { ChatInput } from "./ChatInput";
+import { ChatMessageList } from "./ChatMessageList";
+import { ChatSidebar } from "./ChatSidebar";
+import { Navbar } from "./Navbar";
 
 function toAssistantRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
@@ -28,7 +29,6 @@ function sessionIdFromParams(
 }
 
 export function ChatShell() {
-  const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
   const queryClient = useQueryClient();
@@ -37,15 +37,24 @@ export function ChatShell() {
   const routeSessionId = sessionIdFromParams(params);
   const isNewChatRoute = pathname === "/chat" || pathname === "/chat/";
 
-  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
-  const [userSelectedReasoning, setUserSelectedReasoning] = useState<string | null>(null);
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(
+    null,
+  );
+  const [userSelectedReasoning, setUserSelectedReasoning] = useState<
+    string | null
+  >(null);
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [hydratedSessionId, setHydratedSessionId] = useState<string | null>(null);
+  const [hydratedSessionId, setHydratedSessionId] = useState<string | null>(
+    null,
+  );
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
 
-  const activeSessionId = routeSessionId ?? streamSessionId;
-  const activeModel = userSelectedModel || config?.defaultTextModel || "gemini-3.6-flash";
-  const activeReasoning = userSelectedReasoning || config?.defaultReasoningLevel || "medium";
+  const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
+  const activeModel =
+    userSelectedModel || config?.defaultTextModel || "gemini-3.6-flash";
+  const activeReasoning =
+    userSelectedReasoning || config?.defaultReasoningLevel || "medium";
 
   const {
     data: sessionData,
@@ -73,7 +82,7 @@ export function ChatShell() {
       setHydratedSessionId(nextId);
 
       if (isNewChatRoute || routeSessionId !== nextId) {
-        router.replace(`/chat/${nextId}`, { scroll: false });
+        window.history.replaceState(null, "", `/chat/${nextId}`);
       }
     },
     onFinish: () => {
@@ -87,12 +96,18 @@ export function ChatShell() {
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+  const isSessionSwitchPending =
+    pendingSessionId !== null && pendingSessionId !== routeSessionId;
 
   // Hydrate from session history when navigating between existing sessions
   useEffect(() => {
     if (isStreaming) return;
 
     if (!routeSessionId) {
+      queueMicrotask(() => {
+        setPendingSessionId(null);
+      });
+
       if (isNewChatRoute && !streamSessionId) {
         queueMicrotask(() => {
           setHydratedSessionId(null);
@@ -108,18 +123,22 @@ export function ChatShell() {
         if (streamSessionId === routeSessionId) {
           queueMicrotask(() => {
             setHydratedSessionId(routeSessionId);
+            setPendingSessionId(null);
           });
           return;
         }
 
-        const formatted: UIMessage[] = (sessionData.messages || []).map((m, idx) => ({
-          id: m.id || `hist-${idx}`,
-          role: toAssistantRole(m.role),
-          parts: [{ type: "text" as const, text: m.content }],
-        }));
+        const formatted: UIMessage[] = (sessionData.messages || []).map(
+          (m: MessageSchema, idx: number) => ({
+            id: m.id || `hist-${idx}`,
+            role: toAssistantRole(m.role),
+            parts: [{ type: "text" as const, text: m.content }],
+          }),
+        );
         queueMicrotask(() => {
           setAiMessages(formatted);
           setHydratedSessionId(routeSessionId);
+          setPendingSessionId(null);
         });
       }
     }
@@ -153,19 +172,17 @@ export function ChatShell() {
     if (isStreaming) return;
     setStreamSessionId(null);
     setHydratedSessionId(null);
+    setPendingSessionId(null);
     setAiMessages([]);
-    router.push("/chat");
-  }, [router, setAiMessages, isStreaming]);
+  }, [setAiMessages, isStreaming]);
 
   const handleSelectSession = useCallback(
     (id: string) => {
       if (id === routeSessionId) return;
       if (isStreaming) return;
-      setHydratedSessionId(null);
-      setStreamSessionId(null);
-      setAiMessages([]);
+      setPendingSessionId(id);
     },
-    [routeSessionId, setAiMessages, isStreaming],
+    [routeSessionId, isStreaming],
   );
 
   const streamingMessageId =
@@ -176,17 +193,24 @@ export function ChatShell() {
       : null;
 
   const showSessionLoading =
-    Boolean(routeSessionId) &&
     !isStreaming &&
-    streamSessionId !== routeSessionId &&
-    hydratedSessionId !== routeSessionId &&
-    (isSessionLoading || isSessionFetching || !sessionData || sessionData.id !== routeSessionId);
+    (isSessionSwitchPending ||
+      (Boolean(routeSessionId) &&
+        (hydratedSessionId !== routeSessionId ||
+          isSessionLoading ||
+          isSessionFetching ||
+          !sessionData ||
+          sessionData.id !== routeSessionId)));
 
   const showSuggestions =
-    isNewChatRoute && !streamSessionId && aiMessages.length === 0 && !isStreaming;
+    isNewChatRoute &&
+    !pendingSessionId &&
+    !streamSessionId &&
+    aiMessages.length === 0 &&
+    !isStreaming;
 
   return (
-    <div className="flex h-screen h-dvh overflow-hidden bg-background font-body-md text-body-md text-on-surface">
+    <div className="bg-background font-body-md text-body-md text-on-surface flex h-full overflow-hidden">
       <ChatSidebar
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
@@ -195,7 +219,7 @@ export function ChatShell() {
         onOpenChange={setSidebarOpen}
       />
 
-      <main className="relative flex h-screen h-dvh min-w-0 flex-1 flex-col bg-background">
+      <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
 
         <ChatMessageList
