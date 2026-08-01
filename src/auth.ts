@@ -3,6 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { apiUrl, atlasHeaders } from "@/lib/api-config";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
+  // Required when AUTH_URL is unset / behind Cloudflare's reverse proxy.
+  // CF_PAGES is auto-detected by Auth.js, but explicit trustHost is safer.
+  trustHost: true,
+  secret: process.env.AUTH_SECRET,
   providers: [
     CredentialsProvider({
       credentials: {

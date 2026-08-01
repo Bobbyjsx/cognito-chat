@@ -35,5 +35,9 @@ export default auth((request) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|public/|api/).*)"],
+  // Skip Next internals, API routes, and common static public assets so a
+  // middleware crash cannot 500 favicons/images during CF Pages deploys.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$|api/).*)",
+  ],
 };
