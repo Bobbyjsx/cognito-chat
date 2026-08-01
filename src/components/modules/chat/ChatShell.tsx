@@ -164,8 +164,7 @@ export function ChatShell() {
     setStreamSessionId(null);
     setHydratedSessionId(null);
     setAiMessages([]);
-    router.push("/chat");
-  }, [router, setAiMessages, isStreaming]);
+  }, [setAiMessages, isStreaming]);
 
   const handleSelectSession = useCallback(
     (id: string) => {

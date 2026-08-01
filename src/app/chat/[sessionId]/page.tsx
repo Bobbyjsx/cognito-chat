@@ -4,12 +4,8 @@
  */
 export const runtime = "edge";
 
-export default async function SessionChatPage({
-  params,
-}: {
-  params: Promise<{ sessionId: string }>;
-}) {
-  // Resolve params so Next treats this as a dynamic segment; ChatShell reads the URL.
-  await params;
+export default function SessionChatPage() {
+  // Return null immediately; UI is owned by ChatShell.
+  // By avoiding an async Server Component, we prevent Next.js from blocking client-side transitions.
   return null;
 }

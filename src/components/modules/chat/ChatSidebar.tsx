@@ -144,18 +144,17 @@ export function ChatSidebar({
         )}
       </div>
 
-      <motion.button
-        type="button"
-        onClick={() => {
+      <Link
+        href="/chat"
+        onClick={(e) => {
           onNewChat();
           closeSidebar();
         }}
-        whileTap={{ scale: 0.98 }}
-        className="bg-primary font-label-md text-label-md text-on-primary mb-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-medium shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 hover:bg-[#3d3f42] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+        className="bg-primary font-label-md text-label-md text-on-primary mb-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-medium shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 hover:bg-[#3d3f42] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-[0.98]"
       >
         <Plus className="h-[18px] w-[18px]" />
         New chat
-      </motion.button>
+      </Link>
 
       {/* Lightning Fast Search Input */}
       <div className="relative mb-4">
@@ -209,12 +208,15 @@ export function ChatSidebar({
                   deleteSessionMutation.variables === session.id;
 
                 return (
-                  <div
+                  <Link
+                    href={`/chat/${session.id}`}
                     key={session.id}
-                    onClick={() => {
-                      if (isDeleting) return;
+                    onClick={(e) => {
+                      if (isDeleting) {
+                        e.preventDefault();
+                        return;
+                      }
                       onSelectSession(session.id);
-                      router.push(`/chat/${session.id}`);
                     }}
                     className={cn(
                       "group text-body-md relative flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-all duration-200",
@@ -276,7 +278,7 @@ export function ChatSidebar({
                         )}
                       </button>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </AnimatePresence>

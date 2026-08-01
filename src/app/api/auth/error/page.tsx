@@ -1,5 +1,5 @@
-import { AuthErrorContent } from "@/components/modules/auth/AuthErrorContent";
 import { Suspense } from "react";
+import { AuthErrorContent } from "@/components/modules/auth/AuthErrorContent";
 
 export const runtime = "edge";
 
