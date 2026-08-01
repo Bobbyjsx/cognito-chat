@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { signOut } from "next-auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { authManager } from "@/lib/auth-manager";
 
 // Devtools only in development — never in production bundle usage path
 const ReactQueryDevtools =
@@ -33,6 +34,7 @@ let setGlobalSessionExpired: ((expired: boolean) => void) | null = null;
 const handleUnauthorized = () => {
   if (isRedirecting) return;
   isRedirecting = true;
+  authManager.clearBrowserSessionCache();
 
   if (setGlobalSessionExpired) {
     setGlobalSessionExpired(true);
@@ -55,8 +57,13 @@ function getErrorMessage(error: unknown): string | undefined {
 
 function getErrorStatus(error: unknown): number | undefined {
   if (typeof error === "object" && error !== null) {
-    if ("response" in error && typeof (error as any).response === "object") {
-      return Number((error as any).response?.status);
+    if (
+      "response" in error &&
+      typeof (error as { response?: unknown }).response === "object"
+    ) {
+      return Number(
+        (error as { response?: { status?: unknown } }).response?.status,
+      );
     }
     if ("status" in error) {
       return Number((error as { status: unknown }).status);
