@@ -2,8 +2,6 @@ import { auth } from "@/auth";
 import { apiUrl, atlasHeaders } from "@/lib/api-config";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 
-export const runtime = "edge";
-
 const MAX_MESSAGE_LENGTH = 32_000;
 
 /** AI SDK v5/v6 UI messages store text in `parts`, not top-level `content`. */

@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import type { Metadata } from "next";
 import { DynamicChatShell } from "@/components/modules/chat/ChatClient";
 
