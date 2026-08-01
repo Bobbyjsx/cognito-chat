@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 import { ChatShellLoader } from "@/components/modules/chat/ChatShellLoader";
 import { ChatShellLoading } from "@/components/loading/page-skeletons";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Chat",
   description: "Private Cognito chat sessions",
