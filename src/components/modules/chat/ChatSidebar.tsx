@@ -124,6 +124,7 @@ export function ChatSidebar({
       <div className="mb-4 flex items-center justify-between px-1">
         <Link
           href="/chat"
+          scroll={false}
           onClick={() => {
             onNewChat();
             closeSidebar();
@@ -146,6 +147,7 @@ export function ChatSidebar({
 
       <Link
         href="/chat"
+        scroll={false}
         onClick={(e) => {
           onNewChat();
           closeSidebar();
@@ -210,6 +212,7 @@ export function ChatSidebar({
                 return (
                   <Link
                     href={`/chat/${session.id}`}
+                    scroll={false}
                     key={session.id}
                     onClick={(e) => {
                       if (isDeleting) {

@@ -81,7 +81,7 @@ export function ChatShell() {
       setHydratedSessionId(nextId);
 
       if (isNewChatRoute || routeSessionId !== nextId) {
-        router.replace(`/chat/${nextId}`, { scroll: false });
+        window.history.replaceState(null, "", `/chat/${nextId}`);
       }
     },
     onFinish: () => {
