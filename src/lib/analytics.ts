@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { getErrorMessage } from "@/lib/server-error";
 
 /** Central analytics facade — sends events, logs, and errors to Sentry. */
 export class Analytics {
@@ -47,24 +48,26 @@ export class Analytics {
     };
     const status = shape.response?.status;
     const data = shape.response?.data;
-    const details = {
+    const endPoint = `${method?.toUpperCase() ?? "API"} ${url ?? ""}`.trim();
+
+    // Reuse the server-error parser so FastAPI `detail` (incl. validation
+    // errors) is captured as a readable string instead of "[object Object]".
+    const detail = getErrorMessage(error, endPoint);
+    const message = Array.isArray(detail) ? detail.join(" | ") : detail;
+
+    const e = error instanceof Error ? error : new Error(message);
+
+    // Full raw response stays on the exception event (Sentry renders it fine).
+    Sentry.captureException(e, {
+      extra: { url, method, status, data, ...context },
+    });
+
+    // Logs keep scalar-only attributes so nothing renders as "[Object]".
+    Sentry.logger.error(message, {
       url,
       method,
       status,
-      data,
-      ...context,
-    };
-
-    const e =
-      error instanceof Error
-        ? error
-        : new Error(`${method?.toUpperCase() ?? "API"} ${url ?? ""}`.trim());
-
-    Sentry.captureException(e, { extra: details });
-    Sentry.logger.error(
-      `API ${method?.toUpperCase() ?? ""} ${url}`.trim(),
-      details,
-    );
+    });
   }
 
   /** Associates an identity with subsequent events/errors for that user. */
