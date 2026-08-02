@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Mic, X } from "lucide-react";
+import { Check, Loader2, Mic, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,9 @@ import {
 import {
   useSpeechToText,
   isSpeechRecognitionSupported,
+  type SttMode,
 } from "@/hooks/stt/useSpeechToText";
+import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import {
   usePromptInputController,
   PromptInputTools,
@@ -44,55 +46,79 @@ export function DictationToolbar({
   isBusy,
   canStop,
 }: DictationToolbarProps) {
+  const { data: config } = useGetConfig();
+
+  // AI STT (config toggle) → mic always available, backend transcribes.
+  // Browser STT (default) → mic only on browsers with the Web Speech API.
+  const aiSttEnabled = config?.enableAiStt ?? false;
+  const sttMode: SttMode = aiSttEnabled ? "ai" : "browser";
+  const showMic = aiSttEnabled || isSpeechRecognitionSupported;
+
   const {
     isListening,
+    isTranscribing,
     transcript,
     mediaStream,
     startListening,
     stopListening,
     resetTranscript,
-  } = useSpeechToText();
+  } = useSpeechToText(sttMode);
 
   const controller = usePromptInputController();
   const initialTextRef = useRef("");
 
   const handleToggle = () => {
-    if (isListening) {
-      stopListening();
+    if (isListening || isTranscribing) {
+      void stopListening(true);
     } else {
       initialTextRef.current = controller.textInput.value;
       resetTranscript();
-      startListening();
+      void startListening();
     }
   };
 
   const handleCancel = () => {
-    stopListening();
-    controller.textInput.setInput(initialTextRef.current);
-    resetTranscript();
+    void (async () => {
+      await stopListening(true);
+      controller.textInput.setInput(initialTextRef.current);
+      resetTranscript();
+    })();
   };
 
   const handleDone = () => {
-    stopListening();
-    const spacer = initialTextRef.current && transcript ? " " : "";
-    controller.textInput.setInput(initialTextRef.current + spacer + transcript);
+    void (async () => {
+      const finalTranscript = await stopListening(false);
+      const text = sttMode === "ai" ? (finalTranscript ?? "") : transcript;
+      const spacer = initialTextRef.current && text ? " " : "";
+      controller.textInput.setInput(initialTextRef.current + spacer + text);
+    })();
   };
 
   // Sync live transcript into the prompt input while speaking
   useEffect(() => {
-    if (isListening) {
+    if (isListening && sttMode === "browser") {
       const spacer = initialTextRef.current && transcript ? " " : "";
       controller.textInput.setInput(
         initialTextRef.current + spacer + transcript,
       );
     }
-  }, [transcript, isListening, controller.textInput]);
+  }, [transcript, isListening, sttMode, controller.textInput]);
 
   // Dictating state — full-width visualizer + icon-only action buttons on mobile
-  if (isListening) {
+  if (isListening || isTranscribing) {
     return (
-      <div className="animate-in fade-in zoom-in-95 flex w-full items-center gap-2 px-1 duration-200 sm:gap-3">
-        <AudioVisualizer mediaStream={mediaStream} className="flex-1" />
+      <div className="animate-in fade-in zoom-in-95 flex w-full min-w-0 items-center gap-2 px-1 duration-200 sm:gap-3">
+        {isTranscribing ? (
+          <div className="text-gray-medium flex h-8 min-w-0 flex-1 items-center gap-2 px-1 text-sm">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            <span className="truncate">Transcribing…</span>
+          </div>
+        ) : (
+          <AudioVisualizer
+            mediaStream={mediaStream}
+            className="min-w-0 flex-1"
+          />
+        )}
 
         <TooltipProvider>
           <Tooltip>
@@ -102,6 +128,7 @@ export function DictationToolbar({
                 variant="outline"
                 size="icon"
                 onClick={handleCancel}
+                disabled={isTranscribing}
                 className="shrink-0 rounded-full border-red-200 text-red-500 hover:bg-red-50 sm:size-auto sm:px-3 sm:py-1.5 dark:border-red-900/30 dark:hover:bg-red-900/20"
                 aria-label="Cancel dictation"
               >
@@ -122,6 +149,7 @@ export function DictationToolbar({
                 type="button"
                 size="icon"
                 onClick={handleDone}
+                disabled={isTranscribing}
                 className="bg-primary text-on-primary shrink-0 rounded-full hover:bg-[#3d3f42] active:scale-[0.96] sm:size-auto sm:px-3 sm:py-1.5"
                 aria-label="Finish dictation and keep transcript"
               >
@@ -148,8 +176,8 @@ export function DictationToolbar({
           onSelectReasoning={onSelectReasoning}
         />
 
-        {/* Only render mic if SpeechRecognition is supported (hides on Firefox) */}
-        {isSpeechRecognitionSupported && (
+        {/* AI STT: always show mic. Browser STT: only where SpeechRecognition is supported */}
+        {showMic && (
           <>
             <div className="h-4 w-px bg-gray-200 dark:bg-gray-800" />
             <TooltipProvider>

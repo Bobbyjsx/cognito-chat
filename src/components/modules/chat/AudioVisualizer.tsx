@@ -84,7 +84,7 @@ export function AudioVisualizer({
   return (
     <canvas
       ref={canvasRef}
-      className={`h-8 w-full ${className}`}
+      className={`h-8 w-full min-w-0 ${className}`}
       width={300}
       height={32}
     />

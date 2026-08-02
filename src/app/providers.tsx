@@ -7,11 +7,12 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import type React from "react";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Analytics } from "@/lib/analytics";
 import { authManager } from "@/lib/auth-manager";
 
 // Devtools only in development — never in production bundle usage path
@@ -26,7 +27,7 @@ const ReactQueryDevtools =
       )
     : () => null;
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SessionExpiredDialog } from "@/components/modules/auth/SessionExpiredDialog";
 
 let isRedirecting = false;
@@ -131,6 +132,25 @@ function getQueryClient() {
 export function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
   const [sessionExpired, setSessionExpired] = useState(false);
+
+  const { data: session, status } = useSession();
+  const identifiedUserIdRef = useRef<string | null>(null);
+
+  // Keep Sentry's user in sync with the auth session (identify on sign in, clear on sign out)
+  useEffect(() => {
+    if (status === "loading") return;
+
+    const user = session?.user as
+      { id?: string; email?: string | null } | undefined;
+
+    if (user?.id && user.id !== identifiedUserIdRef.current) {
+      Analytics.identifyUser(user.id, user.email ?? undefined);
+      identifiedUserIdRef.current = user.id;
+    } else if (!user && identifiedUserIdRef.current !== null) {
+      Analytics.clearUser();
+      identifiedUserIdRef.current = null;
+    }
+  }, [session?.user, status]);
 
   useEffect(() => {
     setGlobalSessionExpired = setSessionExpired;

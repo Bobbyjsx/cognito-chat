@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { Analytics } from "@/lib/analytics";
 import { apiUrl, atlasHeaders } from "@/lib/api-config";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 
@@ -117,6 +118,13 @@ export async function POST(req: Request) {
     ? `/agent/chat/stream?session_id=${encodeURIComponent(sessionId)}`
     : "/agent/chat/stream";
   const url = apiUrl(streamPath);
+  const startedAt = Date.now();
+
+  Analytics.captureEvent("chat.stream.start", {
+    model,
+    reasoning,
+    sessionId: sessionId || null,
+  });
 
   try {
     const backendResponse = await fetch(url, {
@@ -137,6 +145,13 @@ export async function POST(req: Request) {
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
       const detail = safeErrorDetail(errorText, backendResponse.status);
+      const error = new Error(`Chat stream upstream error: ${detail}`);
+
+      Analytics.captureApiError(
+        { message: error.message, context: { url, errorText } },
+        url,
+        "POST",
+      );
       return new Response(JSON.stringify({ detail }), {
         status: backendResponse.status,
         headers: { "Content-Type": "application/json" },
@@ -144,6 +159,9 @@ export async function POST(req: Request) {
     }
 
     if (!backendResponse.body) {
+      Analytics.captureError(new Error("Chat stream returned an empty body"), {
+        url,
+      });
       return new Response(
         JSON.stringify({ detail: "Empty stream from backend" }),
         { status: 502, headers: { "Content-Type": "application/json" } },
@@ -239,12 +257,22 @@ export async function POST(req: Request) {
                   typeof payload.detail === "string"
                     ? payload.detail
                     : "Streaming error from backend";
+                Analytics.captureError(
+                  new Error(`Chat stream error: ${detail}`),
+                );
                 writer.write({ type: "error", errorText: detail });
                 return;
               }
 
               if (parsed.event === "done") {
                 if (typeof payload.session_id === "string") {
+                  Analytics.captureEvent("chat.stream.complete", {
+                    sessionId: payload.session_id,
+                    tokensUsed: payload.tokens_used,
+                    model: payload.model,
+                    reasoning: payload.reasoning,
+                    durationMs: Date.now() - startedAt,
+                  });
                   writer.write({
                     type: "data-session",
                     data: {
@@ -361,14 +389,21 @@ export async function POST(req: Request) {
           writer.write({ type: "finish" });
         }
       },
-      onError: () => "Streaming request failed",
+      onError: (err) => {
+        Analytics.captureApiError(err, url, "POST");
+        return "Streaming request failed";
+      },
     });
 
     return createUIMessageStreamResponse({ stream });
   } catch (err: unknown) {
     if (err instanceof Error && err.name === "AbortError") {
+      Analytics.captureEvent("chat.stream.aborted", {
+        durationMs: Date.now() - startedAt,
+      });
       return new Response(null, { status: 499 });
     }
+    Analytics.captureApiError(err, url, "POST");
     return new Response(
       JSON.stringify({ detail: "Streaming request failed" }),
       {
