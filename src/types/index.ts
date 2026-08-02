@@ -89,16 +89,21 @@ export interface ChatResponse {
   response: string;
 }
 
+export interface TextModelConfig {
+  description: string;
+  enabled: boolean;
+  reasoningModes: string[];
+}
+
 export interface AppConfig {
   id: string;
   enableTextGeneration: boolean;
   enableImageGeneration: boolean;
   enableVideoGeneration: boolean;
-  allowedTextModels: string[];
   defaultTextModel: string;
   allowedReasoningLevels: string[];
   defaultReasoningLevel: string;
-  modelReasoningModes?: Record<string, string[]>;
+  modelsList: Record<string, TextModelConfig>;
   allowedImageModels: string[];
   allowedVideoModels: string[];
   allowedTools: string[];

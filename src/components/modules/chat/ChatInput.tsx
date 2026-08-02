@@ -4,15 +4,13 @@ import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
-  PromptInputSubmit,
+  PromptInputProvider,
   PromptInputTextarea,
-  PromptInputTools,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import type { ChatStatus } from "ai";
-import { ModelSelector } from "./ModelSelector";
-import { DonutQuotaIndicator } from "./DonutQuotaIndicator";
+import { DictationToolbar } from "./DictationToolbar";
 
 interface ChatInputProps {
   onSend: (message: string, model?: string, reasoning?: string) => void;
@@ -70,37 +68,32 @@ export function ChatInput({
           </Suggestions>
         )}
 
-        <PromptInput
-          onSubmit={handleSubmit}
-          className="ambient-shadow w-full overflow-hidden rounded-xl border-[rgba(0,0,0,0.06)] bg-white transition-all duration-200 focus-within:border-[rgba(0,0,0,0.15)] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.04)]"
-        >
-          <PromptInputBody>
-            <PromptInputTextarea
-              placeholder="Ask Cognito anything..."
-              disabled={isBusy}
-              className="font-body-md text-on-surface placeholder:text-gray-medium max-h-[40vh] min-h-[52px] px-3 py-2.5 focus:outline-none sm:min-h-[64px] sm:px-4 sm:py-3"
-            />
-          </PromptInputBody>
-          <PromptInputFooter className="bg-surface-container-lowest flex flex-wrap items-center justify-between gap-2 border-t border-[rgba(0,0,0,0.04)] px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5">
-            <PromptInputTools className="min-w-0 flex-1 overflow-hidden">
-              <ModelSelector
+        <PromptInputProvider>
+          <PromptInput
+            onSubmit={handleSubmit}
+            className="ambient-shadow w-full overflow-hidden rounded-xl border-[rgba(0,0,0,0.06)] bg-white transition-all duration-200 focus-within:border-[rgba(0,0,0,0.15)] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.04)]"
+          >
+            <PromptInputBody>
+              <PromptInputTextarea
+                placeholder="Ask Cognito anything..."
+                disabled={isBusy}
+                className="font-body-md text-on-surface placeholder:text-gray-medium max-h-[40vh] min-h-[52px] px-3 py-2.5 focus:outline-none sm:min-h-[64px] sm:px-4 sm:py-3"
+              />
+            </PromptInputBody>
+            <PromptInputFooter className="bg-surface-container-lowest flex flex-wrap items-center justify-between gap-2 border-t border-[rgba(0,0,0,0.04)] px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5">
+              <DictationToolbar
                 selectedModel={selectedModel}
                 onSelectModel={onSelectModel}
                 selectedReasoning={selectedReasoning}
                 onSelectReasoning={onSelectReasoning}
-              />
-            </PromptInputTools>
-            <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-              <DonutQuotaIndicator />
-              <PromptInputSubmit
                 status={status}
                 onStop={onStop}
-                disabled={isBusy && !canStop}
-                className="bg-primary text-on-primary rounded-lg transition-all duration-200 hover:bg-[#3d3f42] active:scale-[0.96]"
+                isBusy={isBusy}
+                canStop={canStop}
               />
-            </div>
-          </PromptInputFooter>
-        </PromptInput>
+            </PromptInputFooter>
+          </PromptInput>
+        </PromptInputProvider>
 
         <p className="font-label-md text-gray-medium px-1 text-center text-[10px] sm:text-[11px]">
           Cognito Chat can make mistakes. Consider verifying important

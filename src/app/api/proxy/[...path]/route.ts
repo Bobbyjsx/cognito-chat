@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import type { NextRequest } from "next/server";
 import {
   API_BASE_URL,

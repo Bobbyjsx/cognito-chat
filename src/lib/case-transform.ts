@@ -16,7 +16,9 @@ export function keysToCamel<T = unknown>(obj: unknown): T {
     return Object.keys(record).reduce(
       (result, key) => ({
         ...result,
-        [toCamelCase(key)]: keysToCamel(record[key]),
+        // Preserve identifier-like keys (e.g. model names like "gemini-3.1-pro-preview")
+        [key.includes(".") || key.includes("-") ? key : toCamelCase(key)]:
+          keysToCamel(record[key]),
       }),
       {},
     ) as unknown as T;

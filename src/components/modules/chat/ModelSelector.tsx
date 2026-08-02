@@ -18,24 +18,6 @@ interface ModelSelectorProps {
   className?: string;
 }
 
-const MODEL_DESCRIPTIONS: Record<string, string> = {
-  "gemini-3.6-flash": "Fast, high-intelligence model for general tasks",
-  "gemini-3.5-flash": "Lightweight & responsive low-latency model",
-  "gemini-3.5-flash-lite": "Ultra-fast lightweight model for simple queries",
-  "gemini-3.1-pro-preview": "Advanced model for deep reasoning & complex code",
-  "gemini-3.1-flash-lite": "Low-latency compact model",
-  "gemini-3-flash-preview": "Balanced preview model with reasoning options",
-};
-
-const DEFAULT_MODEL_REASONING_MAP: Record<string, string[]> = {
-  "gemini-3.6-flash": ["none", "minimal", "low", "medium", "high"],
-  "gemini-3.5-flash": ["none", "minimal", "low", "medium", "high"],
-  "gemini-3.5-flash-lite": ["none", "minimal", "low", "medium", "high"],
-  "gemini-3.1-pro-preview": ["none", "minimal", "low", "medium", "high"],
-  "gemini-3.1-flash-lite": ["none", "minimal", "low", "medium", "high"],
-  "gemini-3-flash-preview": ["none", "minimal", "low", "medium", "high"],
-};
-
 export function ModelSelector({
   selectedModel,
   onSelectModel,
@@ -50,42 +32,23 @@ export function ModelSelector({
     null,
   );
 
-  const allowedModels = config?.allowedTextModels || [
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-pro-preview",
-    "gemini-3.1-flash-lite",
-    "gemini-3-flash-preview",
-  ];
+  const modelsList = config?.modelsList ?? {};
+  const globalAllowedReasoning = (config?.allowedReasoningLevels ?? []).map(
+    (r) => r.toLowerCase(),
+  );
 
-  // Global source of truth for reasoning levels
-  const globalAllowedReasoning = (
-    config?.allowedReasoningLevels || [
-      "none",
-      "minimal",
-      "low",
-      "medium",
-      "high",
-    ]
-  ).map((r) => r.toLowerCase());
+  // Derive enabled models from modelsList
+  const allowedModels = Object.entries(modelsList)
+    .filter(([, cfg]) => cfg.enabled)
+    .map(([name]) => name);
 
-  const modelReasoningMap =
-    config?.modelReasoningModes || DEFAULT_MODEL_REASONING_MAP;
-
-  // Get allowed reasoning modes for a specific model (filtered against global source of truth)
+  // Intersect a model's own reasoning_modes with the global list
   const getModesForModel = (modelName: string) => {
-    const modes = modelReasoningMap[modelName] || [
-      "none",
-      "minimal",
-      "low",
-      "medium",
-      "high",
-    ];
-    const filtered = modes
+    const modelCfg = modelsList[modelName];
+    if (!modelCfg) return globalAllowedReasoning;
+    return modelCfg.reasoningModes
       .map((m) => m.toLowerCase())
       .filter((m) => globalAllowedReasoning.includes(m));
-    return filtered.length > 0 ? filtered : ["none"];
   };
 
   const handleSelectModel = (model: string) => {
@@ -149,7 +112,7 @@ export function ModelSelector({
           <div className="space-y-0.5">
             {allowedModels.map((m) => {
               const isSelected = selectedModel === m;
-              const desc = MODEL_DESCRIPTIONS[m] || "Powered by Gemini AI";
+              const desc = modelsList[m]?.description ?? "Powered by Gemini AI";
               const modes = getModesForModel(m);
               const isSubOpen = subReasoningModel === m;
 
