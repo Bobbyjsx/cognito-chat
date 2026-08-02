@@ -3,6 +3,10 @@ import type { UIMessageStreamWriter } from "ai";
 
 export const MAX_MESSAGE_LENGTH = 32_000;
 
+/** Error codes signaled by the backend chat endpoint (see services/chats.py). */
+export const CHAT_ERROR_MODEL_NOT_FOUND = "MODEL_NOT_FOUND";
+export const CHAT_ERROR_GENERATION_FAILED = "GENERATION_FAILED";
+
 export interface BackendSseEvent {
   event: string;
   data: string;
@@ -59,23 +63,48 @@ export function parseEventPayload(
   }
 }
 
+export interface SafeUpstreamError {
+  message: string;
+  code?: string;
+}
+
 /** Map upstream error bodies to a short client-safe detail string. */
-export function safeErrorDetail(body: string, status: number): string {
+export function safeErrorDetail(
+  body: string,
+  status: number,
+): SafeUpstreamError {
   try {
     const parsed = JSON.parse(body) as { detail?: unknown };
-    if (
-      typeof parsed.detail === "string" &&
-      parsed.detail.length > 0 &&
-      parsed.detail.length <= 500 &&
-      !parsed.detail.includes("Traceback") &&
-      !parsed.detail.includes("File ")
-    ) {
-      return parsed.detail;
+    const isSafe = (s: unknown): s is string =>
+      typeof s === "string" &&
+      s.length > 0 &&
+      s.length <= 500 &&
+      !s.includes("Traceback") &&
+      !s.includes("File ");
+
+    if (isSafe(parsed.detail)) {
+      return { message: parsed.detail };
+    }
+    if (parsed.detail && typeof parsed.detail === "object") {
+      const d = parsed.detail as { code?: unknown; message?: unknown };
+      if (isSafe(d.message)) {
+        return {
+          message: d.message,
+          code: typeof d.code === "string" ? d.code : undefined,
+        };
+      }
     }
   } catch {
     // non-JSON body
   }
 
+  return {
+    message: safeStatusMessage(status),
+    code: status === 403 ? "FORBIDDEN" : undefined,
+  };
+}
+
+function safeStatusMessage(status: number): string {
   if (status === 401) return "Unauthorized";
   if (status === 403) return "Forbidden";
   if (status === 404) return "Not found";
@@ -112,6 +141,7 @@ export async function pipeBackendStreamToUIMessage({
   let textStarted = false;
   let reasoningStarted = false;
   let lastCodeToolCallId: string | null = null;
+  let lastSessionId: string | undefined;
 
   const cancelReader = () => {
     void reader.cancel().catch(() => {});
@@ -154,8 +184,33 @@ export async function pipeBackendStreamToUIMessage({
     });
   };
 
-  const writeError = (detail: string) => {
-    Analytics.captureError(new Error(`Chat stream error: ${detail}`));
+  const writeError = (code: string | undefined, detail: string) => {
+    const context: Record<string, unknown> = {
+      code: code ?? null,
+      sessionId: lastSessionId ?? null,
+      durationMs: Date.now() - startedAt,
+    };
+
+    if (code === CHAT_ERROR_MODEL_NOT_FOUND) {
+      // The raw Gemini detail is API/setup noise ("update your code to use a
+      // newer model") — log it adequately, don't surface it to the user.
+      Analytics.captureLog(
+        "chat.stream.error.model_not_found",
+        {
+          ...context,
+          detail,
+        },
+        "warn",
+      );
+      writer.write({
+        type: "error",
+        errorText:
+          "This model is no longer available. Please pick a different model and try again.",
+      });
+      return;
+    }
+
+    Analytics.captureError(new Error(`Chat stream error: ${detail}`), context);
     writer.write({ type: "error", errorText: detail });
   };
 
@@ -260,6 +315,7 @@ export async function pipeBackendStreamToUIMessage({
 
         if (parsed.event === "session") {
           if (typeof payload.session_id === "string") {
+            lastSessionId = payload.session_id;
             writeSession(payload.session_id);
           }
           continue;
@@ -270,7 +326,9 @@ export async function pipeBackendStreamToUIMessage({
             typeof payload.detail === "string"
               ? payload.detail
               : "Streaming error from backend";
-          writeError(detail);
+          const code =
+            typeof payload.code === "string" ? payload.code : undefined;
+          writeError(code, detail);
           return;
         }
 

@@ -9,8 +9,8 @@ import {
   safeErrorDetail,
 } from "@/lib/chat-stream";
 
-function jsonError(detail: string, status: number) {
-  return new Response(JSON.stringify({ detail }), {
+function jsonError(detail: string, status: number, code?: string) {
+  return new Response(JSON.stringify({ detail, ...(code ? { code } : {}) }), {
     status,
     headers: { "Content-Type": "application/json" },
   });
@@ -82,13 +82,14 @@ export async function POST(req: Request) {
 
   if (!backendResponse.ok) {
     const errorText = await backendResponse.text();
-    const detail = safeErrorDetail(errorText, backendResponse.status);
+    const error = safeErrorDetail(errorText, backendResponse.status);
     Analytics.captureApiError(
-      new Error(`Chat stream upstream error: ${detail}`),
+      new Error(`Chat stream upstream error: ${error.message}`),
       url,
       "POST",
+      { code: error.code, status: backendResponse.status },
     );
-    return jsonError(detail, backendResponse.status);
+    return jsonError(error.message, backendResponse.status, error.code);
   }
 
   if (!backendResponse.body) {
