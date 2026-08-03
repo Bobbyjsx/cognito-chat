@@ -58,6 +58,8 @@ export interface MessageSchema {
   content: string;
   /** Structured parts for rich rendering (markdown, thoughts, tools). */
   parts?: ChatMessagePart[];
+  /** IDs of attachments referenced by this message. */
+  attachmentIds?: string[];
 }
 
 /** Session row from GET /agent/sessions (no full message history). */
@@ -81,6 +83,7 @@ export interface ChatRequest {
   message: string;
   model?: string;
   reasoning?: string;
+  attachments?: string[];
 }
 
 export interface ChatResponse {
@@ -93,6 +96,29 @@ export interface TextModelConfig {
   description: string;
   enabled: boolean;
   reasoningModes: string[];
+}
+
+/** Categorization of an uploaded attachment (mirrors backend AttachmentType). */
+export type AttachmentType =
+  | "image"
+  | "pdf"
+  | "document"
+  | "audio"
+  | "video"
+  | "spreadsheet"
+  | "json"
+  | "text";
+
+/** Attachment metadata returned by the backend (camelCased by the axios layer). */
+export interface AttachmentSchema {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  type: AttachmentType;
+  sessionId?: string | null;
+  storageUri?: string | null;
+  uploadedAt: string;
 }
 
 export interface AppConfig {
@@ -109,6 +135,13 @@ export interface AppConfig {
   allowedTools: string[];
   enableAiStt: boolean;
   sttModel: string;
+  enableAttachments: boolean;
+  attachmentMaxSize: number;
+  attachmentMaxCount: number;
+  attachmentAllowedTypes: AttachmentType[];
+  contextTrimEnabled: boolean;
+  contextMaxTokens: number;
+  contextKeepRecent: number;
   updatedAt: string;
 }
 
