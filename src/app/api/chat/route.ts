@@ -23,11 +23,12 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { messages, model, reasoning, sessionId } = body as {
+  const { messages, model, reasoning, sessionId, attachments } = body as {
     messages?: unknown[];
     model?: string;
     reasoning?: string;
     sessionId?: string;
+    attachments?: string[];
   };
 
   const lastMessage = extractTextFromMessage(
@@ -66,7 +67,14 @@ export async function POST(req: Request) {
         Authorization: `Bearer ${session.accessToken}`,
         Accept: "text/event-stream",
       }),
-      body: JSON.stringify({ message: lastMessage, model, reasoning }),
+      body: JSON.stringify({
+        message: lastMessage,
+        model,
+        reasoning,
+        ...(Array.isArray(attachments) && attachments.length > 0
+          ? { attachments }
+          : {}),
+      }),
       signal: req.signal,
     });
   } catch (err: unknown) {

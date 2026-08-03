@@ -2,9 +2,11 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { DefaultChatTransport, type UIMessage, type FileUIPart } from "ai";
 import { useGetSession } from "@/hooks/data/useChats/useChats";
+import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachments";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
+import { attachmentById } from "@/lib/attachments";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { notifyServerError } from "@/lib/server-error";
@@ -70,6 +72,10 @@ export function ChatShell() {
   const { data: sessionData, isLoading: isSessionLoading } =
     useGetSession(routeSessionId);
 
+  const { data: sessionAttachments } = useGetSessionAttachments(
+    config?.enableAttachments ? routeSessionId : null,
+  );
+
   const {
     messages: aiMessages,
     setMessages: setAiMessages,
@@ -128,6 +134,7 @@ export function ChatShell() {
       queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["chat-session"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
     },
     onError: (err) => {
       notifyServerError(err, "Streaming error occurred");
@@ -256,11 +263,35 @@ export function ChatShell() {
         }
 
         const formatted: UIMessage[] = (sessionData.messages || []).map(
-          (m: MessageSchema, idx: number) => ({
-            id: m.id || `hist-${idx}`,
-            role: toAssistantRole(m.role),
-            parts: [{ type: "text" as const, text: m.content }],
-          }),
+          (m: MessageSchema, idx: number) => {
+            const parts: UIMessage["parts"] = [];
+
+            // Historical attachments render as metadata-only chips (the backend
+            // stores metadata, not content, for past messages).
+            for (const attachmentId of m.attachmentIds ?? []) {
+              const attachment = attachmentById(
+                sessionAttachments,
+                attachmentId,
+              );
+              if (!attachment) continue;
+              parts.push({
+                type: "file",
+                mediaType: attachment.mimeType,
+                filename: attachment.filename,
+                url: "",
+              });
+            }
+
+            if (m.content.trim().length > 0) {
+              parts.push({ type: "text", text: m.content });
+            }
+
+            return {
+              id: m.id || `hist-${idx}`,
+              role: toAssistantRole(m.role),
+              parts,
+            };
+          },
         );
         queueMicrotask(() => {
           setAiMessages(formatted);
@@ -277,17 +308,27 @@ export function ChatShell() {
     isStreaming,
     isNewChatRoute,
     streamSessionId,
+    sessionAttachments,
   ]);
 
   const handleSendMessage = useCallback(
-    (text: string, model?: string, reasoning?: string) => {
+    (
+      text: string,
+      model?: string,
+      reasoning?: string,
+      attachmentIds?: string[],
+      files?: FileUIPart[],
+    ) => {
       sendMessage(
-        { text },
+        { text, ...(files && files.length > 0 ? { files } : {}) },
         {
           body: {
             model: model || activeModel,
             reasoning: reasoning || activeReasoning,
             sessionId: activeSessionId || undefined,
+            ...(attachmentIds && attachmentIds.length > 0
+              ? { attachments: attachmentIds }
+              : {}),
           },
         },
       );
