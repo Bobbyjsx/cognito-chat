@@ -3,10 +3,10 @@
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useParams, usePathname } from "next/navigation";
-import { useCallback, useEffect, useState, useRef } from "react";
 import { useGetSession } from "@/hooks/data/useChats/useChats";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
+import { useRouter, useParams, usePathname } from "next/navigation";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { notifyServerError } from "@/lib/server-error";
 import type { MessageSchema } from "@/types";
 import { ChatInput } from "./ChatInput";
@@ -31,6 +31,7 @@ function sessionIdFromParams(
 export function ChatShell() {
   const pathname = usePathname();
   const params = useParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: config } = useGetConfig();
 
@@ -49,6 +50,7 @@ export function ChatShell() {
     null,
   );
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
+  const streamedSessionRef = useRef<string | null>(null);
 
   const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
   const activeModel =
@@ -65,11 +67,8 @@ export function ChatShell() {
     currentReasoningRef.current = userSelectedReasoning;
   }, [userSelectedModel, userSelectedReasoning]);
 
-  const {
-    data: sessionData,
-    isLoading: isSessionLoading,
-    isFetching: isSessionFetching,
-  } = useGetSession(routeSessionId);
+  const { data: sessionData, isLoading: isSessionLoading } =
+    useGetSession(routeSessionId);
 
   const {
     messages: aiMessages,
@@ -104,12 +103,28 @@ export function ChatShell() {
 
       setStreamSessionId(nextId);
       setHydratedSessionId(nextId);
+      streamedSessionRef.current = nextId;
 
-      if (isNewChatRoute || routeSessionId !== nextId) {
-        window.history.replaceState(null, "", `/chat/${nextId}`);
-      }
+      // Warm the router cache for the session route so the onFinish
+      // router.replace is served from cache instead of a fresh navigation —
+      // which would unmount the dynamic chat boundary and flash the loading
+      // skeleton. Prefetching returns a shallow RSC payload (the page itself
+      // doesn't fetch any session data), so it's cheap and hidden.
+      router.prefetch(`/chat/${nextId}`);
+
+      // URL is synced to the new session only after streaming completes (see
+      // onFinish). Calling window.history.replaceState here would be seen by
+      // the App Router as an external navigation (ACTION_RESTORE), which
+      // rebuilds the route — flashing the ChatShellLoading skeleton mid-stream.
     },
     onFinish: () => {
+      // Reflect the freshly streamed session in the URL now that the response
+      // is committed to the DOM — a soft params navigation that preserves the
+      // mounted chat (no route loading flash).
+      const sid = streamedSessionRef.current;
+      if (sid && !pathname.startsWith(`/chat/${sid}`)) {
+        router.replace(`/chat/${sid}`, { scroll: false });
+      }
       queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["chat-session"] });
@@ -285,6 +300,7 @@ export function ChatShell() {
     setStreamSessionId(null);
     setHydratedSessionId(null);
     setPendingSessionId(null);
+    streamedSessionRef.current = null;
     setAiMessages([]);
   }, [setAiMessages, isStreaming]);
 
@@ -308,9 +324,9 @@ export function ChatShell() {
     !isStreaming &&
     (isSessionSwitchPending ||
       (Boolean(routeSessionId) &&
+        routeSessionId !== streamSessionId &&
         (hydratedSessionId !== routeSessionId ||
           isSessionLoading ||
-          isSessionFetching ||
           !sessionData ||
           sessionData.id !== routeSessionId)));
 

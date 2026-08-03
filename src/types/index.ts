@@ -107,6 +107,8 @@ export interface AppConfig {
   allowedImageModels: string[];
   allowedVideoModels: string[];
   allowedTools: string[];
+  enableAiStt: boolean;
+  sttModel: string;
   updatedAt: string;
 }
 

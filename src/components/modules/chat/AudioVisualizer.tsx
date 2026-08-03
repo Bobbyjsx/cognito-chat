@@ -1,92 +1,57 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { LiveAudioVisualizer } from "./LiveAudioVisualizer";
 
 interface AudioVisualizerProps {
-  mediaStream: MediaStream | null;
+  mediaRecorder: MediaRecorder | null;
   className?: string;
+  barColor?: string;
+  height?: number;
 }
 
 export function AudioVisualizer({
-  mediaStream,
+  mediaRecorder,
   className = "",
+  barColor = "rgb(59, 130, 246)",
+  height = 32,
 }: AudioVisualizerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
 
+  // Measure the container so the canvas is crisp (react-audio-visualize
+  // renders bars from the attribute size, so we feed it real pixels).
   useEffect(() => {
-    if (!mediaStream || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let audioContext: AudioContext;
-    try {
-      audioContext = new (
-        window.AudioContext || (window as any).webkitAudioContext
-      )();
-    } catch (e) {
-      console.error("AudioContext not supported", e);
-      return;
-    }
-
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 64; // Smaller fftSize for fewer, chunkier bars
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
-    const source = audioContext.createMediaStreamSource(mediaStream);
-    source.connect(analyser);
-
-    const draw = () => {
-      if (!canvas || !ctx) return;
-
-      const width = canvas.width;
-      const height = canvas.height;
-
-      animationRef.current = requestAnimationFrame(draw);
-      analyser.getByteFrequencyData(dataArray);
-
-      ctx.clearRect(0, 0, width, height);
-
-      const barWidth = (width / bufferLength) * 1.5; // Multiply by 1.5 to leave some space
-      let x = 0;
-
-      for (let i = 0; i < bufferLength; i++) {
-        // Normalize the frequency data to canvas height
-        const barHeight = (dataArray[i] / 255) * height;
-
-        // Use a nice gradient or primary color for the bars
-        ctx.fillStyle = `rgb(59, 130, 246)`; // Tailwind Blue 500 for example, we can use currentColor if we draw differently
-
-        // Draw the bar centered vertically
-        const y = (height - barHeight) / 2;
-
-        ctx.beginPath();
-        ctx.roundRect(x, y, barWidth - 2, barHeight, 4);
-        ctx.fill();
-
-        x += barWidth;
-      }
-    };
-
-    draw();
-
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (audioContext.state !== "closed") {
-        audioContext.close();
-      }
-    };
-  }, [mediaStream]);
+    const el = wrapRef.current;
+    if (!el) return;
+    const update = () => setWidth(Math.floor(el.getBoundingClientRect().width));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={`h-8 w-full ${className}`}
-      width={300}
-      height={32}
-    />
+    <div
+      ref={wrapRef}
+      className={`h-8 w-full min-w-0 ${className}`}
+      aria-hidden
+    >
+      {mediaRecorder && width > 0 && (
+        <LiveAudioVisualizer
+          mediaRecorder={mediaRecorder}
+          width={width}
+          height={height}
+          barWidth={3}
+          gap={2}
+          barColor={barColor}
+          backgroundColor="transparent"
+          fftSize={128}
+          minDecibels={-90}
+          maxDecibels={-10}
+          smoothingTimeConstant={0.4}
+        />
+      )}
+    </div>
   );
 }
