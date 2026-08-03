@@ -54,6 +54,10 @@ export function useSpeechToText(mode: SttMode = "browser") {
   const [error, setError] = useState<string | null>(null);
   // Separate stream used only for the visualizer — acquired AFTER recording starts
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  // Active (recording) MediaRecorder exposed to the visualizer.
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null,
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -66,6 +70,7 @@ export function useSpeechToText(mode: SttMode = "browser") {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setMediaStream(null);
+    setMediaRecorder(null);
   }, []);
 
   const stopRecorder = useCallback(() => {
@@ -186,6 +191,13 @@ export function useSpeechToText(mode: SttMode = "browser") {
         });
         streamRef.current = stream;
         setMediaStream(stream);
+
+        // Start a discardable recorder on that stream — react-audio-visualize's
+        // LiveAudioVisualizer only animates while the recorder is "recording".
+        const visualizerRecorder = new MediaRecorder(stream);
+        recorderRef.current = visualizerRecorder;
+        setMediaRecorder(visualizerRecorder);
+        visualizerRecorder.start();
       } catch (err: unknown) {
         handleStartError(err);
       }
@@ -206,6 +218,7 @@ export function useSpeechToText(mode: SttMode = "browser") {
         mimeType ? { mimeType } : undefined,
       );
       recorderRef.current = recorder;
+      setMediaRecorder(recorder);
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -221,6 +234,7 @@ export function useSpeechToText(mode: SttMode = "browser") {
     async (discard = false): Promise<string | undefined> => {
       if (mode === "browser") {
         stopRecognition();
+        stopRecorder();
         setIsListening(false);
         releaseMediaStream();
         return undefined;
@@ -273,7 +287,7 @@ export function useSpeechToText(mode: SttMode = "browser") {
         return undefined;
       }
     },
-    [mode, releaseMediaStream, stopRecognition],
+    [mode, releaseMediaStream, stopRecognition, stopRecorder],
   );
 
   const resetTranscript = useCallback(() => {
@@ -286,6 +300,7 @@ export function useSpeechToText(mode: SttMode = "browser") {
     transcript,
     error,
     mediaStream,
+    mediaRecorder,
     startListening,
     stopListening,
     resetTranscript,

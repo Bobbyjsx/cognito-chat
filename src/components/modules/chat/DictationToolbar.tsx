@@ -58,7 +58,7 @@ export function DictationToolbar({
     isListening,
     isTranscribing,
     transcript,
-    mediaStream,
+    mediaRecorder,
     startListening,
     stopListening,
     resetTranscript,
@@ -115,7 +115,7 @@ export function DictationToolbar({
           </div>
         ) : (
           <AudioVisualizer
-            mediaStream={mediaStream}
+            mediaRecorder={mediaRecorder}
             className="min-w-0 flex-1"
           />
         )}

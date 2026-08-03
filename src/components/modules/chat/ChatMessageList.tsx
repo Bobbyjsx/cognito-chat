@@ -1,6 +1,7 @@
 "use client";
 
 import type { UIMessage } from "ai";
+import { useLayoutEffect } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -8,6 +9,7 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Logo } from "@/components/ui/logo";
+import { useStickToBottomContext } from "use-stick-to-bottom";
 import {
   AssistantMessageSkeleton,
   ChatMessageItem,
