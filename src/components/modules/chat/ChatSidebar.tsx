@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/logo";
 import {
@@ -86,6 +86,7 @@ export function ChatSidebar({
   const pathname = usePathname();
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Debounce search query input by 300ms
   useEffect(() => {
@@ -97,6 +98,47 @@ export function ChatSidebar({
 
   const { data: sessions, isLoading } = useGetSessions(debouncedQuery);
   const deleteSessionMutation = useDeleteSession();
+
+  // Selecting a conversation navigates to an uncached route, which re-mounts
+  // the whole chat tree and resets the sidebar list scroll to the top. Poll
+  // briefly for the active session row and scroll it into view if it fell
+  // out of the visible area. The list container is re-resolved on every
+  // attempt because the DOM node is replaced during the re-mount — a scroll
+  // that lands on the pre-re-mount tree is lost, so keep retrying until the
+  // row is actually visible.
+  useEffect(() => {
+    if (!activeSessionId) return;
+
+    let attempts = 0;
+    let raf = 0;
+
+    const tryScroll = () => {
+      const container = listRef.current?.isConnected
+        ? listRef.current
+        : document.querySelector<HTMLElement>("[data-sidebar-session-list]");
+      const row = container?.querySelector<HTMLElement>(
+        `a[data-session-id="${activeSessionId}"]`,
+      );
+      if (container && row) {
+        const cRect = container.getBoundingClientRect();
+        const rRect = row.getBoundingClientRect();
+        if (rRect.top >= cRect.top && rRect.bottom <= cRect.bottom) return;
+        const padding = 16;
+        container.scrollTo({
+          top:
+            container.scrollTop +
+            (rRect.top < cRect.top
+              ? rRect.top - cRect.top - padding
+              : rRect.bottom - cRect.bottom + padding),
+          behavior: "auto",
+        });
+      }
+      if (attempts++ < 60) raf = requestAnimationFrame(tryScroll);
+    };
+
+    tryScroll();
+    return () => cancelAnimationFrame(raf);
+  }, [activeSessionId]);
 
   const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
     e.preventDefault();
@@ -180,7 +222,11 @@ export function ChatSidebar({
         )}
       </div>
 
-      <div className="flex-grow space-y-1 overflow-y-auto pr-1">
+      <div
+        ref={listRef}
+        data-sidebar-session-list
+        className="flex-grow space-y-1 overflow-y-auto pr-1"
+      >
         <div className="text-gray-medium flex items-center justify-between px-2 pb-2 text-[11px] font-medium tracking-wider uppercase">
           <span>
             {debouncedQuery ? "Search results" : "Recent conversations"}
@@ -215,6 +261,7 @@ export function ChatSidebar({
                     href={`/chat/${session.id}`}
                     scroll={false}
                     key={session.id}
+                    data-session-id={session.id}
                     prefetch={idx <= 5}
                     onClick={(e) => {
                       if (isDeleting) {
