@@ -45,6 +45,12 @@ export function ChatMessageList({
 
   const isEmpty = messages.length === 0 && !isStreaming && !isSessionLoading;
 
+  // When switching sessions, the temporary skeleton shrinks the scroll
+  // container and the browser clamps scrollTop to the top. Once the target
+  // session's messages mount, jump back to the bottom so the user lands on
+  // the latest message instead of the top of the conversation.
+  const showScrollToBottom = !showSessionSkeleton && !isStreaming && !isEmpty;
+
   return (
     <Conversation className="min-h-0 flex-1">
       <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pt-6 pb-8 md:px-0">
@@ -81,8 +87,26 @@ export function ChatMessageList({
             {showAgentSkeleton && <AssistantMessageSkeleton />}
           </>
         )}
+        <ScrollToBottomOnReady shouldScroll={showScrollToBottom} />
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>
   );
+}
+
+function ScrollToBottomOnReady({ shouldScroll }: { shouldScroll: boolean }) {
+  const { scrollRef } = useStickToBottomContext();
+
+  useLayoutEffect(() => {
+    // scrollToBottom() from the context starts an rAF animation loop that is
+    // gated on the library's own isAtBottom state, which isn't settled yet
+    // when called from an effect (it works from click handlers only). Setting
+    // the scroll position directly is deterministic; the library observes the
+    // resulting scroll event and re-sticks to the bottom itself.
+    if (shouldScroll && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [shouldScroll, scrollRef]);
+
+  return null;
 }
