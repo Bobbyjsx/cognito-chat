@@ -20,6 +20,7 @@ import type { FileUIPart } from "ai";
 import type { ChatStatus } from "ai";
 import { AttachmentChips } from "./AttachmentChips";
 import { DictationToolbar } from "./DictationToolbar";
+import { useProfile } from "@/hooks/data/useAuth/useAuth";
 
 interface ChatInputProps {
   onSend: (
@@ -73,13 +74,31 @@ export function ChatInput({
   onSelectReasoning,
   showSuggestions = false,
 }: ChatInputProps) {
-  const { data: config } = useGetConfig();
+  const { data: config, isLoading: isConfigLoading } = useGetConfig();
+  const { isLoading: isProfileLoading } = useProfile();
+
   const isBusy = status === "submitted" || status === "streaming";
   const canStop = isBusy && Boolean(onStop);
   const attachmentsEnabled = config?.enableAttachments ?? true;
   const accept = acceptFromAllowedTypes(config?.attachmentAllowedTypes);
   const maxFiles = config?.attachmentMaxCount ?? 10;
   const maxFileSize = config?.attachmentMaxSize ?? 20_000_000;
+
+  if (isConfigLoading || isProfileLoading) {
+    return (
+      <div className="bg-background/80 shrink-0 border-t border-[rgba(0,0,0,0.06)] px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-4 md:p-6 md:pb-6">
+        <div className="relative mx-auto w-full max-w-[800px]">
+          <div className="ambient-shadow flex w-full flex-col overflow-hidden rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-3">
+            <div className="bg-muted h-14 w-full animate-pulse rounded-md" />
+            <div className="mt-3 flex items-center justify-between">
+              <div className="bg-muted h-8 w-10 animate-pulse rounded-md" />
+              <div className="bg-muted h-8 w-[240px] animate-pulse rounded-md" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const text = message.text.trim();

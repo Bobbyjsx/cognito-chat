@@ -10,10 +10,11 @@ import {
   ContextTrigger,
 } from "@/components/ai-elements/context";
 import { getQuotaSnapshot } from "@/lib/quota";
-import { Zap, Calendar, Clock } from "lucide-react";
+import { Zap, Calendar, Clock, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function DonutQuotaIndicator() {
-  const { data: profile } = useProfile();
+  const { data: profile, refetch, isRefetching } = useProfile();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -37,8 +38,20 @@ export function DonutQuotaIndicator() {
 
         <ContextContentBody className="space-y-3 p-3 text-xs">
           <div className="text-on-surface flex items-center justify-between font-semibold">
-            <span>Quota Windows</span>
-            <Clock className="text-gray-medium h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5">
+              <span>Quota Windows</span>
+              <Clock className="text-gray-medium h-3.5 w-3.5" />
+            </div>
+            <button
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="text-gray-medium hover:text-on-surface hover:bg-surface-container-low rounded-md p-1 transition-all"
+              title="Refresh Quota"
+            >
+              <RefreshCw
+                className={cn("h-3.5 w-3.5", isRefetching && "animate-spin")}
+              />
+            </button>
           </div>
 
           <div className="space-y-0.5">
