@@ -567,6 +567,8 @@ export const PromptInput = ({
   >([]);
 
   // Keep a ref to files for cleanup on unmount (avoids stale closure)
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
   const filesRef = useRef(files);
 
   useEffect(() => {
@@ -775,12 +777,27 @@ export const PromptInput = ({
       return;
     }
 
+    const onDragEnter = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+        dragCounter.current++;
+        if (dragCounter.current === 1) setIsDragging(true);
+      }
+    };
     const onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
     };
+    const onDragLeave = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        dragCounter.current--;
+        if (dragCounter.current === 0) setIsDragging(false);
+      }
+    };
     const onDrop = (e: DragEvent) => {
+      dragCounter.current = 0;
+      setIsDragging(false);
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
@@ -788,10 +805,14 @@ export const PromptInput = ({
         add(e.dataTransfer.files);
       }
     };
+    form.addEventListener("dragenter", onDragEnter);
     form.addEventListener("dragover", onDragOver);
+    form.addEventListener("dragleave", onDragLeave);
     form.addEventListener("drop", onDrop);
     return () => {
+      form.removeEventListener("dragenter", onDragEnter);
       form.removeEventListener("dragover", onDragOver);
+      form.removeEventListener("dragleave", onDragLeave);
       form.removeEventListener("drop", onDrop);
     };
   }, [add, globalDrop]);
@@ -801,12 +822,27 @@ export const PromptInput = ({
       return;
     }
 
+    const onDragEnter = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+        dragCounter.current++;
+        if (dragCounter.current === 1) setIsDragging(true);
+      }
+    };
     const onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
     };
+    const onDragLeave = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        dragCounter.current--;
+        if (dragCounter.current === 0) setIsDragging(false);
+      }
+    };
     const onDrop = (e: DragEvent) => {
+      dragCounter.current = 0;
+      setIsDragging(false);
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
@@ -814,10 +850,14 @@ export const PromptInput = ({
         add(e.dataTransfer.files);
       }
     };
+    document.addEventListener("dragenter", onDragEnter);
     document.addEventListener("dragover", onDragOver);
+    document.addEventListener("dragleave", onDragLeave);
     document.addEventListener("drop", onDrop);
     return () => {
+      document.removeEventListener("dragenter", onDragEnter);
       document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("dragleave", onDragLeave);
       document.removeEventListener("drop", onDrop);
     };
   }, [add, globalDrop]);
@@ -1001,7 +1041,15 @@ export const PromptInput = ({
         ref={formRef}
         {...props}
       >
-        <InputGroup className="overflow-hidden">{children}</InputGroup>
+        <InputGroup
+          className={cn(
+            "overflow-hidden transition-all duration-200",
+            isDragging &&
+              "ring-primary/50 bg-surface-container-low scale-[1.01] shadow-md ring-2",
+          )}
+        >
+          {children}
+        </InputGroup>
       </form>
     </>
   );
