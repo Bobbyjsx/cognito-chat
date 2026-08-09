@@ -99,7 +99,10 @@ export function ChatSidebar({
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useGetSessions(debouncedQuery);
-  const sessions = data?.pages.flatMap((page) => page.items) || [];
+  const sessions =
+    data?.pages
+      .flatMap((page) => page?.items || [])
+      .filter((session) => Boolean(session)) || [];
   const deleteSessionMutation = useDeleteSession();
 
   // Selecting a conversation navigates to an uncached route, which re-mounts
