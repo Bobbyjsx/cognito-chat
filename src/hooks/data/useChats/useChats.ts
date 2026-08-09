@@ -37,7 +37,7 @@ export function useGetSessions(searchQuery?: string, limit: number = 15) {
   });
 }
 
-export function useGetSession(sessionId: string | null, limit: number = 20) {
+export function useGetSession(sessionId: string | null, limit: number = 10) {
   const queryClient = useQueryClient();
 
   return useInfiniteQuery({
