@@ -62,6 +62,14 @@ export interface MessageSchema {
   attachmentIds?: string[];
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total?: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
 /** Session row from GET /agent/sessions (no full message history). */
 export interface ChatSessionListItem {
   id: string;

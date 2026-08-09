@@ -1,49 +1,74 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import { api } from "@/lib/axios";
-import type { ChatSession, ChatSessionListItem } from "@/types";
+import type {
+  ChatSession,
+  ChatSessionListItem,
+  PaginatedResponse,
+} from "@/types";
 
-export function useGetSessions(searchQuery?: string) {
-  return useQuery({
+export function useGetSessions(searchQuery?: string, limit: number = 15) {
+  return useInfiniteQuery({
     queryKey: ["chat-sessions", searchQuery || ""],
-    queryFn: async () => {
-      const qParam = searchQuery?.trim()
-        ? `?q=${encodeURIComponent(searchQuery.trim())}`
-        : "";
-      const { data } = await api.get<ChatSessionListItem[]>(
-        `/agent/sessions${qParam}`,
+    queryFn: async ({ pageParam = 0 }) => {
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: pageParam.toString(),
+      });
+      if (searchQuery?.trim()) {
+        params.append("q", searchQuery.trim());
+      }
+      const { data } = await api.get<PaginatedResponse<ChatSessionListItem>>(
+        `/agent/sessions?${params.toString()}`,
       );
       return data;
     },
-    staleTime: 60 * 1000, // 1 minute stale time for session lists
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.offset + lastPage.limit : undefined,
+    initialPageParam: 0,
+    staleTime: 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 }
 
-export function useGetSession(sessionId: string | null) {
+export function useGetSession(sessionId: string | null, limit: number = 20) {
   const queryClient = useQueryClient();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["chat-session", sessionId],
-    queryFn: async () => {
-      const { data } = await api.get<ChatSession>(
-        `/agent/sessions/${sessionId}`,
+    queryFn: async ({ pageParam = 0 }) => {
+      const { data } = await api.get<PaginatedResponse<ChatSession>>(
+        `/agent/sessions/${sessionId}?limit=${limit}&offset=${pageParam}`,
       );
 
       // Safely update active session read status in cached lists without blowing away search query results
-      queryClient.setQueriesData<ChatSessionListItem[]>(
-        { queryKey: ["chat-sessions"] },
-        (old) => {
-          if (!old || !Array.isArray(old)) return old;
-          return old.map((s) =>
-            s.id === sessionId ? { ...s, readStatus: "read" } : s,
-          );
-        },
-      );
+      queryClient.setQueriesData<{
+        pages: PaginatedResponse<ChatSessionListItem>[];
+        pageParams: number[];
+      }>({ queryKey: ["chat-sessions"] }, (old) => {
+        if (!old || !old.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.map((s) =>
+              s.id === sessionId ? { ...s, readStatus: "read" } : s,
+            ),
+          })),
+        };
+      });
       return data;
     },
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.offset + lastPage.limit : undefined,
+    initialPageParam: 0,
     enabled: Boolean(sessionId),
-    staleTime: 5 * 60 * 1000, // 5 minutes stale time for loaded sessions
+    staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -60,13 +85,19 @@ export function useDeleteSession() {
       return data;
     },
     onSuccess: (_, deletedSessionId) => {
-      queryClient.setQueriesData<ChatSessionListItem[]>(
-        { queryKey: ["chat-sessions"] },
-        (old) => {
-          if (!old || !Array.isArray(old)) return old;
-          return old.filter((s) => s.id !== deletedSessionId);
-        },
-      );
+      queryClient.setQueriesData<{
+        pages: PaginatedResponse<ChatSessionListItem>[];
+        pageParams: number[];
+      }>({ queryKey: ["chat-sessions"] }, (old) => {
+        if (!old || !old.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.filter((s) => s.id !== deletedSessionId),
+          })),
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
     },
   });
