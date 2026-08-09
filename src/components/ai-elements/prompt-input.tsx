@@ -1,6 +1,6 @@
 "use client";
 
-import axios from "axios";
+import { api } from "@/lib/axios";
 import {
   Command,
   CommandEmpty,
@@ -955,8 +955,8 @@ export const PromptInput = ({
         const formData = new FormData();
         formData.append("file", item.file);
 
-        axios
-          .post("/api/attachments", formData, {
+        api
+          .post("/agent/attachments", formData, {
             onUploadProgress: (progressEvent) => {
               const progress = progressEvent.progress
                 ? Math.round(progressEvent.progress * 100)
