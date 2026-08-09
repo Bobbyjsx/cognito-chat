@@ -1,19 +1,91 @@
 "use client";
 
-import { FileTextIcon, XIcon } from "lucide-react";
+import { useEffect } from "react";
+import { FileTextIcon, XIcon, AlertCircleIcon } from "lucide-react";
 import {
   usePromptInputAttachments,
   PromptInputHeader,
 } from "@/components/ai-elements/prompt-input";
 import { isPreviewableType } from "@/lib/attachments";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/axios";
+import type { AttachmentSchema } from "@/types";
+
+function DonutProgress({ progress }: { progress: number }) {
+  const radius = 9;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/40 backdrop-blur-[1px]">
+      <svg className="h-6 w-6 -rotate-90 transform" viewBox="0 0 24 24">
+        <circle
+          className="text-white/30"
+          strokeWidth="2.5"
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx="12"
+          cy="12"
+        />
+        <circle
+          className="text-white transition-all duration-300 ease-out"
+          strokeWidth="2.5"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx="12"
+          cy="12"
+        />
+      </svg>
+    </div>
+  );
+}
 
 /**
  * Renders the currently attached files as removable chips inside the prompt
  * input. Images show an inline thumbnail; other files show a file icon.
  */
 export function AttachmentChips({ className }: { className?: string }) {
-  const { files, remove } = usePromptInputAttachments();
+  const { files, remove, update } = usePromptInputAttachments();
+
+  useEffect(() => {
+    for (const file of files) {
+      if (
+        file.file &&
+        file.progress === undefined &&
+        !file.uploadedId &&
+        !file.error
+      ) {
+        // mark as started
+        update(file.id, { progress: 0 });
+        const formData = new FormData();
+        formData.append("file", file.file);
+
+        api
+          .post<AttachmentSchema>("/agent/attachments", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const p = Math.round(
+                  (progressEvent.loaded * 100) / progressEvent.total,
+                );
+                update(file.id, { progress: p });
+              }
+            },
+          })
+          .then(({ data }) => {
+            update(file.id, { uploadedId: data.id, progress: 100 });
+          })
+          .catch((err) => {
+            update(file.id, { error: err.message || "Failed to upload" });
+          });
+      }
+    }
+  }, [files, update]);
 
   if (files.length === 0) return null;
 
@@ -21,28 +93,49 @@ export function AttachmentChips({ className }: { className?: string }) {
     <PromptInputHeader className={cn("pt-2", className)}>
       {files.map((file) => {
         const previewable = isPreviewableType(file.mediaType);
+        const isUploading =
+          file.progress !== undefined &&
+          file.progress < 100 &&
+          !file.error &&
+          !file.uploadedId;
 
         return (
           <div
             key={file.id}
-            className="animate-in fade-in zoom-in-95 bg-surface-container-low flex max-w-[220px] items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.06)] py-1 pr-1 pl-1 duration-200"
-          >
-            {previewable ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={file.url}
-                alt={file.filename ?? "Attachment"}
-                className="h-8 w-8 shrink-0 rounded-md object-cover"
-              />
-            ) : (
-              <span className="bg-surface-container-high text-gray-medium flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
-                <FileTextIcon className="h-4 w-4" />
-              </span>
+            className={cn(
+              "animate-in fade-in zoom-in-95 bg-surface-container-low flex max-w-[220px] items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.06)] py-1 pr-1 pl-1 duration-200",
+              file.error && "border-red-500/50 bg-red-50",
             )}
+          >
+            <div className="relative h-8 w-8 shrink-0">
+              {previewable ? (
+                <img
+                  src={file.url}
+                  alt={file.filename ?? "Attachment"}
+                  className="h-full w-full rounded-md object-cover"
+                />
+              ) : (
+                <span className="bg-surface-container-high text-gray-medium flex h-full w-full items-center justify-center rounded-md">
+                  <FileTextIcon className="h-4 w-4" />
+                </span>
+              )}
+              {isUploading && <DonutProgress progress={file.progress || 0} />}
+            </div>
+
             <span className="min-w-0 flex-1">
-              <span className="font-label-md text-on-surface block max-w-full truncate text-xs">
+              <span
+                className={cn(
+                  "font-label-md block max-w-full truncate text-xs",
+                  file.error ? "text-red-600" : "text-on-surface",
+                )}
+              >
                 {file.filename ?? "Attachment"}
               </span>
+              {file.error && (
+                <span className="font-label-sm block truncate text-[10px] text-red-500">
+                  Upload failed
+                </span>
+              )}
             </span>
             <button
               type="button"

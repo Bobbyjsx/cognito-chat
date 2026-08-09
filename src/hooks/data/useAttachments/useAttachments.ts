@@ -24,7 +24,7 @@ export function useGetSessionAttachments(sessionId: string | null) {
     queryKey: ["chat-attachments", sessionId],
     queryFn: async () => {
       const { data } = await api.get<AttachmentSchema[]>("/agent/attachments", {
-        params: { sessionId },
+        params: { session_id: sessionId },
       });
       return data;
     },

@@ -14,10 +14,8 @@ import {
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
-import { useUploadAttachment } from "@/hooks/data/useAttachments/useAttachments";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { acceptFromAllowedTypes } from "@/lib/attachments";
-import { notifyServerError } from "@/lib/server-error";
 import type { FileUIPart } from "ai";
 import type { ChatStatus } from "ai";
 import { AttachmentChips } from "./AttachmentChips";
@@ -46,15 +44,6 @@ const QUICK_PROMPTS = [
   "Write a Python script for data parsing",
   "Summarize the latest AI advancements",
 ];
-
-/** Resolve a UI file part (data/blob URL) back to a real File for upload. */
-async function filePartToFile(part: FileUIPart): Promise<File> {
-  const response = await fetch(part.url);
-  const blob = await response.blob();
-  return new File([blob], part.filename ?? "attachment", {
-    type: part.mediaType,
-  });
-}
 
 function AttachFilesButton({ disabled }: { disabled?: boolean }) {
   const { openFileDialog } = usePromptInputAttachments();
@@ -85,9 +74,6 @@ export function ChatInput({
   showSuggestions = false,
 }: ChatInputProps) {
   const { data: config } = useGetConfig();
-  const uploadAttachment = useUploadAttachment();
-  const [isUploading, setIsUploading] = useState(false);
-
   const isBusy = status === "submitted" || status === "streaming";
   const canStop = isBusy && Boolean(onStop);
   const attachmentsEnabled = config?.enableAttachments ?? true;
@@ -97,38 +83,38 @@ export function ChatInput({
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const text = message.text.trim();
-    if (!text || isBusy || isUploading) return;
+    if (!text || isBusy) return;
 
-    let attachmentIds: string[] = [];
     if (message.files.length > 0) {
       if (!attachmentsEnabled) {
         toast.error("Attachments are currently disabled by admin.");
         return;
       }
-      setIsUploading(true);
-      try {
-        const uploaded = await Promise.all(
-          message.files.map(async (part) => {
-            const file = await filePartToFile(part);
-            return uploadAttachment.mutateAsync(file);
-          }),
-        );
-        attachmentIds = uploaded.map((attachment) => attachment.id);
-      } catch (err) {
-        // Keep the attached files so the user can retry or remove them.
-        notifyServerError(err, "Failed to upload attachment");
+      if (message.files.some((f) => !f.uploadedId && !f.error)) {
+        toast.error("Please wait for attachments to finish uploading.");
         return;
-      } finally {
-        setIsUploading(false);
+      }
+      if (message.files.some((f) => f.error)) {
+        toast.error(
+          "Some attachments failed to upload. Please remove them to continue.",
+        );
+        return;
       }
     }
+
+    const attachmentIds = message.files
+      .map((f) => f.uploadedId)
+      .filter(Boolean) as string[];
+
+    // Only pass files to AI SDK if they weren't manually uploaded
+    const unuploadedFiles = message.files.filter((f) => !f.uploadedId);
 
     onSend(
       text,
       selectedModel,
       selectedReasoning,
       attachmentIds,
-      message.files,
+      unuploadedFiles,
     );
   };
 
@@ -165,14 +151,12 @@ export function ChatInput({
               <AttachmentChips />
               <PromptInputTextarea
                 placeholder="Ask Cognito anything..."
-                disabled={isBusy || isUploading}
+                disabled={isBusy}
                 className="font-body-md text-on-surface placeholder:text-gray-medium max-h-[40vh] min-h-[52px] px-3 py-2.5 focus:outline-none sm:min-h-[64px] sm:px-4 sm:py-3"
               />
             </PromptInputBody>
             <PromptInputFooter className="bg-surface-container-lowest flex flex-wrap items-center justify-between gap-2 border-t border-[rgba(0,0,0,0.04)] px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5">
-              {attachmentsEnabled && (
-                <AttachFilesButton disabled={isBusy || isUploading} />
-              )}
+              {attachmentsEnabled && <AttachFilesButton disabled={isBusy} />}
               <DictationToolbar
                 selectedModel={selectedModel}
                 onSelectModel={onSelectModel}
@@ -182,7 +166,7 @@ export function ChatInput({
                 onStop={onStop}
                 isBusy={isBusy}
                 canStop={canStop}
-                isUploading={isUploading}
+                isUploading={false}
               />
             </PromptInputFooter>
           </PromptInput>
