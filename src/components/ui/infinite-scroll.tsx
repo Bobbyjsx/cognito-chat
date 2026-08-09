@@ -28,7 +28,7 @@ export function InfiniteScroll({
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
+          fetchNextPage?.();
         }
       },
       { threshold: 0.1, rootMargin: "100px" },
