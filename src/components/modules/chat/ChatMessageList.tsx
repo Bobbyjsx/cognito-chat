@@ -55,7 +55,7 @@ export function ChatMessageList({
 
   return (
     <Conversation className="min-h-0 flex-1">
-      <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pt-6 pb-8 md:px-0">
+      <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pt-6 pb-8 md:px-6 lg:px-0">
         {showSessionSkeleton ? (
           <SessionMessagesSkeleton />
         ) : isEmpty ? (
