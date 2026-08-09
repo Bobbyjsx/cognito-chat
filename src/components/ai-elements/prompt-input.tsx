@@ -43,7 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
-  CornerDownLeftIcon,
+  SendIcon,
   ImageIcon,
   Monitor,
   PlusIcon,
@@ -1310,7 +1310,7 @@ export const PromptInputSubmit = ({
     (f) => f.progress !== undefined && f.progress < 100,
   );
 
-  let Icon = <CornerDownLeftIcon className="size-4" />;
+  let Icon = <SendIcon className="size-4" />;
 
   if (status === "submitted" || isUploading) {
     Icon = <Spinner />;
