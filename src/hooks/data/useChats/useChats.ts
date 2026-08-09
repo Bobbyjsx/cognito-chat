@@ -9,6 +9,7 @@ import type {
   ChatSession,
   ChatSessionListItem,
   PaginatedResponse,
+  SessionWithPaginatedMessages,
 } from "@/types";
 
 export function useGetSessions(searchQuery?: string, limit: number = 15) {
@@ -42,7 +43,7 @@ export function useGetSession(sessionId: string | null, limit: number = 20) {
   return useInfiniteQuery({
     queryKey: ["chat-session", sessionId],
     queryFn: async ({ pageParam = 0 }) => {
-      const { data } = await api.get<PaginatedResponse<ChatSession>>(
+      const { data } = await api.get<SessionWithPaginatedMessages>(
         `/agent/sessions/${sessionId}?limit=${limit}&offset=${pageParam}`,
       );
 
@@ -65,7 +66,9 @@ export function useGetSession(sessionId: string | null, limit: number = 20) {
       return data;
     },
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.offset + lastPage.limit : undefined,
+      lastPage.messages.hasMore
+        ? lastPage.messages.offset + lastPage.messages.limit
+        : undefined,
     initialPageParam: 0,
     enabled: Boolean(sessionId),
     staleTime: 5 * 60 * 1000,
