@@ -126,26 +126,14 @@ export function ChatShell() {
       setStreamSessionId(nextId);
       setHydratedSessionId(nextId);
       streamedSessionRef.current = nextId;
-
-      // Warm the router cache for the session route so the onFinish
-      // router.replace is served from cache instead of a fresh navigation —
-      // which would unmount the dynamic chat boundary and flash the loading
-      // skeleton. Prefetching returns a shallow RSC payload (the page itself
-      // doesn't fetch any session data), so it's cheap and hidden.
-      router.prefetch(`/chat/${nextId}`);
-
-      // URL is synced to the new session only after streaming completes (see
-      // onFinish). Calling window.history.replaceState here would be seen by
-      // the App Router as an external navigation (ACTION_RESTORE), which
-      // rebuilds the route — flashing the ChatShellLoading skeleton mid-stream.
     },
     onFinish: () => {
       // Reflect the freshly streamed session in the URL now that the response
-      // is committed to the DOM — a soft params navigation that preserves the
-      // mounted chat (no route loading flash).
+      // is committed to the DOM — we use history API to bypass Next.js
+      // navigation completely, ensuring zero layout shifts or loading UI flashes.
       const sid = streamedSessionRef.current;
       if (sid && !pathname.startsWith(`/chat/${sid}`)) {
-        router.replace(`/chat/${sid}`, { scroll: false });
+        window.history.replaceState(null, "", `/chat/${sid}`);
       }
       queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
