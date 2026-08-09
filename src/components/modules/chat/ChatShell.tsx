@@ -8,7 +8,7 @@ import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachm
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { attachmentById } from "@/lib/attachments";
 import { useRouter, useParams, usePathname } from "next/navigation";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { notifyServerError } from "@/lib/server-error";
 import type { MessageSchema } from "@/types";
 import { ChatInput } from "./ChatInput";
@@ -69,8 +69,19 @@ export function ChatShell() {
     currentReasoningRef.current = userSelectedReasoning;
   }, [userSelectedModel, userSelectedReasoning]);
 
-  const { data: sessionData, isLoading: isSessionLoading } =
-    useGetSession(routeSessionId);
+  const {
+    data: sessionPages,
+    isLoading: isSessionLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useGetSession(routeSessionId);
+
+  const sessionData = sessionPages?.pages[0]?.items[0];
+  const allMessages = useMemo(
+    () => sessionPages?.pages.flatMap((p) => p.items[0]?.messages || []) || [],
+    [sessionPages],
+  );
 
   const { data: sessionAttachments } = useGetSessionAttachments(
     config?.enableAttachments ? routeSessionId : null,
@@ -266,7 +277,7 @@ export function ChatShell() {
           return;
         }
 
-        const formatted: UIMessage[] = (sessionData.messages || []).map(
+        const formatted: UIMessage[] = allMessages.map(
           (m: MessageSchema, idx: number) => {
             const experimental_attachments: any[] = [];
 
@@ -310,6 +321,7 @@ export function ChatShell() {
   }, [
     routeSessionId,
     sessionData,
+    allMessages,
     setAiMessages,
     hydratedSessionId,
     isStreaming,
@@ -415,6 +427,9 @@ export function ChatShell() {
           isStreaming={isStreaming}
           isSessionLoading={showSessionLoading}
           streamingMessageId={streamingMessageId}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          fetchNextPage={fetchNextPage}
         />
 
         <ChatInput

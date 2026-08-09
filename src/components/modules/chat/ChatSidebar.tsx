@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/logo";
+import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import {
   useDeleteSession,
   useGetSessions,
@@ -96,7 +97,9 @@ export function ChatSidebar({
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { data: sessions, isLoading } = useGetSessions(debouncedQuery);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useGetSessions(debouncedQuery);
+  const sessions = data?.pages.flatMap((page) => page.items) || [];
   const deleteSessionMutation = useDeleteSession();
 
   // Selecting a conversation navigates to an uncached route, which re-mounts
@@ -335,6 +338,11 @@ export function ChatSidebar({
                 );
               })}
             </AnimatePresence>
+            <InfiniteScroll
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              fetchNextPage={fetchNextPage}
+            />
           </div>
         )}
       </div>
