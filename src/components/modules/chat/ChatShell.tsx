@@ -281,7 +281,7 @@ export function ChatShell() {
               experimental_attachments.push({
                 contentType: attachment.mimeType,
                 name: attachment.filename,
-                url: `/api/attachments/${attachment.id}/content`,
+                url: `/agent/attachments/${attachment.id}/content`,
                 size: attachment.size,
               });
             }
@@ -333,7 +333,7 @@ export function ChatShell() {
           ...(attachmentIds && attachmentIds.length > 0
             ? {
                 experimental_attachments: attachmentIds.map((id) => ({
-                  url: `/api/attachments/${id}/content`,
+                  url: `/agent/attachments/${id}/content`,
                   // We don't have the exact content type here easily, but the backend handles it.
                   name: `Attachment ${id}`,
                 })),

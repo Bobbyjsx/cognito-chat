@@ -58,7 +58,7 @@ export const OptimizedImage = ({
     return (
       <div
         className={cn(
-          "bg-surface-container-low flex h-full min-h-[100px] w-full items-center justify-center rounded-xl border border-[rgba(0,0,0,0.06)]",
+          "bg-surface-container-low flex h-full min-h-[100px] w-full min-w-[200px] items-center justify-center rounded-xl border border-[rgba(0,0,0,0.06)]",
           containerClassName,
         )}
       >
