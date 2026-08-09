@@ -87,6 +87,11 @@ export interface ChatSession extends ChatSessionListItem {
   messages?: MessageSchema[];
 }
 
+export interface SessionWithPaginatedMessages {
+  session: ChatSessionListItem;
+  messages: PaginatedResponse<MessageSchema>;
+}
+
 export interface ChatRequest {
   message: string;
   model?: string;

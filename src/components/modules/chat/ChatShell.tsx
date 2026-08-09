@@ -77,9 +77,9 @@ export function ChatShell() {
     isFetchingNextPage,
   } = useGetSession(routeSessionId);
 
-  const sessionData = sessionPages?.pages[0]?.items[0];
+  const sessionData = sessionPages?.pages[0]?.session;
   const allMessages = useMemo(
-    () => sessionPages?.pages.flatMap((p) => p.items[0]?.messages || []) || [],
+    () => sessionPages?.pages.flatMap((p) => p.messages.items || []) || [],
     [sessionPages],
   );
 
