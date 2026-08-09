@@ -66,7 +66,7 @@ export function useGetSession(sessionId: string | null, limit: number = 10) {
       return data;
     },
     getNextPageParam: (lastPage) =>
-      lastPage.messages.hasMore
+      lastPage?.messages?.hasMore
         ? lastPage.messages.offset + lastPage.messages.limit
         : undefined,
     initialPageParam: 0,
