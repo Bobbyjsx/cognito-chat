@@ -121,30 +121,32 @@ export const OptimizedImage = ({
         </div>
       )}
 
-      <Image
-        src={objectUrl || ""}
-        alt={alt || "Image"}
-        unoptimized={isBlob}
-        className={cn(
-          "object-cover transition-all duration-700 ease-in-out",
-          isLoading && !isPriority
-            ? "scale-105 blur-md grayscale-[50%]"
-            : "blur-0 scale-100 grayscale-0",
-          !isFill && "h-auto w-full",
-          className,
-        )}
-        onLoad={(e) => {
-          if (!isPriority) setImgLoading(false);
-          props.onLoad?.(e);
-        }}
-        onError={(e) => {
-          setImgError(true);
-          if (!isPriority) setImgLoading(false);
-          props.onError?.(e);
-        }}
-        {...(!isFill ? { width: 0, height: 0, sizes: "100vw" } : {})}
-        {...props}
-      />
+      {objectUrl && (
+        <Image
+          src={objectUrl}
+          alt={alt || "Image"}
+          unoptimized={isBlob}
+          className={cn(
+            "object-cover transition-all duration-700 ease-in-out",
+            isLoading && !isPriority
+              ? "scale-105 blur-md grayscale-[50%]"
+              : "blur-0 scale-100 grayscale-0",
+            !isFill && "h-auto w-full",
+            className,
+          )}
+          onLoad={(e) => {
+            if (!isPriority) setImgLoading(false);
+            props.onLoad?.(e);
+          }}
+          onError={(e) => {
+            setImgError(true);
+            if (!isPriority) setImgLoading(false);
+            props.onError?.(e);
+          }}
+          {...(!isFill ? { width: 0, height: 0, sizes: "100vw" } : {})}
+          {...props}
+        />
+      )}
     </div>
   );
 };
