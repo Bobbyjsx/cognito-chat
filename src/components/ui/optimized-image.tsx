@@ -5,6 +5,8 @@ import Image, { ImageProps } from "next/image";
 import { Terminal, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { useSecureImage } from "@/hooks/data/useSecureImage";
+
 export interface OptimizedImageProps extends Omit<ImageProps, "src"> {
   src: string | null;
   sizeBytes?: number;
@@ -36,11 +38,21 @@ export const OptimizedImage = ({
   ...props
 }: OptimizedImageProps) => {
   const isPriority = !!props.priority;
-  const [isLoading, setIsLoading] = useState(!isPriority);
-  const [error, setError] = useState(false);
+
+  const {
+    objectUrl,
+    loading: secureLoading,
+    error: secureError,
+  } = useSecureImage(src);
+
+  const [imgLoading, setImgLoading] = useState(!isPriority);
+  const [imgError, setImgError] = useState(false);
+
+  const isLoading = secureLoading || imgLoading;
+  const error = secureError || imgError;
 
   const isFill = !!props.fill;
-  const isBlob = typeof src === "string" && src.startsWith("blob:");
+  const isBlob = typeof objectUrl === "string" && objectUrl.startsWith("blob:");
 
   if (!src || error) {
     return (
@@ -110,11 +122,9 @@ export const OptimizedImage = ({
       )}
 
       <Image
-        src={src}
+        src={objectUrl || ""}
         alt={alt || "Image"}
-        unoptimized={
-          isBlob || (typeof src === "string" && src.startsWith("/api/"))
-        }
+        unoptimized={isBlob}
         className={cn(
           "object-cover transition-all duration-700 ease-in-out",
           isLoading && !isPriority
@@ -124,12 +134,12 @@ export const OptimizedImage = ({
           className,
         )}
         onLoad={(e) => {
-          if (!isPriority) setIsLoading(false);
+          if (!isPriority) setImgLoading(false);
           props.onLoad?.(e);
         }}
         onError={(e) => {
-          setError(true);
-          if (!isPriority) setIsLoading(false);
+          setImgError(true);
+          if (!isPriority) setImgLoading(false);
           props.onError?.(e);
         }}
         {...(!isFill ? { width: 0, height: 0, sizes: "100vw" } : {})}
