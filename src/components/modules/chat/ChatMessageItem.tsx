@@ -20,8 +20,11 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import { isToolUIPart, type UIMessage } from "ai";
-import { AlertCircle, Check, Copy } from "lucide-react";
+import { AlertCircle, Check, Copy, FileTextIcon } from "lucide-react";
 import { useCallback, useState } from "react";
+import { cn } from "@/lib/utils";
+import { OptimizedImage } from "@/components/ui/optimized-image";
+import { isPreviewableType } from "@/lib/attachments";
 import {
   AgentResponseBodySkeleton,
   AgentResponseSkeleton,
@@ -46,6 +49,7 @@ export function messageHasVisibleContent(message: UIMessage): boolean {
   return (message.parts ?? []).some((part) => {
     if (part.type === "text" && part.text.trim().length > 0) return true;
     if (part.type === "reasoning" && part.text.trim().length > 0) return true;
+    if (part.type === "file") return true;
     if (isToolUIPart(part)) return true;
     return false;
   });
@@ -96,6 +100,37 @@ function CopyMessageButton({ text }: { text: string }) {
   );
 }
 
+function AttachmentPart({
+  part,
+}: {
+  part: { mediaType?: string; filename?: string; url?: string };
+}) {
+  const { mediaType, filename, url } = part;
+  const name = filename || "Attachment";
+  const previewable = Boolean(url) && isPreviewableType(mediaType || "");
+  if (previewable) {
+    return (
+      <div className="relative">
+        <OptimizedImage
+          src={url || ""}
+          alt={name}
+          sizeBytes={(part as any).size}
+          className="max-h-48"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-block">
+      <span className="bg-surface-container-low text-on-surface mt-4 inline-flex max-w-full items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.06)] px-2.5 py-1.5">
+        <FileTextIcon className="text-gray-medium h-4 w-4 shrink-0" />
+        <span className="font-label-md truncate text-xs">{name}</span>
+      </span>
+    </div>
+  );
+}
+
 function MessageParts({
   message,
   isStreaming,
@@ -103,7 +138,21 @@ function MessageParts({
   message: UIMessage;
   isStreaming?: boolean;
 }) {
-  const parts = message.parts ?? [];
+  const parts = message.parts ? [...message.parts] : [];
+
+  // Extract optimistic attachments sent by useChat (ai SDK)
+  const experimentalAttachments =
+    (message as any).experimental_attachments ?? [];
+  for (const att of experimentalAttachments) {
+    parts.push({
+      type: "file",
+      mediaType: att.contentType,
+      url: att.url,
+      filename: att.name,
+      size: (att as any).size,
+    } as any);
+  }
+
   const legacyContent = getLegacyContent(message);
 
   // Fallback for legacy plain text messages
@@ -159,6 +208,10 @@ function MessageParts({
               <ReasoningContent>{part.text}</ReasoningContent>
             </Reasoning>
           );
+        }
+
+        if (part.type === "file") {
+          return <AttachmentPart key={key} part={part} />;
         }
 
         if (isToolUIPart(part)) {

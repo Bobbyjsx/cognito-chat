@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import {
   Command,
   CommandEmpty,
@@ -178,11 +179,20 @@ const captureScreenshot = async (): Promise<File | null> => {
 // Provider Context & Types
 // ============================================================================
 
+export type ExtendedFileUIPart = FileUIPart & {
+  id: string;
+  file?: File;
+  progress?: number;
+  uploadedId?: string;
+  error?: string;
+};
+
 export interface AttachmentsContext {
-  files: (FileUIPart & { id: string })[];
+  files: ExtendedFileUIPart[];
   add: (files: File[] | FileList) => void;
   remove: (id: string) => void;
   clear: () => void;
+  update: (id: string, updates: Partial<ExtendedFileUIPart>) => void;
   openFileDialog: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
 }
@@ -254,9 +264,9 @@ export const PromptInputProvider = ({
   const clearInput = useCallback(() => setTextInput(""), []);
 
   // ----- attachments state (global when wrapped)
-  const [attachmentFiles, setAttachmentFiles] = useState<
-    (FileUIPart & { id: string })[]
-  >([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<ExtendedFileUIPart[]>(
+    [],
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // oxlint-disable-next-line eslint(no-empty-function)
   const openRef = useRef<() => void>(() => {});
@@ -275,6 +285,7 @@ export const PromptInputProvider = ({
         mediaType: file.type,
         type: "file" as const,
         url: URL.createObjectURL(file),
+        file,
       })),
     ]);
   }, []);
@@ -319,6 +330,15 @@ export const PromptInputProvider = ({
     [],
   );
 
+  const update = useCallback(
+    (id: string, updates: Partial<ExtendedFileUIPart>) => {
+      setAttachmentFiles((prev) =>
+        prev.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      );
+    },
+    [],
+  );
+
   const openFileDialog = useCallback(() => {
     openRef.current?.();
   }, []);
@@ -327,12 +347,13 @@ export const PromptInputProvider = ({
     () => ({
       add,
       clear,
+      update,
       fileInputRef,
       files: attachmentFiles,
       openFileDialog,
       remove,
     }),
-    [attachmentFiles, add, remove, clear, openFileDialog],
+    [attachmentFiles, add, remove, clear, update, openFileDialog],
   );
 
   const __registerFileInput = useCallback(
@@ -487,7 +508,7 @@ export const PromptInputActionAddScreenshot = ({
 
 export interface PromptInputMessage {
   text: string;
-  files: FileUIPart[];
+  files: ExtendedFileUIPart[];
 }
 
 export type PromptInputProps = Omit<
@@ -537,7 +558,7 @@ export const PromptInput = ({
   const formRef = useRef<HTMLFormElement | null>(null);
 
   // ----- Local attachments (only used when no provider)
-  const [items, setItems] = useState<(FileUIPart & { id: string })[]>([]);
+  const [items, setItems] = useState<ExtendedFileUIPart[]>([]);
   const files = usingProvider ? controller.attachments.files : items;
 
   // ----- Local referenced sources (always local to PromptInput)
@@ -614,7 +635,7 @@ export const PromptInput = ({
             message: "Too many files. Some were not added.",
           });
         }
-        const next: (FileUIPart & { id: string })[] = [];
+        const next: ExtendedFileUIPart[] = [];
         for (const file of capped) {
           next.push({
             filename: file.name,
@@ -622,12 +643,22 @@ export const PromptInput = ({
             mediaType: file.type,
             type: "file",
             url: URL.createObjectURL(file),
+            file,
           });
         }
         return [...prev, ...next];
       });
     },
-    [matchesAccept, maxFiles, maxFileSize, onError],
+    [accept, maxFileSize, maxFiles, matchesAccept, onError],
+  );
+
+  const updateLocal = useCallback(
+    (id: string, updates: Partial<ExtendedFileUIPart>) => {
+      setItems((prev) =>
+        prev.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      );
+    },
+    [],
   );
 
   const removeLocal = useCallback(
@@ -804,6 +835,8 @@ export const PromptInput = ({
     [usingProvider],
   );
 
+  const update = usingProvider ? controller.attachments.update : updateLocal;
+
   const handleChange: ChangeEventHandler<HTMLInputElement> = useCallback(
     (event) => {
       if (event.currentTarget.files) {
@@ -819,12 +852,13 @@ export const PromptInput = ({
     () => ({
       add,
       clear: clearAttachments,
+      update,
       fileInputRef: inputRef,
       files: files.map((item) => ({ ...item, id: item.id })),
       openFileDialog,
       remove,
     }),
-    [files, add, remove, clearAttachments, openFileDialog],
+    [files, add, remove, clearAttachments, update, openFileDialog],
   );
 
   const refsCtx = useMemo<ReferencedSourcesContext>(
@@ -865,7 +899,7 @@ export const PromptInput = ({
 
       try {
         // Convert blob URLs to data URLs asynchronously
-        const convertedFiles: FileUIPart[] = await Promise.all(
+        const convertedFiles: ExtendedFileUIPart[] = await Promise.all(
           files.map(async ({ ...item }) => {
             if (item.url?.startsWith("blob:")) {
               const dataUrl = await convertBlobUrlToDataUrl(item.url);
@@ -905,6 +939,48 @@ export const PromptInput = ({
     },
     [usingProvider, controller, files, onSubmit, clear],
   );
+
+  // Auto-upload files via API and track progress
+  useEffect(() => {
+    files.forEach((item) => {
+      if (
+        item.file &&
+        item.progress === undefined &&
+        !item.uploadedId &&
+        !item.error
+      ) {
+        // Mark as uploading (progress = 0)
+        update(item.id, { progress: 0 });
+
+        const formData = new FormData();
+        formData.append("file", item.file);
+
+        axios
+          .post("/api/attachments", formData, {
+            onUploadProgress: (progressEvent) => {
+              const progress = progressEvent.progress
+                ? Math.round(progressEvent.progress * 100)
+                : Math.round(
+                    (progressEvent.loaded /
+                      (progressEvent.total || item.file!.size)) *
+                      100,
+                  );
+              update(item.id, { progress: Math.min(progress, 99) }); // Keep at 99 until backend fully responds
+            },
+          })
+          .then((res) => {
+            update(item.id, { uploadedId: res.data.id, progress: 100 });
+          })
+          .catch((err) => {
+            update(item.id, {
+              error:
+                err.response?.data?.detail || err.message || "Failed to upload",
+              progress: undefined, // Reset progress so it could potentially be retried?
+            });
+          });
+      }
+    });
+  }, [files, update]);
 
   // Render with or without local provider
   const inner = (
@@ -1159,7 +1235,8 @@ export const PromptInputButton = ({
 
   return (
     <Tooltip>
-      <TooltipTrigger>{button}</TooltipTrigger>
+      {/* @ts-expect-error: asChild requires valid React node */}
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent side={side}>
         {tooltipContent}
         {shortcut && (
@@ -1229,9 +1306,14 @@ export const PromptInputSubmit = ({
 }: PromptInputSubmitProps) => {
   const isGenerating = status === "submitted" || status === "streaming";
 
+  const ctx = useOptionalPromptInputController();
+  const isUploading = ctx?.attachments.files.some(
+    (f) => f.progress !== undefined && f.progress < 100,
+  );
+
   let Icon = <CornerDownLeftIcon className="size-4" />;
 
-  if (status === "submitted") {
+  if (status === "submitted" || isUploading) {
     Icon = <Spinner />;
   } else if (status === "streaming") {
     Icon = <SquareIcon className="size-4" />;
@@ -1254,12 +1336,15 @@ export const PromptInputSubmit = ({
 
   return (
     <InputGroupButton
-      aria-label={isGenerating ? "Stop" : "Submit"}
+      aria-label={
+        isGenerating ? "Stop" : isUploading ? "Uploading..." : "Submit"
+      }
       className={cn(className)}
       onClick={
         handleClick as React.ComponentProps<typeof InputGroupButton>["onClick"]
       }
       size={size}
+      disabled={isUploading}
       type={isGenerating && onStop ? "button" : "submit"}
       variant={variant}
       {...props}

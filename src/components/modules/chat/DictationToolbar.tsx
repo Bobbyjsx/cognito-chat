@@ -34,6 +34,8 @@ interface DictationToolbarProps {
   onStop?: () => void;
   isBusy: boolean;
   canStop: boolean;
+  /** True while attached files are being uploaded to the backend. */
+  isUploading?: boolean;
 }
 
 export function DictationToolbar({
@@ -45,6 +47,7 @@ export function DictationToolbar({
   onStop,
   isBusy,
   canStop,
+  isUploading = false,
 }: DictationToolbarProps) {
   const { data: config } = useGetConfig();
 
@@ -208,7 +211,7 @@ export function DictationToolbar({
         <PromptInputSubmit
           status={status}
           onStop={onStop}
-          disabled={isBusy && !canStop}
+          disabled={(isBusy && !canStop) || isUploading}
           className="bg-primary text-on-primary rounded-lg transition-all duration-200 hover:bg-[#3d3f42] active:scale-[0.96]"
         />
       </div>
