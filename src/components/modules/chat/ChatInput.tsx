@@ -21,6 +21,14 @@ import type { ChatStatus } from "ai";
 import { AttachmentChips } from "./AttachmentChips";
 import { DictationToolbar } from "./DictationToolbar";
 import { useProfile } from "@/hooks/data/useAuth/useAuth";
+import { LibraryGalleryModal } from "../library/LibraryGalleryModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Monitor, Image as ImageIcon } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (
@@ -47,20 +55,46 @@ const QUICK_PROMPTS = [
 ];
 
 function AttachFilesButton({ disabled }: { disabled?: boolean }) {
-  const { openFileDialog } = usePromptInputAttachments();
+  const { openFileDialog, addExisting } = usePromptInputAttachments();
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   return (
-    <PromptInputButton
-      type="button"
-      variant="ghost"
-      className="text-gray-medium hover:bg-surface-container-low hover:text-on-surface rounded-full transition-all duration-200"
-      tooltip="Attach files"
-      disabled={disabled}
-      onClick={openFileDialog}
-      aria-label="Attach files"
-    >
-      <PaperclipIcon className="h-4 w-4" />
-    </PromptInputButton>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <PromptInputButton
+              type="button"
+              variant="ghost"
+              className="text-gray-medium hover:bg-surface-container-low hover:text-on-surface rounded-full transition-all duration-200"
+              tooltip="Attach files"
+              disabled={disabled}
+              aria-label="Attach files"
+            />
+          }
+        >
+          <PaperclipIcon className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={openFileDialog}>
+            <Monitor className="mr-2 h-4 w-4" />
+            Upload from Device
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setLibraryOpen(true)}>
+            <ImageIcon className="mr-2 h-4 w-4" />
+            Choose from App Gallery
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <LibraryGalleryModal
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onSelect={(att) => {
+          addExisting([att]);
+        }}
+      />
+    </>
   );
 }
 

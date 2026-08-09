@@ -1,6 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import { api } from "@/lib/axios";
-import type { AttachmentSchema } from "@/types";
+import type { AttachmentSchema, PaginatedResponse } from "@/types";
 
 export function useUploadAttachment() {
   return useMutation({
@@ -48,5 +53,30 @@ export function useDeleteAttachment() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
     },
+  });
+}
+
+export function useGetLibraryAttachments(type?: string, limit: number = 20) {
+  return useInfiniteQuery({
+    queryKey: ["attachments-library", type || "all"],
+    queryFn: async ({ pageParam = 0 }) => {
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: pageParam.toString(),
+      });
+      if (type) {
+        params.append("type", type);
+      }
+      const { data } = await api.get<PaginatedResponse<AttachmentSchema>>(
+        `/agent/attachments?${params.toString()}`,
+      );
+      return data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.offset + lastPage.limit : undefined,
+    initialPageParam: 0,
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }

@@ -190,6 +190,14 @@ export type ExtendedFileUIPart = FileUIPart & {
 export interface AttachmentsContext {
   files: ExtendedFileUIPart[];
   add: (files: File[] | FileList) => void;
+  addExisting: (
+    attachments: {
+      id: string;
+      filename: string;
+      mimeType: string;
+      size?: number;
+    }[],
+  ) => void;
   remove: (id: string) => void;
   clear: () => void;
   update: (id: string, updates: Partial<ExtendedFileUIPart>) => void;
@@ -290,6 +298,32 @@ export const PromptInputProvider = ({
     ]);
   }, []);
 
+  const addExisting = useCallback(
+    (
+      attachments: {
+        id: string;
+        filename: string;
+        mimeType: string;
+        size?: number;
+      }[],
+    ) => {
+      if (attachments.length === 0) return;
+      setAttachmentFiles((prev) => [
+        ...prev,
+        ...attachments.map((att) => ({
+          id: nanoid(), // Keep UI ID separate
+          filename: att.filename,
+          mediaType: att.mimeType,
+          type: "file" as const,
+          uploadedId: att.id,
+          progress: 100,
+          url: `/agent/attachments/${att.id}/content`,
+        })),
+      ]);
+    },
+    [],
+  );
+
   const remove = useCallback((id: string) => {
     setAttachmentFiles((prev) => {
       const found = prev.find((f) => f.id === id);
@@ -346,6 +380,7 @@ export const PromptInputProvider = ({
   const attachments = useMemo<AttachmentsContext>(
     () => ({
       add,
+      addExisting,
       clear,
       update,
       fileInputRef,
@@ -654,6 +689,32 @@ export const PromptInput = ({
     [accept, maxFileSize, maxFiles, matchesAccept, onError],
   );
 
+  const addExistingLocal = useCallback(
+    (
+      attachments: {
+        id: string;
+        filename: string;
+        mimeType: string;
+        size?: number;
+      }[],
+    ) => {
+      if (attachments.length === 0) return;
+      setItems((prev) => [
+        ...prev,
+        ...attachments.map((att) => ({
+          id: nanoid(),
+          filename: att.filename,
+          mediaType: att.mimeType,
+          type: "file" as const,
+          uploadedId: att.id,
+          progress: 100,
+          url: `/agent/attachments/${att.id}/content`,
+        })),
+      ]);
+    },
+    [],
+  );
+
   const updateLocal = useCallback(
     (id: string, updates: Partial<ExtendedFileUIPart>) => {
       setItems((prev) =>
@@ -740,6 +801,9 @@ export const PromptInput = ({
   );
 
   const add = usingProvider ? addWithProviderValidation : addLocal;
+  const addExisting = usingProvider
+    ? controller.attachments.addExisting
+    : addExistingLocal;
   const remove = usingProvider ? controller.attachments.remove : removeLocal;
   const openFileDialog = usingProvider
     ? controller.attachments.openFileDialog
@@ -891,6 +955,7 @@ export const PromptInput = ({
   const attachmentsCtx = useMemo<AttachmentsContext>(
     () => ({
       add,
+      addExisting,
       clear: clearAttachments,
       update,
       fileInputRef: inputRef,
@@ -898,7 +963,7 @@ export const PromptInput = ({
       openFileDialog,
       remove,
     }),
-    [files, add, remove, clearAttachments, update, openFileDialog],
+    [files, add, addExisting, remove, clearAttachments, update, openFileDialog],
   );
 
   const refsCtx = useMemo<ReferencedSourcesContext>(
