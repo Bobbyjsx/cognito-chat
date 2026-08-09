@@ -1235,8 +1235,7 @@ export const PromptInputButton = ({
 
   return (
     <Tooltip>
-      {/* @ts-expect-error: asChild requires valid React node */}
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipTrigger render={button} />
       <TooltipContent side={side}>
         {tooltipContent}
         {shortcut && (
