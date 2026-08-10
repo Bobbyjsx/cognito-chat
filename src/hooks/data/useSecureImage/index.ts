@@ -25,6 +25,7 @@ export function useSecureImage(src: string | null) {
 
     let isMounted = true;
     let urlToRevoke: string | null = null;
+    setObjectUrl(null); // Clear old image immediately to prevent flashes
     setLoading(true);
     setError(false);
 

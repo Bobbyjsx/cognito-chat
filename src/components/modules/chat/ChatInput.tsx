@@ -13,7 +13,6 @@ import {
   usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { acceptFromAllowedTypes } from "@/lib/attachments";
 import type { FileUIPart } from "ai";
@@ -28,15 +27,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Monitor, Image as ImageIcon } from "lucide-react";
+import { Monitor, Image as ImageIcon, Plus } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (
-    message: string,
+    text: string,
     model?: string,
     reasoning?: string,
     attachmentIds?: string[],
     files?: FileUIPart[],
+    attachmentMeta?: Record<string, { mimeType: string; filename: string }>,
   ) => void;
   onStop?: () => void;
   status: ChatStatus;
@@ -44,15 +44,7 @@ interface ChatInputProps {
   onSelectModel: (model: string) => void;
   selectedReasoning: string;
   onSelectReasoning: (reasoning: string) => void;
-  /** Only show quick-prompt chips on empty / new chats. */
-  showSuggestions?: boolean;
 }
-
-const QUICK_PROMPTS = [
-  "Explain quantum computing simply",
-  "Write a Python script for data parsing",
-  "Summarize the latest AI advancements",
-];
 
 function AttachFilesButton({ disabled }: { disabled?: boolean }) {
   const { openFileDialog, addExisting } = usePromptInputAttachments();
@@ -73,16 +65,22 @@ function AttachFilesButton({ disabled }: { disabled?: boolean }) {
             />
           }
         >
-          <PaperclipIcon className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={openFileDialog}>
-            <Monitor className="mr-2 h-4 w-4" />
+        <DropdownMenuContent align="start" className="w-auto min-w-[200px]">
+          <DropdownMenuItem
+            onClick={openFileDialog}
+            className="whitespace-nowrap"
+          >
+            <Monitor className="mr-2 h-4 w-4 shrink-0" />
             Upload from Device
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setLibraryOpen(true)}>
-            <ImageIcon className="mr-2 h-4 w-4" />
-            Choose from App Gallery
+          <DropdownMenuItem
+            onClick={() => setLibraryOpen(true)}
+            className="whitespace-nowrap"
+          >
+            <ImageIcon className="mr-2 h-4 w-4 shrink-0" />
+            Choose from Library
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -106,7 +104,6 @@ export function ChatInput({
   onSelectModel,
   selectedReasoning,
   onSelectReasoning,
-  showSuggestions = false,
 }: ChatInputProps) {
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
   const { isLoading: isProfileLoading } = useProfile();
@@ -159,6 +156,19 @@ export function ChatInput({
       .map((f) => f.uploadedId)
       .filter(Boolean) as string[];
 
+    const attachmentMeta: Record<
+      string,
+      { mimeType: string; filename: string }
+    > = {};
+    message.files.forEach((f) => {
+      if (f.uploadedId) {
+        attachmentMeta[f.uploadedId] = {
+          mimeType: f.mediaType || "application/octet-stream",
+          filename: f.filename || `Attachment ${f.uploadedId}`,
+        };
+      }
+    });
+
     // Only pass files to AI SDK if they weren't manually uploaded
     const unuploadedFiles = message.files.filter((f) => !f.uploadedId);
 
@@ -168,32 +178,17 @@ export function ChatInput({
       selectedReasoning,
       attachmentIds,
       unuploadedFiles,
+      attachmentMeta,
     );
   };
 
   return (
     <div className="bg-background/80 shrink-0 border-t border-[rgba(0,0,0,0.06)] px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-4 md:p-6 md:pb-6">
       <div className="relative mx-auto w-full max-w-[800px] space-y-2.5 sm:space-y-3">
-        {showSuggestions && !isBusy && (
-          <Suggestions className="w-full">
-            {QUICK_PROMPTS.map((prompt) => (
-              <Suggestion
-                key={prompt}
-                suggestion={prompt}
-                onClick={(value) =>
-                  onSend(value, selectedModel, selectedReasoning)
-                }
-                disabled={isBusy}
-                className="bg-surface-container-low text-gray-medium hover:text-on-surface max-w-[min(100vw-3rem,20rem)] truncate border-[rgba(0,0,0,0.06)] transition-all duration-200 hover:border-[rgba(0,0,0,0.12)]"
-              />
-            ))}
-          </Suggestions>
-        )}
-
         <PromptInputProvider>
           <PromptInput
             onSubmit={handleSubmit}
-            className="ambient-shadow w-full overflow-hidden rounded-xl border-[rgba(0,0,0,0.06)] bg-white transition-all duration-200 focus-within:border-[rgba(0,0,0,0.15)] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.04)]"
+            className="ambient-shadow bg-surface-container-low w-full overflow-hidden rounded-[24px] border border-[rgba(0,0,0,0.06)] transition-all duration-200 focus-within:border-[rgba(0,0,0,0.15)] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.04)]"
             accept={attachmentsEnabled ? accept : undefined}
             multiple
             maxFiles={maxFiles}
@@ -203,12 +198,12 @@ export function ChatInput({
             <PromptInputBody>
               <AttachmentChips />
               <PromptInputTextarea
-                placeholder="Ask Cognito anything..."
+                placeholder="Ask anything"
                 disabled={isBusy}
                 className="font-body-md text-on-surface placeholder:text-gray-medium max-h-[40vh] min-h-[52px] px-3 py-2.5 focus:outline-none sm:min-h-[64px] sm:px-4 sm:py-3"
               />
             </PromptInputBody>
-            <PromptInputFooter className="bg-surface-container-lowest flex flex-wrap items-center justify-between gap-2 border-t border-[rgba(0,0,0,0.04)] px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5">
+            <PromptInputFooter className="bg-surface-container-low flex flex-wrap items-center justify-between gap-2 border-t border-[rgba(0,0,0,0.04)] px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5">
               {attachmentsEnabled && <AttachFilesButton disabled={isBusy} />}
               <DictationToolbar
                 selectedModel={selectedModel}
