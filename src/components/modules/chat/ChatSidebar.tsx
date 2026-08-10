@@ -4,23 +4,30 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   History,
   Loader2,
-  Plus,
   Search,
   Settings,
   Trash2,
   X,
+  Image as ImageIcon,
+  PanelLeftClose,
+  PanelLeft,
+  SquarePen,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/logo";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { IconTooltipButton } from "@/components/ui/icon-tooltip-button";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useDeleteSession,
   useGetSessions,
 } from "@/hooks/data/useChats/useChats";
 import { cn } from "@/lib/utils";
+import { GlobalSearchModal } from "./GlobalSearchModal";
 
 interface ChatSidebarProps {
   activeSessionId?: string | null;
@@ -85,33 +92,30 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [isDesktopOpen, setIsDesktopOpen] = useState(true);
 
-  // Debounce search query input by 300ms
+  // Global shortcut for Cmd+K / Ctrl+K
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchInput);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchModalOpen((open) => !open);
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetSessions(debouncedQuery);
+    useGetSessions("");
   const sessions =
     data?.pages
       .flatMap((page) => page?.items || [])
       .filter((session) => Boolean(session)) || [];
   const deleteSessionMutation = useDeleteSession();
 
-  // Selecting a conversation navigates to an uncached route, which re-mounts
-  // the whole chat tree and resets the sidebar list scroll to the top. Poll
-  // briefly for the active session row and scroll it into view if it fell
-  // out of the visible area. The list container is re-resolved on every
-  // attempt because the DOM node is replaced during the re-mount — a scroll
-  // that lands on the pre-re-mount tree is lost, so keep retrying until the
-  // row is actually visible.
   useEffect(() => {
     if (!activeSessionId) return;
 
@@ -146,6 +150,13 @@ export function ChatSidebar({
     return () => cancelAnimationFrame(raf);
   }, [activeSessionId]);
 
+  const rowVirtualizer = useVirtualizer({
+    count: sessions.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 42,
+    overscan: 10,
+  });
+
   const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -168,9 +179,11 @@ export function ChatSidebar({
     onOpenChange?.(false);
   };
 
-  const sidebarContent = (
-    <div className="flex h-full w-full flex-col p-4">
-      <div className="mb-4 flex items-center justify-between px-1">
+  // ─── Collapsed rail (icon-only) ────────────────────────────────────────────
+  const collapsedContent = (
+    <div className="flex h-full w-full flex-col items-center gap-1 py-3">
+      {/* Logo */}
+      <div className="mb-2 flex items-center justify-center">
         <Link
           href="/chat"
           scroll={false}
@@ -178,95 +191,206 @@ export function ChatSidebar({
             onNewChat?.();
             closeSidebar();
           }}
-          className="flex items-center gap-2"
+          aria-label="Go to chat"
+        >
+          <Logo logoOnly />
+        </Link>
+      </div>
+
+      {/* Top actions */}
+      <IconTooltipButton
+        label="New chat"
+        side="right"
+        onClick={() => {
+          onNewChat?.();
+          router.push("/chat");
+          closeSidebar();
+        }}
+      >
+        <SquarePen className="h-5 w-5" />
+      </IconTooltipButton>
+
+      <IconTooltipButton
+        label="Search"
+        shortcut="⌘K"
+        side="right"
+        onClick={() => setSearchModalOpen(true)}
+      >
+        <Search className="h-5 w-5" />
+      </IconTooltipButton>
+
+      <IconTooltipButton
+        label="Library"
+        side="right"
+        onClick={() => router.push("/library")}
+        className={cn(
+          pathname.startsWith("/library") && "bg-muted text-foreground",
+        )}
+      >
+        <ImageIcon className="h-5 w-5" />
+      </IconTooltipButton>
+
+      {/* Expand */}
+      <div className="mt-auto flex flex-col items-center gap-1 pb-1">
+        <IconTooltipButton
+          label="Settings"
+          side="right"
+          onClick={() => router.push("/settings")}
+          className={cn(pathname === "/settings" && "bg-muted text-foreground")}
+        >
+          <Settings className="h-5 w-5" />
+        </IconTooltipButton>
+
+        <IconTooltipButton
+          label="Expand sidebar"
+          side="right"
+          onClick={() => setIsDesktopOpen(true)}
+        >
+          <PanelLeft className="h-5 w-5" />
+        </IconTooltipButton>
+      </div>
+    </div>
+  );
+
+  // ─── Expanded sidebar ───────────────────────────────────────────────────────
+  const expandedContent = (
+    <div className="flex h-full w-full flex-col px-3 py-3">
+      {/* Header row: logo + actions */}
+      <div className="mb-2 flex items-center justify-between px-1">
+        <Link
+          href="/chat"
+          scroll={false}
+          onClick={() => {
+            onNewChat?.();
+            closeSidebar();
+          }}
+          className="flex items-center"
         >
           <Logo />
         </Link>
-        {onOpenChange && (
-          <button
-            type="button"
-            onClick={closeSidebar}
-            className="text-gray-medium hover:bg-surface-container hover:text-on-surface rounded-lg p-1.5 md:hidden"
-            aria-label="Close menu"
+
+        <div className="flex items-center gap-0.5">
+          <IconTooltipButton
+            label="Search"
+            shortcut="⌘K"
+            side="bottom"
+            onClick={() => setSearchModalOpen(true)}
           >
-            <X className="h-5 w-5" />
-          </button>
-        )}
+            <Search className="h-4 w-4" />
+          </IconTooltipButton>
+
+          {/* Mobile: close */}
+          {onOpenChange && (
+            <IconTooltipButton
+              label="Close sidebar"
+              side="bottom"
+              className="md:hidden"
+              onClick={closeSidebar}
+            >
+              <X className="h-4 w-4" />
+            </IconTooltipButton>
+          )}
+
+          {/* Desktop: collapse */}
+          <IconTooltipButton
+            label="Collapse sidebar"
+            side="bottom"
+            className="hidden md:inline-flex"
+            onClick={() => setIsDesktopOpen(false)}
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </IconTooltipButton>
+        </div>
       </div>
 
-      <Link
-        href="/chat"
-        scroll={false}
-        onClick={(e) => {
-          onNewChat?.();
-          closeSidebar();
-        }}
-        className="bg-primary font-label-md text-label-md text-on-primary mb-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-medium shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 hover:bg-[#3d3f42] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-[0.98]"
-      >
-        <Plus className="h-[18px] w-[18px]" />
-        New chat
-      </Link>
-
-      {/* Lightning Fast Search Input */}
-      <div className="relative mb-4">
-        <Search className="text-gray-medium absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search chats..."
-          className="text-on-surface placeholder:text-gray-medium/70 focus:border-on-surface/30 w-full rounded-lg border border-[rgba(0,0,0,0.06)] bg-white py-1.5 pr-8 pl-8 text-xs transition-all duration-200 focus:outline-none"
-        />
-        {searchInput && (
-          <button
-            type="button"
-            onClick={() => setSearchInput("")}
-            className="text-gray-medium hover:text-on-surface absolute top-1/2 right-2.5 -translate-y-1/2"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
+      {/* New chat button */}
+      <div className="mb-3 px-1">
+        <Button
+          variant="ghost"
+          onClick={() => {
+            onNewChat?.();
+            router.push("/chat");
+            closeSidebar();
+          }}
+          className="text-muted-foreground hover:text-foreground w-full justify-start gap-2.5 font-medium"
+          aria-label="New Chat"
+        >
+          <SquarePen className="h-4 w-4 shrink-0" />
+          New chat
+        </Button>
       </div>
 
+      {/* Nav links */}
+      <div className="mb-4 space-y-0.5 px-1">
+        <Link
+          href="/library"
+          scroll={false}
+          onClick={closeSidebar}
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            "w-full justify-start gap-2.5 font-medium",
+            pathname.startsWith("/library")
+              ? "bg-muted text-foreground font-semibold"
+              : "text-muted-foreground",
+          )}
+        >
+          <ImageIcon className="h-4 w-4 shrink-0" />
+          Library
+        </Link>
+      </div>
+
+      {/* Section label */}
+      <div className="mb-1 px-2">
+        <span className="text-muted-foreground/60 text-[10px] font-semibold tracking-widest uppercase">
+          Recent
+        </span>
+      </div>
+
+      {/* Session list */}
       <div
         ref={listRef}
         data-sidebar-session-list
-        className="flex-grow space-y-1 overflow-y-auto pr-1"
+        className="flex-1 overflow-y-auto pr-0.5"
       >
-        <div className="text-gray-medium flex items-center justify-between px-2 pb-2 text-[11px] font-medium tracking-wider uppercase">
-          <span>
-            {debouncedQuery ? "Search results" : "Recent conversations"}
-          </span>
-        </div>
-
         {isLoading ? (
           <RecentConversationsSkeleton />
         ) : !sessions || sessions.length === 0 ? (
           <div className="text-gray-medium rounded-lg border border-dashed border-[rgba(0,0,0,0.08)] px-3 py-4 text-center text-xs">
-            {debouncedQuery ? "No matching conversations" : "No previous chats"}
+            No previous chats
           </div>
         ) : (
-          <div className="space-y-0.5">
-            <AnimatePresence initial={false}>
-              {sessions.map((session: any, idx: number) => {
-                const sessionTitle =
-                  session.title?.trim() ||
-                  session.lastMessageContent?.trim() ||
-                  "New Conversation";
-                const isActive = activeSessionId === session.id;
-                const isUnread = session.readStatus === "not read" && !isActive;
-                const relativeTime = formatRelativeTime(
-                  session.updatedAt || session.createdAt,
-                );
-                const isDeleting =
-                  deleteSessionMutation.isPending &&
-                  deleteSessionMutation.variables === session.id;
+          <div
+            className="relative w-full"
+            style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+              const session = sessions[virtualItem.index];
+              const idx = virtualItem.index;
+              const sessionTitle =
+                session.title?.trim() ||
+                session.lastMessageContent?.trim() ||
+                "New Conversation";
+              const isActive = activeSessionId === session.id;
+              const isUnread = session.readStatus === "not read" && !isActive;
+              const relativeTime = formatRelativeTime(
+                session.updatedAt || session.createdAt,
+              );
+              const isDeleting =
+                deleteSessionMutation.isPending &&
+                deleteSessionMutation.variables === session.id;
 
-                return (
+              return (
+                <div
+                  key={session.id}
+                  className="absolute top-0 left-0 w-full px-0.5 py-0.5"
+                  style={{
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
                   <Link
                     href={`/chat/${session.id}`}
                     scroll={false}
-                    key={session.id}
                     data-session-id={session.id}
                     prefetch={idx <= 5}
                     onClick={(e) => {
@@ -274,95 +398,106 @@ export function ChatSidebar({
                         e.preventDefault();
                         return;
                       }
-                      // Escape React's transition batching so the active state updates immediately
+                      closeSidebar();
                       setTimeout(() => onSelectSession?.(session.id), 0);
                     }}
                     className={cn(
-                      "group text-body-md relative flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-all duration-200",
+                      "group relative flex h-full w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-150",
                       isActive
-                        ? "text-on-surface border border-[rgba(0,0,0,0.04)] bg-white font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+                        ? "bg-muted text-foreground font-medium"
                         : isUnread
-                          ? "text-on-surface bg-surface-container/60 hover:bg-surface-container font-semibold"
-                          : "text-gray-medium hover:bg-surface-container hover:text-on-surface",
+                          ? "text-foreground bg-muted/60 font-medium"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                       isDeleting && "pointer-events-none opacity-60",
                     )}
                   >
-                    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                       <History
                         className={cn(
-                          "h-4 w-4 shrink-0 transition-colors",
+                          "h-3.5 w-3.5 shrink-0 transition-colors",
                           isActive || isUnread
-                            ? "text-on-surface"
-                            : "text-gray-medium group-hover:text-on-surface",
+                            ? "text-foreground"
+                            : "text-muted-foreground/60 group-hover:text-muted-foreground",
                         )}
                       />
-                      <span className="font-body-md text-body-md truncate">
+                      <span className="truncate text-[13px]">
                         {sessionTitle}
                       </span>
                     </div>
 
                     <div
-                      className="flex shrink-0 items-center gap-1.5"
+                      className="flex shrink-0 items-center gap-1"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {relativeTime && !isDeleting && (
-                        <span className="font-code-sm text-gray-medium/80 group-hover:text-gray-medium text-[10px] group-hover:hidden">
+                        <span className="text-muted-foreground/50 text-[10px] group-hover:hidden">
                           {relativeTime}
                         </span>
                       )}
                       {isUnread && !isDeleting && (
                         <span
                           title="Unread message"
-                          className="bg-primary h-2 w-2 animate-pulse rounded-full group-hover:hidden"
+                          className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full group-hover:hidden"
                         />
                       )}
 
-                      {/* Soft Delete Action Button with Loading State */}
                       <button
                         type="button"
                         disabled={deleteSessionMutation.isPending}
                         onClick={(e) => handleDeleteSession(e, session.id)}
                         title="Delete conversation"
                         className={cn(
-                          "text-gray-medium/70 hover:text-error hover:bg-error/10 rounded p-1 transition-colors",
+                          "text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors",
                           isDeleting
-                            ? "text-error block"
-                            : "block md:hidden md:group-hover:block",
+                            ? "text-destructive block"
+                            : "hidden md:group-hover:block",
                         )}
                       >
                         {isDeleting ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3 w-3" />
                         )}
                       </button>
                     </div>
                   </Link>
-                );
-              })}
-            </AnimatePresence>
-            <InfiniteScroll
-              hasNextPage={hasNextPage}
-              isFetchingNextPage={isFetchingNextPage}
-              fetchNextPage={fetchNextPage}
-            />
+                </div>
+              );
+            })}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${rowVirtualizer.getTotalSize()}px)`,
+              }}
+            >
+              <InfiniteScroll
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                fetchNextPage={fetchNextPage}
+              />
+            </div>
           </div>
         )}
       </div>
 
-      <div className="mt-auto border-t border-[rgba(0,0,0,0.06)] pt-4">
+      {/* Footer */}
+      <div className="border-border mt-auto border-t pt-2">
         <Link
           href="/settings"
           onClick={closeSidebar}
           className={cn(
-            "text-body-md flex w-full items-center gap-2.5 rounded-lg px-3 py-2 transition-colors duration-200",
+            buttonVariants({ variant: "ghost" }),
+            "w-full justify-start gap-2.5 font-medium",
             pathname === "/settings"
-              ? "text-on-surface bg-surface-container font-semibold"
-              : "text-gray-medium hover:bg-surface-container hover:text-on-surface",
+              ? "bg-muted text-foreground font-semibold"
+              : "text-muted-foreground",
           )}
         >
-          <Settings className="h-4 w-4" />
-          <span className="font-body-md text-body-md">Settings</span>
+          <Settings className="h-4 w-4 shrink-0" />
+          Settings
         </Link>
       </div>
     </div>
@@ -370,12 +505,22 @@ export function ChatSidebar({
 
   return (
     <>
+      <GlobalSearchModal
+        open={searchModalOpen}
+        onOpenChange={setSearchModalOpen}
+      />
+
       {/* Desktop fixed sidebar */}
-      <nav className="bg-surface-container-low relative z-20 hidden h-dvh h-screen w-64 shrink-0 flex-col border-r border-[rgba(0,0,0,0.06)] md:flex">
-        {sidebarContent}
+      <nav
+        className={cn(
+          "bg-sidebar border-border relative z-20 hidden h-dvh shrink-0 flex-col border-r transition-[width] duration-300 ease-in-out md:flex",
+          isDesktopOpen ? "w-64" : "w-[60px]",
+        )}
+      >
+        {isDesktopOpen ? expandedContent : collapsedContent}
       </nav>
 
-      {/* Mobile drawer with slide-over overlay */}
+      {/* Mobile slide-over */}
       <AnimatePresence>
         {open && (
           <>
@@ -392,9 +537,9 @@ export function ChatSidebar({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-surface-container-low fixed inset-y-0 left-0 z-50 flex h-dvh h-full w-72 max-w-[85vw] flex-col border-r border-[rgba(0,0,0,0.08)] shadow-2xl md:hidden"
+              className="bg-sidebar border-border fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[85vw] flex-col border-r shadow-2xl md:hidden"
             >
-              {sidebarContent}
+              {expandedContent}
             </motion.nav>
           </>
         )}

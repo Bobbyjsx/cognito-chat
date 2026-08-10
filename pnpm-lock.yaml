@@ -101,6 +101,9 @@ importers:
       react-hook-form:
         specifier: ^7.83.0
         version: 7.83.0(react@19.2.4)
+      react-plock:
+        specifier: ^3.6.1
+        version: 3.6.1(react@19.2.4)
       shadcn:
         specifier: ^4.16.0
         version: 4.16.0(typescript@5.9.3)
@@ -4553,6 +4556,11 @@ packages:
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
+
+  react-plock@3.6.1:
+    resolution: {integrity: sha512-6THvSeSnPTfBBc2tLGKkZnXbTDvFyOIWD+NnUkMYYRMQmYjYgHcdrRaC25Q4DxYCi5+dDTkGN6jQvJn40FkYGA==}
+    peerDependencies:
+      react: ^18.2.0 || ^19.0.0
 
   react-remove-scroll-bar@2.3.8:
     resolution: {integrity: sha512-9r+yi9+mgU33AKcj6IbT9oRCO78WriSj6t/cF8DWBZJ9aOGPOTEDvdUDz1FwKim7QXWwmHqtdHnRJfhAxEG46Q==}
@@ -10009,6 +10017,10 @@ snapshots:
       react: 19.2.4
 
   react-is@16.13.1: {}
+
+  react-plock@3.6.1(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   react-remove-scroll-bar@2.3.8(@types/react@19.2.17)(react@19.2.4):
     dependencies:

@@ -48,6 +48,15 @@ export const OptimizedImage = ({
   const [imgLoading, setImgLoading] = useState(!isPriority);
   const [imgError, setImgError] = useState(false);
 
+  React.useEffect(() => {
+    if (!isPriority) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setImgLoading(true);
+    }
+
+    setImgError(false);
+  }, [src, isPriority]);
+
   const isLoading = secureLoading || imgLoading;
   const error = secureError || imgError;
 

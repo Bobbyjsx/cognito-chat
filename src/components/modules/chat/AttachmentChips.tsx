@@ -9,6 +9,8 @@ import {
 import { isPreviewableType } from "@/lib/attachments";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/axios";
+import { OptimizedImage } from "@/components/ui/optimized-image";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AttachmentSchema } from "@/types";
 
 function DonutProgress({ progress }: { progress: number }) {
@@ -51,6 +53,7 @@ function DonutProgress({ progress }: { progress: number }) {
  */
 export function AttachmentChips({ className }: { className?: string }) {
   const { files, remove, update } = usePromptInputAttachments();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     for (const file of files) {
@@ -79,13 +82,17 @@ export function AttachmentChips({ className }: { className?: string }) {
           })
           .then(({ data }) => {
             update(file.id, { uploadedId: data.id, progress: 100 });
+            queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
+            queryClient.invalidateQueries({
+              queryKey: ["attachments-library"],
+            });
           })
           .catch((err) => {
             update(file.id, { error: err.message || "Failed to upload" });
           });
       }
     }
-  }, [files, update]);
+  }, [files, update, queryClient]);
 
   if (files.length === 0) return null;
 
@@ -109,10 +116,12 @@ export function AttachmentChips({ className }: { className?: string }) {
           >
             <div className="relative h-8 w-8 shrink-0">
               {previewable ? (
-                <img
+                <OptimizedImage
                   src={file.url}
                   alt={file.filename ?? "Attachment"}
-                  className="h-full w-full rounded-md object-cover"
+                  fill
+                  containerClassName="h-full w-full rounded-md border-none"
+                  className="rounded-md object-cover"
                 />
               ) : (
                 <span className="bg-surface-container-high text-gray-medium flex h-full w-full items-center justify-center rounded-md">

@@ -53,6 +53,11 @@ export function ChatShell() {
   );
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
   const streamedSessionRef = useRef<string | null>(null);
+  // Holds metadata for attachments sent in the current message so the
+  // optimistic chip renders with the correct contentType immediately.
+  const pendingAttachmentMetaRef = useRef<
+    Record<string, { mimeType: string; filename: string }>
+  >({});
 
   const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
   const activeModel =
@@ -139,6 +144,9 @@ export function ChatShell() {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["chat-session"] });
       queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
+      // Reset so the hydration effect re-runs with fresh attachment data
+      setHydratedSessionId(null);
+      pendingAttachmentMetaRef.current = {};
     },
     onError: (err) => {
       notifyServerError(err, "Streaming error occurred");
@@ -330,20 +338,47 @@ export function ChatShell() {
       reasoning?: string,
       attachmentIds?: string[],
       files?: FileUIPart[],
+      attachmentMeta?: Record<string, { mimeType: string; filename: string }>,
     ) => {
+      if (attachmentMeta) {
+        pendingAttachmentMetaRef.current = {
+          ...pendingAttachmentMetaRef.current,
+          ...attachmentMeta,
+        };
+      }
+
+      // Build rich experimental_attachments for the optimistic message chip.
+      // Prefer metadata we already have in sessionAttachments or pendingAttachmentMetaRef.
+      const optimisticAttachments = (attachmentIds ?? []).map((id) => {
+        const known =
+          sessionAttachments?.find((a) => a.id === id) ??
+          (pendingAttachmentMetaRef.current[id]
+            ? {
+                mimeType: pendingAttachmentMetaRef.current[id].mimeType,
+                filename: pendingAttachmentMetaRef.current[id].filename,
+                id,
+              }
+            : null);
+        return {
+          type: "file",
+          url: `/agent/attachments/${id}/content`,
+          name: known?.filename ?? `Attachment ${id}`,
+          filename: known?.filename ?? `Attachment ${id}`,
+          contentType: known?.mimeType,
+          mediaType: known?.mimeType,
+        };
+      });
+
+      const allFiles = [...(files || [])];
+      for (const opt of optimisticAttachments) {
+        // cast because optimisticAttachments uses mediaType which matches FileUIPart
+        allFiles.push(opt as any);
+      }
+
       sendMessage(
         {
           text,
-          ...(files && files.length > 0 ? { files } : {}),
-          ...(attachmentIds && attachmentIds.length > 0
-            ? {
-                experimental_attachments: attachmentIds.map((id) => ({
-                  url: `/agent/attachments/${id}/content`,
-                  // We don't have the exact content type here easily, but the backend handles it.
-                  name: `Attachment ${id}`,
-                })),
-              }
-            : {}),
+          ...(allFiles.length > 0 ? { files: allFiles } : {}),
         },
         {
           body: {
@@ -357,7 +392,13 @@ export function ChatShell() {
         },
       );
     },
-    [sendMessage, activeModel, activeReasoning, activeSessionId],
+    [
+      sendMessage,
+      activeModel,
+      activeReasoning,
+      activeSessionId,
+      sessionAttachments,
+    ],
   );
 
   const handleNewChat = useCallback(() => {
@@ -395,13 +436,6 @@ export function ChatShell() {
           !sessionData ||
           sessionData.id !== routeSessionId)));
 
-  const showSuggestions =
-    isNewChatRoute &&
-    !pendingSessionId &&
-    !streamSessionId &&
-    aiMessages.length === 0 &&
-    !isStreaming;
-
   return (
     <div className="bg-background font-body-md text-body-md text-on-surface flex h-full overflow-hidden">
       <ChatSidebar
@@ -423,6 +457,9 @@ export function ChatShell() {
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           fetchNextPage={fetchNextPage}
+          onSuggestionClick={(text) =>
+            handleSendMessage(text, activeModel, activeReasoning)
+          }
         />
 
         <ChatInput
@@ -433,7 +470,6 @@ export function ChatShell() {
           onSelectModel={handleSelectModel}
           selectedReasoning={activeReasoning}
           onSelectReasoning={handleSelectReasoning}
-          showSuggestions={showSuggestions}
         />
       </main>
     </div>

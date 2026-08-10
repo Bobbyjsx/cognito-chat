@@ -190,6 +190,14 @@ export type ExtendedFileUIPart = FileUIPart & {
 export interface AttachmentsContext {
   files: ExtendedFileUIPart[];
   add: (files: File[] | FileList) => void;
+  addExisting: (
+    attachments: {
+      id: string;
+      filename: string;
+      mimeType: string;
+      size?: number;
+    }[],
+  ) => void;
   remove: (id: string) => void;
   clear: () => void;
   update: (id: string, updates: Partial<ExtendedFileUIPart>) => void;
@@ -290,6 +298,32 @@ export const PromptInputProvider = ({
     ]);
   }, []);
 
+  const addExisting = useCallback(
+    (
+      attachments: {
+        id: string;
+        filename: string;
+        mimeType: string;
+        size?: number;
+      }[],
+    ) => {
+      if (attachments.length === 0) return;
+      setAttachmentFiles((prev) => [
+        ...prev,
+        ...attachments.map((att) => ({
+          id: nanoid(), // Keep UI ID separate
+          filename: att.filename,
+          mediaType: att.mimeType,
+          type: "file" as const,
+          uploadedId: att.id,
+          progress: 100,
+          url: `/agent/attachments/${att.id}/content`,
+        })),
+      ]);
+    },
+    [],
+  );
+
   const remove = useCallback((id: string) => {
     setAttachmentFiles((prev) => {
       const found = prev.find((f) => f.id === id);
@@ -346,6 +380,7 @@ export const PromptInputProvider = ({
   const attachments = useMemo<AttachmentsContext>(
     () => ({
       add,
+      addExisting,
       clear,
       update,
       fileInputRef,
@@ -567,6 +602,8 @@ export const PromptInput = ({
   >([]);
 
   // Keep a ref to files for cleanup on unmount (avoids stale closure)
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
   const filesRef = useRef(files);
 
   useEffect(() => {
@@ -650,6 +687,32 @@ export const PromptInput = ({
       });
     },
     [accept, maxFileSize, maxFiles, matchesAccept, onError],
+  );
+
+  const addExistingLocal = useCallback(
+    (
+      attachments: {
+        id: string;
+        filename: string;
+        mimeType: string;
+        size?: number;
+      }[],
+    ) => {
+      if (attachments.length === 0) return;
+      setItems((prev) => [
+        ...prev,
+        ...attachments.map((att) => ({
+          id: nanoid(),
+          filename: att.filename,
+          mediaType: att.mimeType,
+          type: "file" as const,
+          uploadedId: att.id,
+          progress: 100,
+          url: `/agent/attachments/${att.id}/content`,
+        })),
+      ]);
+    },
+    [],
   );
 
   const updateLocal = useCallback(
@@ -738,6 +801,9 @@ export const PromptInput = ({
   );
 
   const add = usingProvider ? addWithProviderValidation : addLocal;
+  const addExisting = usingProvider
+    ? controller.attachments.addExisting
+    : addExistingLocal;
   const remove = usingProvider ? controller.attachments.remove : removeLocal;
   const openFileDialog = usingProvider
     ? controller.attachments.openFileDialog
@@ -775,12 +841,27 @@ export const PromptInput = ({
       return;
     }
 
+    const onDragEnter = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+        dragCounter.current++;
+        if (dragCounter.current === 1) setIsDragging(true);
+      }
+    };
     const onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
     };
+    const onDragLeave = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        dragCounter.current--;
+        if (dragCounter.current === 0) setIsDragging(false);
+      }
+    };
     const onDrop = (e: DragEvent) => {
+      dragCounter.current = 0;
+      setIsDragging(false);
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
@@ -788,10 +869,14 @@ export const PromptInput = ({
         add(e.dataTransfer.files);
       }
     };
+    form.addEventListener("dragenter", onDragEnter);
     form.addEventListener("dragover", onDragOver);
+    form.addEventListener("dragleave", onDragLeave);
     form.addEventListener("drop", onDrop);
     return () => {
+      form.removeEventListener("dragenter", onDragEnter);
       form.removeEventListener("dragover", onDragOver);
+      form.removeEventListener("dragleave", onDragLeave);
       form.removeEventListener("drop", onDrop);
     };
   }, [add, globalDrop]);
@@ -801,12 +886,27 @@ export const PromptInput = ({
       return;
     }
 
+    const onDragEnter = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+        dragCounter.current++;
+        if (dragCounter.current === 1) setIsDragging(true);
+      }
+    };
     const onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
     };
+    const onDragLeave = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        dragCounter.current--;
+        if (dragCounter.current === 0) setIsDragging(false);
+      }
+    };
     const onDrop = (e: DragEvent) => {
+      dragCounter.current = 0;
+      setIsDragging(false);
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
@@ -814,10 +914,14 @@ export const PromptInput = ({
         add(e.dataTransfer.files);
       }
     };
+    document.addEventListener("dragenter", onDragEnter);
     document.addEventListener("dragover", onDragOver);
+    document.addEventListener("dragleave", onDragLeave);
     document.addEventListener("drop", onDrop);
     return () => {
+      document.removeEventListener("dragenter", onDragEnter);
       document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("dragleave", onDragLeave);
       document.removeEventListener("drop", onDrop);
     };
   }, [add, globalDrop]);
@@ -851,6 +955,7 @@ export const PromptInput = ({
   const attachmentsCtx = useMemo<AttachmentsContext>(
     () => ({
       add,
+      addExisting,
       clear: clearAttachments,
       update,
       fileInputRef: inputRef,
@@ -858,7 +963,7 @@ export const PromptInput = ({
       openFileDialog,
       remove,
     }),
-    [files, add, remove, clearAttachments, update, openFileDialog],
+    [files, add, addExisting, remove, clearAttachments, update, openFileDialog],
   );
 
   const refsCtx = useMemo<ReferencedSourcesContext>(
@@ -1001,7 +1106,15 @@ export const PromptInput = ({
         ref={formRef}
         {...props}
       >
-        <InputGroup className="overflow-hidden">{children}</InputGroup>
+        <InputGroup
+          className={cn(
+            "overflow-hidden transition-all duration-200",
+            isDragging &&
+              "ring-primary/50 bg-surface-container-low scale-[1.01] shadow-md ring-2",
+          )}
+        >
+          {children}
+        </InputGroup>
       </form>
     </>
   );
