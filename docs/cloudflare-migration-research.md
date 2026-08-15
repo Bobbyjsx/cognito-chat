@@ -4,7 +4,7 @@
 **Branch:** `feat/cloudflare-workers-migration`
 **Constraint:** Cloudflare **Workers Free** plan (not Vercel, not Pages Functions / Edge)
 
-This is a research note, not an implementation. The previous attempt (`Migrate-to-Cloudflare`, reverted in `revert-to-vercel`) used the **wrong adapter**. Do not repeat that path.
+Phase 0/1 has been executed on this branch. Measured results are in §14. The previous attempt (`Migrate-to-Cloudflare`, reverted in `revert-to-vercel`) used the **wrong adapter**. Do not repeat that path.
 
 ---
 
@@ -306,7 +306,31 @@ Manual matrix on `pnpm preview` (Wrangler, not `next dev`):
 
 ---
 
-## 13. Sources
+## 13. Phase 0/1 results (2026-08-15)
+
+Adapter: `@opennextjs/cloudflare@1.20.2` + `wrangler@4.123.0` on Node **22.23.2** (Wrangler 4 refuses Node 20).
+
+| Check                                                         | Result                                                                    |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `proxy.ts` OpenNext build                                     | **Fail** — `Node.js middleware is not currently supported`                |
+| `middleware.ts` (Edge, cookie-only) + `requireAuth()` layouts | **Build succeeds** (Next deprecation warning only)                        |
+| Worker size, with server Sentry                               | 19662 KiB / **gzip 4301 KiB (4.20 MiB)** — over 3 MiB                     |
+| Worker size, Sentry stripped from Worker (`CLOUDFLARE=1`)     | 12959 KiB / **gzip 2791 KiB (2.73 MiB)** — **under Free cap by ~280 KiB** |
+| `wrangler dev`                                                | Ready on `:8787`                                                          |
+| `GET /login`, `/register`, `/forgot-password`                 | 200 HTML                                                                  |
+| `GET /`, `/chat`, `/settings` (no cookie)                     | 307 → `/login` (middleware, 5–7 ms)                                       |
+| `GET /chat` + junk `authjs.session-token`                     | 307 → `/login` via `requireAuth()` (invalid JWE, expected)                |
+| `GET /api/auth/providers`                                     | 200 JSON, Credentials provider live                                       |
+| Static `/_next/static/*.css` and Geist `.woff2`               | 200 from Assets                                                           |
+| One-time `WebAssembly.compile()` error on isolate start       | Did not fail subsequent requests. Investigate before production.          |
+
+**Free-plan size gate: pass** after dropping server/edge Sentry from the Worker. Client Sentry (`instrumentation-client.ts`) is unchanged.
+
+**Still open before cutover:** login against real FastAPI, chat SSE, CPU p99 under 10 ms, the WASM startup error, CORS on Atlas for `*.workers.dev`.
+
+---
+
+## 14. Sources
 
 - [Cloudflare: Next.js on Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)
 - [OpenNext Cloudflare](https://opennext.js.org/cloudflare)
