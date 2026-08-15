@@ -1,0 +1,2 @@
+# Used by `opennextjs-cloudflare preview` / wrangler to pick Next.js .env files.
+NEXTJS_ENV=development

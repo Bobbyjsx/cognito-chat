@@ -1,12 +1,17 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+
+const isCloudflareBuild = process.env.CLOUDFLARE === "1";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
   poweredByHeader: false,
   compress: true,
+  env: {
+    CLOUDFLARE: process.env.CLOUDFLARE ?? "",
+  },
 
-  // Tree-shake barrel imports from large packages (Next.js standard)
   experimental: {
     optimizePackageImports: [
       "lucide-react",
@@ -19,14 +24,14 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    unoptimized: isCloudflareBuild,
     formats: ["image/avif", "image/webp"],
   },
 
-  // Avoid shipping source maps to clients in production
   productionBrowserSourceMaps: false,
 };
 
-export default withSentryConfig(nextConfig, {
+const config = withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
@@ -63,3 +68,7 @@ export default withSentryConfig(nextConfig, {
     },
   },
 });
+
+export default isCloudflareBuild ? nextConfig : config;
+
+initOpenNextCloudflareForDev();
