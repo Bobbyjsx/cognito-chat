@@ -1,13 +1,13 @@
 import { auth } from "@/auth";
 import { Analytics } from "@/lib/analytics";
-import { apiUrl, atlasHeaders } from "@/lib/api-config";
-import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { apiUrl } from "@/lib/api-config";
 import {
   extractTextFromMessage,
   MAX_MESSAGE_LENGTH,
   pipeBackendStreamToUIMessage,
   safeErrorDetail,
 } from "@/lib/chat-stream";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 
 function jsonError(detail: string, status: number, code?: string) {
   return new Response(JSON.stringify({ detail, ...(code ? { code } : {}) }), {
@@ -62,11 +62,11 @@ export async function POST(req: Request) {
   try {
     backendResponse = await fetch(url, {
       method: "POST",
-      headers: atlasHeaders({
+      headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.accessToken}`,
         Accept: "text/event-stream",
-      }),
+      },
       body: JSON.stringify({
         message: lastMessage,
         model,

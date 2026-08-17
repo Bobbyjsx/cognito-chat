@@ -71,7 +71,7 @@ export class AuthManager {
     }
   }
 
-  async applyAuthToken(config: InternalAxiosRequestConfig) {
+  async applyAuthTokenToReq(config: InternalAxiosRequestConfig) {
     const session = await this.getAuthSession();
     if (!session?.accessToken) return;
 

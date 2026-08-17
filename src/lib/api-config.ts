@@ -1,53 +1,25 @@
-/**
- * Backend / Atlas gateway configuration.
- *
- * Atlas routes: `{gateway}/{service}/{path}`
- * Cognito example: `https://atlas.example.com/cognito/auth/login`
- *
- * Gateway checks header `X-Atlas-Api-Key` against env `API_KEY_COGNITO`
- * (GSM secret: `api-key-cognito`). User JWT still goes in `Authorization`.
- *
- * Env (either name works; prefer server-only `ATLAS_API_KEY` when possible):
- * - NEXT_PUBLIC_API_URL — service base, must include `/cognito` on Atlas
- * - ATLAS_API_KEY or NEXT_PUBLIC_ATLAS_API_KEY — must equal gateway API_KEY_COGNITO
- */
-
-/** Cognito service base URL (direct API or Atlas-prefixed). */
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
   "http://localhost:8000";
-
-/** Canonical header name (HTTP is case-insensitive). */
-export const ATLAS_API_KEY_HEADER = "X-Atlas-Api-Key";
-
-/**
- * Resolve Atlas API key from env.
- * Trims whitespace/quotes (common Vercel secret pitfalls).
- * Accepts both ATLAS_API_KEY and NEXT_PUBLIC_ATLAS_API_KEY.
- */
-export function getAtlasApiKey(): string {
-  const raw =
-    process.env.ATLAS_API_KEY || process.env.NEXT_PUBLIC_ATLAS_API_KEY || "";
-  return raw.trim().replace(/^["']|["']$/g, "");
-}
-
-/**
- * Headers required to reach Atlas (+ optional extras).
- * Always set X-Atlas-Api-Key when a key is configured.
- */
-export function atlasHeaders(
-  extra?: Record<string, string>,
-): Record<string, string> {
-  const headers: Record<string, string> = { ...extra };
-  const key = getAtlasApiKey();
-  if (key) {
-    headers[ATLAS_API_KEY_HEADER] = key;
-  }
-  return headers;
-}
 
 /** Absolute URL under the API base (leading slash optional). */
 export function apiUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalized}`;
+}
+
+export const OAUTH_BASE_URL = process.env.NEXT_PUBLIC_OAUTH_SERVICE_URL || ""
+
+export const OAUTH_APP_ID_HEADER = "X-Application-Id";
+
+/** Application client ID / tenant key registered with OAuth Service */
+export const OAUTH_CLIENT_ID = process.env.NEXT_PUBLIC_OAUTH_CLIENT_ID || ""
+
+export function getOAuthClientId(): string {
+  return OAUTH_CLIENT_ID.trim().replace(/^["']|["']$/g, "");
+}
+
+export function oauthUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${OAUTH_BASE_URL}${normalized}`;
 }

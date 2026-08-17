@@ -45,8 +45,8 @@ next-env.d.ts
 .env.sentry-build-plugin
 
 # Wrangler / OpenNext
-.wrangler
-.open-next
+.wrangler/**
+.open-next/**
 .dev.vars
 .dev.vars.*
 !.dev.vars.example

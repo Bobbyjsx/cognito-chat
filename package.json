@@ -83,14 +83,5 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.123.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@sentry/cli",
-      "esbuild",
-      "sharp",
-      "unrs-resolver",
-      "workerd"
-    ]
   }
 }

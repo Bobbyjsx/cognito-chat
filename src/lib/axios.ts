@@ -2,8 +2,6 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import { Analytics } from "./analytics";
 import {
   API_BASE_URL,
-  ATLAS_API_KEY_HEADER,
-  getAtlasApiKey,
 } from "./api-config";
 import { authManager } from "./auth-manager";
 import { keysToCamel, keysToSnake } from "./case-transform";
@@ -36,13 +34,7 @@ function setHeader(
   }
 }
 
-/** Injects KeySentry Atlas API key into request headers */
-function applyAtlasKey(config: InternalAxiosRequestConfig) {
-  const atlasKey = getAtlasApiKey();
-  if (atlasKey) {
-    setHeader(config, ATLAS_API_KEY_HEADER, atlasKey);
-  }
-}
+
 
 /** Formats request payload and params to snake_case */
 function transformToSnakeCase(config: InternalAxiosRequestConfig) {
@@ -59,9 +51,8 @@ function transformToSnakeCase(config: InternalAxiosRequestConfig) {
 // -----------------------------------------------------------------------------
 api.interceptors.request.use(
   async (config) => {
-    applyAtlasKey(config);
     if (!config.isAuthReq) {
-      await authManager.applyAuthToken(config);
+      await authManager.applyAuthTokenToReq(config);
     }
     transformToSnakeCase(config);
 
@@ -91,7 +82,7 @@ api.interceptors.response.use(
   },
   async (error) => {
     Analytics.captureApiError(error, error.config?.url, error.config?.method);
-    
+
     const originalRequest = error.config;
 
     // Handle 401 Unauthorized globally
@@ -117,7 +108,7 @@ api.interceptors.response.use(
 
           // Fetch the new session
           const newSession = await authManager.getAuthSession();
-          
+
           if (newSession?.accessToken) {
             // Apply the new token directly to the original request
             if (typeof originalRequest.headers.set === "function") {
@@ -125,7 +116,7 @@ api.interceptors.response.use(
             } else {
               originalRequest.headers["Authorization"] = `Bearer ${newSession.accessToken}`;
             }
-            
+
             // Retry the request with the new token
             return api(originalRequest);
           }
