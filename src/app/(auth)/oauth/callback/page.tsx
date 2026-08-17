@@ -6,9 +6,9 @@ import { completeOAuthLogin } from "@/lib/actions/oauth";
 import { Loader } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
-export default function OAuthCallbackPage() {
+function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -91,5 +91,25 @@ export default function OAuthCallbackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OAuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-background flex min-h-screen flex-col items-center justify-center p-4">
+          <div className="flex w-full max-w-sm flex-col items-center space-y-8 text-center">
+            <Logo logoOnly />
+            <div className="flex flex-col items-center space-y-3">
+              <Loader className="text-muted-foreground h-6 w-6 animate-spin" />
+              <p className="text-muted-foreground text-sm">Loading...</p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <OAuthCallbackContent />
+    </Suspense>
   );
 }
