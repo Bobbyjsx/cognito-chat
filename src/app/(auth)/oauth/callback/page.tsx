@@ -13,10 +13,13 @@ function OAuthCallbackContent() {
   const searchParams = useSearchParams();
 
   const urlError = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const syncError =
-    urlError || (!code || !state ? "Malicious Auth Session" : null);
+    errorDescription ||
+    urlError ||
+    (!code || !state ? "Malicious Auth Session" : null);
 
   const [asyncError, setAsyncError] = useState<string | null>(null);
   const error = syncError || asyncError;
