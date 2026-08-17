@@ -461,7 +461,9 @@ export function ChatShell() {
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           fetchNextPage={fetchNextPage}
-          hasMultiplePages={Boolean(sessionPages?.pages && sessionPages.pages.length > 1)}
+          hasMultiplePages={Boolean(
+            sessionPages?.pages && sessionPages.pages.length > 1,
+          )}
           onSuggestionClick={(text) =>
             handleSendMessage(text, activeModel, activeReasoning)
           }

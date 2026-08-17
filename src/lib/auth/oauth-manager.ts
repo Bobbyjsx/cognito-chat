@@ -7,14 +7,18 @@ export class OAuthTransitionManager {
   private generateRandomString(length: number): string {
     const array = new Uint32Array(length / 2);
     crypto.getRandomValues(array);
-    return Array.from(array, (dec) => ("0" + dec.toString(16)).substr(-2)).join("");
+    return Array.from(array, (dec) => ("0" + dec.toString(16)).substr(-2)).join(
+      "",
+    );
   }
 
   private async generateCodeChallenge(codeVerifier: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(codeVerifier);
     const digest = await crypto.subtle.digest("SHA-256", data);
-    return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(digest))))
+    return btoa(
+      String.fromCharCode.apply(null, Array.from(new Uint8Array(digest))),
+    )
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
       .replace(/=+$/, "");
@@ -71,14 +75,20 @@ export class OAuthTransitionManager {
 
     let tokens;
     try {
-      const tokenRes = await axios.post(`${OAUTH_BASE_URL}/api/v1/oauth/token`, body, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+      const tokenRes = await axios.post(
+        `${OAUTH_BASE_URL}/api/v1/oauth/token`,
+        body,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
         },
-      });
+      );
       tokens = tokenRes.data;
     } catch (err: any) {
-      const errorText = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      const errorText = err.response?.data
+        ? JSON.stringify(err.response.data)
+        : err.message;
       console.error("Token Exchange Error:", errorText);
       throw new Error(`Failed to exchange token: ${errorText}`);
     }
@@ -101,7 +111,9 @@ export class OAuthTransitionManager {
   async getOAuthRedirectURI() {
     const headersList = await headers();
     const host = headersList.get("host") || "localhost:3000";
-    const protocol = headersList.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+    const protocol =
+      headersList.get("x-forwarded-proto") ||
+      (host.includes("localhost") ? "http" : "https");
 
     return `${protocol}://${host}/oauth/callback`;
   }

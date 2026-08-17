@@ -83,7 +83,7 @@ import axios from "axios";
 
 const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
   try {
-    const response = await axios.get(url, { responseType: 'blob' });
+    const response = await axios.get(url, { responseType: "blob" });
     const blob = response.data;
     // FileReader uses callback-based API, wrapping in Promise is necessary
     // oxlint-disable-next-line eslint-plugin-promise(avoid-new)

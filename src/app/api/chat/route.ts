@@ -78,7 +78,7 @@ export async function POST(req: Request) {
           Accept: "text/event-stream",
         },
         signal: req.signal,
-      }
+      },
     );
   } catch (err: any) {
     if (err.name === "CanceledError" || err.message?.includes("abort")) {
@@ -119,7 +119,9 @@ export async function POST(req: Request) {
     return jsonError("Empty stream from backend", 502);
   }
 
-  const backendBody = Readable.toWeb(backendResponse.data) as ReadableStream<Uint8Array>;
+  const backendBody = Readable.toWeb(
+    backendResponse.data,
+  ) as ReadableStream<Uint8Array>;
 
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
