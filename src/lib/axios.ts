@@ -45,12 +45,34 @@ function transformToSnakeCase(config: InternalAxiosRequestConfig) {
 // -----------------------------------------------------------------------------
 // Request Interceptor
 // -----------------------------------------------------------------------------
+let lastMutationTime = 0;
+
+/** 
+ * Manually mark a mutation when native fetch or SDKs bypass Axios 
+ */
+export function markGlobalMutation() {
+  lastMutationTime = Date.now();
+}
+
 api.interceptors.request.use(
   async (config) => {
     if (!config.isAuthReq) {
       await authManager.applyAuthTokenToReq(config);
     }
     transformToSnakeCase(config);
+
+    const method = config.method?.toLowerCase();
+    
+    // Track when a mutation occurs via Axios
+    if (method && ['post', 'put', 'patch', 'delete'].includes(method)) {
+      lastMutationTime = Date.now();
+    } else if (method === 'get') {
+      // If a mutation happened in the last 2.5 seconds, force bypass the browser's HTTP cache
+      if (Date.now() - lastMutationTime < 2500) {
+        setHeader(config, 'Cache-Control', 'no-cache');
+        setHeader(config, 'Pragma', 'no-cache');
+      }
+    }
 
     return config;
   },
@@ -89,12 +111,8 @@ api.interceptors.response.use(
 
         try {
           if (typeof window !== "undefined") {
-            // Client-side: use standard fetch to NextAuth session endpoint to force update
-            await fetch("/api/auth/session", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ data: { forceRefresh: true } }),
-            });
+            // Client-side: use standard axios to NextAuth session endpoint to force update
+            await axios.post("/api/auth/session", { data: { forceRefresh: true } });
             authManager.clearBrowserSessionCache();
           } else {
             // Server-side: use unstable_update exported from our auth.ts

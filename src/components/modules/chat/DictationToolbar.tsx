@@ -125,19 +125,21 @@ export function DictationToolbar({
 
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={handleCancel}
-                disabled={isTranscribing}
-                className="shrink-0 rounded-full border-red-200 text-red-500 hover:bg-red-50 sm:size-auto sm:px-3 sm:py-1.5 dark:border-red-900/30 dark:hover:bg-red-900/20"
-                aria-label="Cancel dictation"
-              >
-                <X className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden text-sm sm:inline">Cancel</span>
-              </Button>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCancel}
+                  disabled={isTranscribing}
+                  className="shrink-0 rounded-full border-red-200 text-red-500 hover:bg-red-50 sm:size-auto sm:px-3 sm:py-1.5 dark:border-red-900/30 dark:hover:bg-red-900/20"
+                  aria-label="Cancel dictation"
+                />
+              }
+            >
+              <X className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden text-sm sm:inline">Cancel</span>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs sm:hidden">
               Cancel
@@ -147,18 +149,20 @@ export function DictationToolbar({
 
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger>
-              <Button
-                type="button"
-                size="icon"
-                onClick={handleDone}
-                disabled={isTranscribing}
-                className="bg-primary text-on-primary shrink-0 rounded-full hover:bg-[#3d3f42] active:scale-[0.96] sm:size-auto sm:px-3 sm:py-1.5"
-                aria-label="Finish dictation and keep transcript"
-              >
-                <Check className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden text-sm sm:inline">Done</span>
-              </Button>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={handleDone}
+                  disabled={isTranscribing}
+                  className="bg-primary text-on-primary shrink-0 rounded-full hover:bg-[#3d3f42] active:scale-[0.96] sm:size-auto sm:px-3 sm:py-1.5"
+                  aria-label="Finish dictation and keep transcript"
+                />
+              }
+            >
+              <Check className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden text-sm sm:inline">Done</span>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs sm:hidden">
               Done
@@ -185,17 +189,19 @@ export function DictationToolbar({
             <div className="h-4 w-px bg-gray-200 dark:bg-gray-800" />
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleToggle}
-                    className="text-gray-medium hover:bg-surface-container-low hover:text-on-surface rounded-full transition-all duration-200"
-                    aria-label="Dictate prompt"
-                  >
-                    <Mic className="h-4 w-4" />
-                  </Button>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleToggle}
+                      className="text-gray-medium hover:bg-surface-container-low hover:text-on-surface rounded-full transition-all duration-200"
+                      aria-label="Dictate prompt"
+                    />
+                  }
+                >
+                  <Mic className="h-4 w-4" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
                   Dictate Prompt

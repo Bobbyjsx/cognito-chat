@@ -7,6 +7,7 @@ import { useGetSession } from "@/hooks/data/useChats/useChats";
 import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachments";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { attachmentById } from "@/lib/attachments";
+import { markGlobalMutation } from "@/lib/axios";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { notifyServerError } from "@/lib/server-error";
@@ -133,6 +134,9 @@ export function ChatShell() {
       streamedSessionRef.current = nextId;
     },
     onFinish: () => {
+      // Mark the global mutation in Axios so the subsequent profile fetch gets no-cache headers
+      markGlobalMutation();
+
       // Reflect the freshly streamed session in the URL now that the response
       // is committed to the DOM — we use history API to bypass Next.js
       // navigation completely, ensuring zero layout shifts or loading UI flashes.

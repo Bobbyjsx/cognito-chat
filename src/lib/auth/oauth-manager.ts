@@ -1,4 +1,5 @@
 import { OAUTH_BASE_URL, OAUTH_CLIENT_ID } from "@/lib/api-config";
+import axios from "axios";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -68,33 +69,31 @@ export class OAuthTransitionManager {
       body.append("client_secret", process.env.OAUTH_CLIENT_SECRET);
     }
 
-    const tokenRes = await fetch(`${OAUTH_BASE_URL}/api/v1/oauth/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
-    });
-
-    if (!tokenRes.ok) {
-      const errorText = await tokenRes.text();
+    let tokens;
+    try {
+      const tokenRes = await axios.post(`${OAUTH_BASE_URL}/api/v1/oauth/token`, body, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+      tokens = tokenRes.data;
+    } catch (err: any) {
+      const errorText = err.response?.data ? JSON.stringify(err.response.data) : err.message;
       console.error("Token Exchange Error:", errorText);
       throw new Error(`Failed to exchange token: ${errorText}`);
     }
 
-    const tokens = await tokenRes.json();
-
-    const userRes = await fetch(`${OAUTH_BASE_URL}/api/v1/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
-      },
-    });
-
-    if (!userRes.ok) {
+    let user;
+    try {
+      const userRes = await axios.get(`${OAUTH_BASE_URL}/api/v1/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${tokens.access_token}`,
+        },
+      });
+      user = userRes.data;
+    } catch (err) {
       throw new Error("Failed to fetch user profile");
     }
-
-    const user = await userRes.json();
 
     return { tokens, user };
   }

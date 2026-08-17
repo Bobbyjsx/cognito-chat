@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { Analytics } from "@/lib/analytics";
-import { apiUrl } from "@/lib/api-config";
+import { api } from "@/lib/axios";
 import {
   extractTextFromMessage,
   MAX_MESSAGE_LENGTH,
@@ -8,6 +8,8 @@ import {
   safeErrorDetail,
 } from "@/lib/chat-stream";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
+import { Readable } from "stream";
+import type { AxiosResponse } from "axios";
 
 function jsonError(detail: string, status: number, code?: string) {
   return new Response(JSON.stringify({ detail, ...(code ? { code } : {}) }), {
@@ -49,7 +51,6 @@ export async function POST(req: Request) {
   const path = sessionId
     ? `/agent/chat/stream?session_id=${encodeURIComponent(sessionId)}`
     : "/agent/chat/stream";
-  const url = apiUrl(path);
   const startedAt = Date.now();
 
   Analytics.captureEvent("chat.stream.start", {
@@ -58,56 +59,67 @@ export async function POST(req: Request) {
     sessionId: sessionId || null,
   });
 
-  let backendResponse: Response;
+  let backendResponse: AxiosResponse<Readable>;
   try {
-    backendResponse = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.accessToken}`,
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify({
+    backendResponse = await api.post<Readable>(
+      path,
+      {
         message: lastMessage,
         model,
         reasoning,
         ...(Array.isArray(attachments) && attachments.length > 0
           ? { attachments }
           : {}),
-      }),
-      signal: req.signal,
-    });
-  } catch (err: unknown) {
-    if (err instanceof Error && err.name === "AbortError") {
+      },
+      {
+        responseType: "stream",
+        validateStatus: () => true, // Prevent throwing on 4xx/5xx so we can parse error streams
+        headers: {
+          Accept: "text/event-stream",
+        },
+        signal: req.signal,
+      }
+    );
+  } catch (err: any) {
+    if (err.name === "CanceledError" || err.message?.includes("abort")) {
       Analytics.captureEvent("chat.stream.aborted", {
         durationMs: Date.now() - startedAt,
       });
       return new Response(null, { status: 499 });
     }
-    Analytics.captureApiError(err, url, "POST");
+    Analytics.captureApiError(err, path, "POST");
     return jsonError("Streaming request failed", 500);
   }
 
-  if (!backendResponse.ok) {
-    const errorText = await backendResponse.text();
+  if (backendResponse.status >= 400) {
+    // Read the stream to get the error text since responseType is stream
+    const chunks: Buffer[] = [];
+    try {
+      for await (const chunk of backendResponse.data) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+    } catch (e) {
+      // Ignore stream read errors on error responses
+    }
+    const errorText = Buffer.concat(chunks).toString("utf8");
     const error = safeErrorDetail(errorText, backendResponse.status);
     Analytics.captureApiError(
       new Error(`Chat stream upstream error: ${error.message}`),
-      url,
+      path,
       "POST",
       { code: error.code, status: backendResponse.status },
     );
     return jsonError(error.message, backendResponse.status, error.code);
   }
 
-  if (!backendResponse.body) {
+  if (!backendResponse.data) {
     Analytics.captureError(new Error("Chat stream returned an empty body"), {
-      url,
+      url: path,
     });
     return jsonError("Empty stream from backend", 502);
   }
 
-  const backendBody = backendResponse.body;
+  const backendBody = Readable.toWeb(backendResponse.data) as ReadableStream<Uint8Array>;
 
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
@@ -119,7 +131,7 @@ export async function POST(req: Request) {
       });
     },
     onError: (err) => {
-      Analytics.captureApiError(err, url, "POST");
+      Analytics.captureApiError(err, path, "POST");
       return "Streaming request failed";
     },
   });
