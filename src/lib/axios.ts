@@ -45,27 +45,12 @@ function transformToSnakeCase(config: InternalAxiosRequestConfig) {
 // -----------------------------------------------------------------------------
 // Request Interceptor
 // -----------------------------------------------------------------------------
-let lastMutationTime = 0;
-
 api.interceptors.request.use(
   async (config) => {
     if (!config.isAuthReq) {
       await authManager.applyAuthTokenToReq(config);
     }
     transformToSnakeCase(config);
-
-    const method = config.method?.toLowerCase();
-
-    // Track when a mutation occurs
-    if (method && ["post", "put", "patch", "delete"].includes(method)) {
-      lastMutationTime = Date.now();
-    } else if (method === "get") {
-      // If a mutation happened in the last 2.5 seconds, force bypass the browser's HTTP cache
-      if (Date.now() - lastMutationTime < 2500) {
-        setHeader(config, "Cache-Control", "no-cache");
-        setHeader(config, "Pragma", "no-cache");
-      }
-    }
 
     return config;
   },
