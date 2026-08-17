@@ -5,8 +5,6 @@ const SESSION_COOKIE_PREFIXES = [
   "__Secure-authjs.session-token",
 ];
 
-const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
-
 function hasSessionCookie(request: NextRequest) {
   return request.cookies
     .getAll()
@@ -16,10 +14,6 @@ function hasSessionCookie(request: NextRequest) {
           cookie.name === prefix || cookie.name.startsWith(`${prefix}.`),
       ),
     );
-}
-
-function isAuthRoute(pathname: string) {
-  return AUTH_ROUTES.some((route) => pathname.startsWith(route));
 }
 
 function isProtectedRoute(pathname: string) {
@@ -44,13 +38,6 @@ export function middleware(request: NextRequest) {
 
   if (isProtectedRoute(pathname) && !session) {
     const redirectUrl = new URL("/login", request.url);
-    if (pathname !== redirectUrl.pathname) {
-      return NextResponse.redirect(redirectUrl);
-    }
-  }
-
-  if (isAuthRoute(pathname) && session) {
-    const redirectUrl = new URL("/chat", request.url);
     if (pathname !== redirectUrl.pathname) {
       return NextResponse.redirect(redirectUrl);
     }
