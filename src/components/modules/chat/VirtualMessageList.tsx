@@ -18,6 +18,7 @@ export interface VirtualMessageListProps {
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   fetchNextPage?: () => void;
+  hasMultiplePages?: boolean;
 }
 
 export function VirtualMessageList({
@@ -28,6 +29,7 @@ export function VirtualMessageList({
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
+  hasMultiplePages,
 }: VirtualMessageListProps) {
   const { scrollRef } = useStickToBottomContext();
   const lastMessage = messages[messages.length - 1];
@@ -53,7 +55,7 @@ export function VirtualMessageList({
           />
         ) : (
           <span className="py-4 text-center text-xs text-gray-400 italic">
-            {messages.length > 0 ? "You're all caught up" : ""}
+            {hasMultiplePages && messages.length > 0 ? "You're all caught up" : ""}
           </span>
         )}
       </div>

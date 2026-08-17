@@ -65,6 +65,7 @@ interface ChatMessageListProps {
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   fetchNextPage?: () => void;
+  hasMultiplePages?: boolean;
   /** Called when the user clicks a suggestion card on the empty state. */
   onSuggestionClick?: (text: string) => void;
 }
@@ -77,6 +78,7 @@ export function ChatMessageList({
   hasNextPage = false,
   isFetchingNextPage = false,
   fetchNextPage,
+  hasMultiplePages = false,
   onSuggestionClick,
 }: ChatMessageListProps) {
   const lastMessage = messages[messages.length - 1];
@@ -146,6 +148,7 @@ export function ChatMessageList({
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             fetchNextPage={fetchNextPage}
+            hasMultiplePages={hasMultiplePages}
           />
         )}
         <ScrollToBottomOnReady shouldScroll={showScrollToBottom} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, LogOut } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { ShieldAlert, LogOut, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { initiateOAuth } from "@/lib/actions/oauth";
 
 interface SessionExpiredDialogProps {
   isOpen?: boolean;
@@ -20,6 +22,7 @@ export function SessionExpiredDialog({
   isOpen: explicitOpen,
 }: SessionExpiredDialogProps) {
   const { data: session } = useSession();
+  const [isLoading, setIsLoading] = useState(false);
 
   const isSessionError =
     (session as unknown as { error?: string })?.error ===
@@ -27,7 +30,14 @@ export function SessionExpiredDialog({
   const open = Boolean(explicitOpen || isSessionError);
 
   const handleReauthenticate = async () => {
-    await signOut({ callbackUrl: "/login" });
+    setIsLoading(true);
+    try {
+      await initiateOAuth();
+    } catch (err) {
+      // If initiateOAuth redirects, it will throw NEXT_REDIRECT. If it fails, we catch.
+      console.error(err);
+      setIsLoading(false);
+    }
   };
 
   if (!open) return null;
@@ -53,9 +63,14 @@ export function SessionExpiredDialog({
             onClick={handleReauthenticate}
             className="w-full sm:w-auto"
             variant="default"
+            disabled={isLoading}
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign In Again
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="mr-2 h-4 w-4" />
+            )}
+            {isLoading ? "Redirecting..." : "Sign In Again"}
           </Button>
         </DialogFooter>
       </DialogContent>

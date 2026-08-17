@@ -477,6 +477,7 @@ export function ChatSidebar({
                 hasNextPage={hasNextPage}
                 isFetchingNextPage={isFetchingNextPage}
                 fetchNextPage={fetchNextPage}
+                endMessage={data?.pages && data.pages.length > 1 ? "You're all caught up" : ""}
               />
             </div>
           </div>

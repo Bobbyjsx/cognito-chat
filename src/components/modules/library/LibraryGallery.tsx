@@ -61,7 +61,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
     null,
   );
 
-  const allItems = data?.pages.flatMap((page) => page.items) || [];
+  const allItems = data?.pages.flatMap((page) => page?.items || []) || [];
 
   // Deduplicate by ID to prevent infinite scroll shift duplicates
   const uniqueItems = Array.from(

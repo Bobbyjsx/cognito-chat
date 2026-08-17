@@ -1,31 +1,6 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
-import type {
-  UserCreateRequest,
-  PasswordResetRequest,
-  UserProfile,
-} from "@/types";
-
-export function useSignup() {
-  return useMutation({
-    mutationFn: async (request: UserCreateRequest) => {
-      const { data } = await api.post<UserProfile>("/auth/signup", request);
-      return data;
-    },
-  });
-}
-
-export function useResetPassword() {
-  return useMutation({
-    mutationFn: async (request: PasswordResetRequest) => {
-      const { data } = await api.post<{ message: string }>(
-        "/auth/reset-password",
-        request,
-      );
-      return data;
-    },
-  });
-}
+import type { UserProfile } from "@/types";
 
 export function useProfile() {
   return useQuery({

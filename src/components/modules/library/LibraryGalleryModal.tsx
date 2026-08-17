@@ -52,7 +52,7 @@ export function LibraryGalleryModal({
     useGetLibraryAttachments(undefined, undefined, 24);
 
   // Flatten all pages and deduplicate by id
-  const allItems = data?.pages.flatMap((page) => page.items) ?? [];
+  const allItems = data?.pages.flatMap((page) => page?.items || []) ?? [];
   const uniqueItems = Array.from(
     new Map(allItems.map((i) => [i.id, i])).values(),
   );
