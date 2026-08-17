@@ -43,17 +43,19 @@ export function IconTooltipButton({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger>
-          <button
-            aria-label={label}
-            className={cn(
-              "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
-              className,
-            )}
-            {...props}
-          >
-            {children}
-          </button>
+        <TooltipTrigger
+          render={
+            <button
+              aria-label={label}
+              className={cn(
+                "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+                className,
+              )}
+              {...props}
+            />
+          }
+        >
+          {children}
         </TooltipTrigger>
         <TooltipContent side={side} className="flex items-center gap-2">
           <span>{label}</span>
