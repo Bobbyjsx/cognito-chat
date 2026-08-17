@@ -1,8 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { Analytics } from "./analytics";
-import {
-  API_BASE_URL,
-} from "./api-config";
+import { API_BASE_URL } from "./api-config";
 import { authManager } from "./auth-manager";
 import { keysToCamel, keysToSnake } from "./case-transform";
 
@@ -34,8 +32,6 @@ function setHeader(
   }
 }
 
-
-
 /** Formats request payload and params to snake_case */
 function transformToSnakeCase(config: InternalAxiosRequestConfig) {
   if (config.data) {
@@ -49,12 +45,27 @@ function transformToSnakeCase(config: InternalAxiosRequestConfig) {
 // -----------------------------------------------------------------------------
 // Request Interceptor
 // -----------------------------------------------------------------------------
+let lastMutationTime = 0;
+
 api.interceptors.request.use(
   async (config) => {
     if (!config.isAuthReq) {
       await authManager.applyAuthTokenToReq(config);
     }
     transformToSnakeCase(config);
+
+    const method = config.method?.toLowerCase();
+
+    // Track when a mutation occurs
+    if (method && ["post", "put", "patch", "delete"].includes(method)) {
+      lastMutationTime = Date.now();
+    } else if (method === "get") {
+      // If a mutation happened in the last 2.5 seconds, force bypass the browser's HTTP cache
+      if (Date.now() - lastMutationTime < 2500) {
+        setHeader(config, "Cache-Control", "no-cache");
+        setHeader(config, "Pragma", "no-cache");
+      }
+    }
 
     return config;
   },
@@ -97,7 +108,7 @@ api.interceptors.response.use(
             await fetch("/api/auth/session", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ data: { forceRefresh: true } })
+              body: JSON.stringify({ data: { forceRefresh: true } }),
             });
             authManager.clearBrowserSessionCache();
           } else {
@@ -112,16 +123,23 @@ api.interceptors.response.use(
           if (newSession?.accessToken) {
             // Apply the new token directly to the original request
             if (typeof originalRequest.headers.set === "function") {
-              originalRequest.headers.set("Authorization", `Bearer ${newSession.accessToken}`);
+              originalRequest.headers.set(
+                "Authorization",
+                `Bearer ${newSession.accessToken}`,
+              );
             } else {
-              originalRequest.headers["Authorization"] = `Bearer ${newSession.accessToken}`;
+              originalRequest.headers["Authorization"] =
+                `Bearer ${newSession.accessToken}`;
             }
 
             // Retry the request with the new token
             return api(originalRequest);
           }
         } catch (refreshError) {
-          console.error("Token refresh failed during Axios retry:", refreshError);
+          console.error(
+            "Token refresh failed during Axios retry:",
+            refreshError,
+          );
         }
       }
 
