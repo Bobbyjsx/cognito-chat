@@ -26,8 +26,8 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
             id: user.id || user.sub,
             email: user.email,
             name: user.name,
-            accessToken: credentials.accessToken,
-            refreshToken: credentials.refreshToken,
+            accessToken: credentials.accessToken as string,
+            refreshToken: credentials.refreshToken as string,
           };
         } catch (err) {
           return null;
