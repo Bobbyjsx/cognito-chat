@@ -111,10 +111,10 @@ api.interceptors.response.use(
 
         try {
           if (typeof window !== "undefined") {
-            // Client-side: use standard axios to NextAuth session endpoint to force update
-            await axios.post("/api/auth/session", {
-              data: { forceRefresh: true },
-            });
+            // Client-side: trigger NextAuth jwt callback via our server action wrapper
+            // unstable_update sets accessTokenExpires=0 forcing a refresh_token exchange
+            const { refreshSession } = await import("@/lib/actions/auth");
+            await refreshSession();
             authManager.clearBrowserSessionCache();
           } else {
             // Server-side: use unstable_update exported from our auth.ts

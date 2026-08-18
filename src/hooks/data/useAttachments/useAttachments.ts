@@ -8,6 +8,8 @@ import { api } from "@/lib/axios";
 import type { AttachmentSchema, PaginatedResponse } from "@/types";
 
 export function useUploadAttachment() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
@@ -20,6 +22,11 @@ export function useUploadAttachment() {
         },
       );
       return data;
+    },
+    onSuccess: () => {
+      // Invalidate library view so the new permanent attachment shows up immediately
+      queryClient.invalidateQueries({ queryKey: ["attachments-library"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
     },
   });
 }

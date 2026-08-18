@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import { ShieldAlert, LogOut, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { initiateOAuth } from "@/lib/actions/oauth";
 
+const COUNTDOWN_SECONDS = 5;
+
 interface SessionExpiredDialogProps {
   isOpen?: boolean;
 }
@@ -23,6 +25,7 @@ export function SessionExpiredDialog({
 }: SessionExpiredDialogProps) {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
+  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
 
   const isSessionError =
     (session as unknown as { error?: string })?.error ===
@@ -34,13 +37,39 @@ export function SessionExpiredDialog({
     try {
       await initiateOAuth();
     } catch (err) {
-      // If initiateOAuth redirects, it will throw NEXT_REDIRECT. If it fails, we catch.
       console.error(err);
       setIsLoading(false);
     }
   };
 
+  // Tick the countdown while the dialog is open
+  useEffect(() => {
+    if (!open) return;
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          void handleReauthenticate();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      // Reset for the next time the dialog opens
+      setCountdown(COUNTDOWN_SECONDS);
+    };
+  }, [open]);
+
   if (!open) return null;
+
+  // SVG ring progress
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (countdown / COUNTDOWN_SECONDS) * circumference;
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -58,7 +87,47 @@ export function SessionExpiredDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="mt-4 sm:justify-center">
+        {/* Countdown ring */}
+        <div className="flex flex-col items-center gap-1 py-2">
+          <div className="relative flex h-14 w-14 items-center justify-center">
+            <svg
+              className="-rotate-90"
+              width="56"
+              height="56"
+              viewBox="0 0 56 56"
+            >
+              {/* Track */}
+              <circle
+                cx="28"
+                cy="28"
+                r={radius}
+                fill="none"
+                strokeWidth="4"
+                className="stroke-muted"
+              />
+              {/* Progress */}
+              <circle
+                cx="28"
+                cy="28"
+                r={radius}
+                fill="none"
+                strokeWidth="4"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference - progress}
+                strokeLinecap="round"
+                className="stroke-destructive transition-all duration-1000 ease-linear"
+              />
+            </svg>
+            <span className="text-foreground absolute text-lg font-semibold tabular-nums">
+              {countdown}
+            </span>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Redirecting automatically…
+          </p>
+        </div>
+
+        <DialogFooter className="mt-2 sm:justify-center">
           <Button
             onClick={handleReauthenticate}
             className="w-full sm:w-auto"
@@ -70,7 +139,7 @@ export function SessionExpiredDialog({
             ) : (
               <LogOut className="mr-2 h-4 w-4" />
             )}
-            {isLoading ? "Redirecting..." : "Sign In Again"}
+            {isLoading ? "Redirecting…" : "Sign In Now"}
           </Button>
         </DialogFooter>
       </DialogContent>
