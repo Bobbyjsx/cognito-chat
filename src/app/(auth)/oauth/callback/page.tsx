@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { completeOAuthLogin } from "@/lib/actions/oauth";
+import { authManager } from "@/lib/auth-manager";
 import { Loader } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -29,6 +30,7 @@ function OAuthCallbackContent() {
 
   const exchangeToken = async (state: string, code: string) => {
     try {
+      authManager.clearBrowserSessionCache();
       const { tokens, user } = await completeOAuthLogin(code, state);
 
       await signIn("manual-oauth", {
@@ -37,9 +39,12 @@ function OAuthCallbackContent() {
         userStr: JSON.stringify(user),
         callbackUrl: "/",
       });
-    } catch (err: any) {
+      authManager.clearBrowserSessionCache();
+    } catch (err: unknown) {
       console.error("OAuth callback error:", err);
-      setAsyncError(err.message || "An error occurred during sign in");
+      const message =
+        err instanceof Error ? err.message : "An error occurred during sign in";
+      setAsyncError(message);
     }
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -23,14 +24,20 @@ interface SessionExpiredDialogProps {
 export function SessionExpiredDialog({
   isOpen: explicitOpen,
 }: SessionExpiredDialogProps) {
+  const pathname = usePathname();
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
 
+  const isAuthRoute =
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/oauth") ||
+    pathname?.startsWith("/api/auth");
+
   const isSessionError =
     (session as unknown as { error?: string })?.error ===
     "RefreshAccessTokenError";
-  const open = Boolean(explicitOpen || isSessionError);
+  const open = !isAuthRoute && Boolean(explicitOpen || isSessionError);
 
   const handleReauthenticate = async () => {
     setIsLoading(true);

@@ -24,10 +24,35 @@ export class OAuthTransitionManager {
       .replace(/=+$/, "");
   }
 
-  async authorize(redirectUri: string) {
+  async generateAuthorizeUrl(redirectUri: string): Promise<{
+    url: string;
+    state: string;
+    codeVerifier: string;
+  }> {
     const state = this.generateRandomString(16);
     const codeVerifier = this.generateRandomString(43);
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: OAUTH_CLIENT_ID,
+      redirect_uri: redirectUri,
+      scope: "email profile",
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
+    });
+
+    return {
+      url: `${OAUTH_BASE_URL}/api/v1/oauth/authorize?${params.toString()}`,
+      state,
+      codeVerifier,
+    };
+  }
+
+  async authorize(redirectUri: string) {
+    const { url, state, codeVerifier } =
+      await this.generateAuthorizeUrl(redirectUri);
 
     const cookieStore = await cookies();
     cookieStore.set("oauth_state", state, {
@@ -43,17 +68,7 @@ export class OAuthTransitionManager {
       maxAge: 60 * 10,
     });
 
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: OAUTH_CLIENT_ID,
-      redirect_uri: redirectUri,
-      scope: "email profile",
-      state: state,
-      code_challenge: codeChallenge,
-      code_challenge_method: "S256",
-    });
-
-    redirect(`${OAUTH_BASE_URL}/api/v1/oauth/authorize?${params.toString()}`);
+    redirect(url);
   }
 
   async exchangeToken(params: {
@@ -85,10 +100,13 @@ export class OAuthTransitionManager {
         },
       );
       tokens = tokenRes.data;
-    } catch (err: any) {
-      const errorText = err.response?.data
-        ? JSON.stringify(err.response.data)
-        : err.message;
+    } catch (err: unknown) {
+      const errorText =
+        axios.isAxiosError(err) && err.response?.data
+          ? JSON.stringify(err.response.data)
+          : err instanceof Error
+            ? err.message
+            : String(err);
       console.error("Token Exchange Error:", errorText);
       throw new Error(`Failed to exchange token: ${errorText}`);
     }
@@ -101,7 +119,7 @@ export class OAuthTransitionManager {
         },
       });
       user = userRes.data;
-    } catch (err) {
+    } catch {
       throw new Error("Failed to fetch user profile");
     }
 
