@@ -1,8 +1,8 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
-import { Toaster as SonnerToaster } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Metadata, Viewport } from "next";
+import { SessionProvider } from "next-auth/react";
+import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster as SonnerToaster } from "sonner";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -29,11 +29,11 @@ export const metadata: Metadata = {
     template: "%s | Cognito",
   },
   description:
-    "A modern conversational AI application built with Next.js, FastAPI, Firestore, and Google Antigravity SDK.",
+    "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
   openGraph: {
     title: "Cognito Chat",
     description:
-      "A modern conversational AI application built with Next.js, FastAPI, Firestore, and Google Antigravity SDK.",
+      "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
     url: "https://cognito-chat.example.com",
     siteName: "Cognito",
     images: [
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Cognito Chat",
     description:
-      "A modern conversational AI application built with Next.js, FastAPI, Firestore, and Google Antigravity SDK.",
+      "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
     images: ["/og-image.png"],
   },
   icons: {
