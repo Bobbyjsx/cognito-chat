@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: "Cognito Chat",
     description:
       "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
-    url: "https://cognito-chat.example.com",
+    url: "https://cognito.bobslab.xyz",
     siteName: "Cognito",
     images: [
       {
