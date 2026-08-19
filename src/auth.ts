@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { Analytics } from "@/lib/analytics";
 import { oauthApi } from "@/lib/oauth-api";
+import { OAUTH_CLIENT_ID } from "@/lib/api-config";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   trustHost: true,
@@ -100,8 +101,20 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           return { ...token, error: "RefreshAccessTokenError" };
         }
 
-        const res = await oauthApi.post("/api/v1/auth/refresh", {
-          refreshToken: token.refreshToken,
+        const body = new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: OAUTH_CLIENT_ID,
+          refresh_token: token.refreshToken as string,
+        });
+
+        if (process.env.OAUTH_CLIENT_SECRET) {
+          body.append("client_secret", process.env.OAUTH_CLIENT_SECRET);
+        }
+
+        const res = await oauthApi.post("/api/v1/oauth/token", body, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
         });
 
         const refreshedTokens = res.data;
