@@ -19,7 +19,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         if (!credentials?.accessToken || !credentials?.userStr) {
           return null;
         }
-        
+
         try {
           const user = JSON.parse(credentials.userStr as string);
           return {
@@ -32,8 +32,8 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         } catch (err) {
           return null;
         }
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, account, user, trigger, session }) {
@@ -41,7 +41,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
       if (user && account) {
         token.accessToken = (user as any).accessToken;
         token.refreshToken = (user as any).refreshToken;
-        
+
         token.user = {
           id: user.id,
           email: user.email,
@@ -49,6 +49,11 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         };
         // Assume default 15 minutes
         token.accessTokenExpires = Date.now() + 900 * 1000;
+
+        if (token.error) {
+          delete token.error;
+        }
+
         return token;
       }
 
@@ -67,6 +72,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           }
           if (session.user.refreshToken) {
             token.refreshToken = session.user.refreshToken;
+          }
+          if (token.error) {
+            delete token.error;
           }
         }
         // If forceRefresh was true, we DO NOT return token here, we let it fall through to step 4!
