@@ -1,8 +1,8 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
-import { Toaster as SonnerToaster } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Metadata, Viewport } from "next";
+import { SessionProvider } from "next-auth/react";
+import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster as SonnerToaster } from "sonner";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -21,12 +21,39 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  ),
   title: {
     default: "Cognito Chat",
     template: "%s | Cognito",
   },
   description:
-    "A modern conversational AI application built with Next.js, FastAPI, Firestore, and Google Antigravity SDK.",
+    "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
+  openGraph: {
+    title: "Cognito Chat",
+    description:
+      "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
+    url: "https://cognito.bobslab.xyz",
+    siteName: "Cognito",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Cognito Chat",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cognito Chat",
+    description:
+      "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
+    images: ["/og-image.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
