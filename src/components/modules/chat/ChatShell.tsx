@@ -59,6 +59,7 @@ export function ChatShell() {
   const pendingAttachmentMetaRef = useRef<
     Record<string, { mimeType: string; filename: string }>
   >({});
+  const hasSentAttachmentsRef = useRef(false);
 
   const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
   const activeModel =
@@ -147,7 +148,12 @@ export function ChatShell() {
       queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["chat-session"] });
-      queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
+
+      if (hasSentAttachmentsRef.current) {
+        queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
+        hasSentAttachmentsRef.current = false;
+      }
+
       // Reset so the hydration effect re-runs with fresh attachment data
       setHydratedSessionId(null);
       pendingAttachmentMetaRef.current = {};
@@ -377,6 +383,10 @@ export function ChatShell() {
       for (const opt of optimisticAttachments) {
         // cast because optimisticAttachments uses mediaType which matches FileUIPart
         allFiles.push(opt as any);
+      }
+
+      if (allFiles.length > 0 || (attachmentIds && attachmentIds.length > 0)) {
+        hasSentAttachmentsRef.current = true;
       }
 
       sendMessage(
