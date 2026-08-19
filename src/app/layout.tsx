@@ -21,12 +21,39 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  ),
   title: {
     default: "Cognito Chat",
     template: "%s | Cognito",
   },
   description:
     "A modern conversational AI application built with Next.js, FastAPI, Firestore, and Google Antigravity SDK.",
+  openGraph: {
+    title: "Cognito Chat",
+    description:
+      "A modern conversational AI application built with Next.js, FastAPI, Firestore, and Google Antigravity SDK.",
+    url: "https://cognito-chat.example.com",
+    siteName: "Cognito",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Cognito Chat",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cognito Chat",
+    description:
+      "A modern conversational AI application built with Next.js, FastAPI, Firestore, and Google Antigravity SDK.",
+    images: ["/og-image.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
