@@ -16,15 +16,17 @@ function hasSessionCookie(request: NextRequest) {
     );
 }
 
+const protectedRoutes = [
+  "/chat",
+  "/chat/",
+  "/settings",
+  "/library",
+  "/sessions",
+  "/profile",
+];
+
 function isProtectedRoute(pathname: string) {
-  return (
-    pathname === "/" ||
-    pathname === "/chat" ||
-    pathname.startsWith("/chat/") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/sessions") ||
-    pathname.startsWith("/profile")
-  );
+  return protectedRoutes.some((route) => pathname.startsWith(route));
 }
 
 /**

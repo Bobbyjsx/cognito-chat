@@ -7,5 +7,5 @@ export default async function ChatLayout({
   children: ReactNode;
 }) {
   await requireAuth();
-  return children;
+  return <div className="h-dvh overflow-hidden">{children}</div>;
 }

@@ -3,8 +3,18 @@ import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster as SonnerToaster } from "sonner";
+
 import "./globals.css";
 import { Providers } from "./providers";
+import {
+  APP_DESCRIPTION,
+  APP_NAME,
+  APP_TITLE,
+  APP_URL,
+  OG_IMAGE,
+  OG_IMAGE_PNG,
+  noIndexRobots,
+} from "@/lib/site";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -21,47 +31,80 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-  ),
+  metadataBase: new URL(APP_URL),
+
   title: {
-    default: "Cognito Chat",
+    default: APP_TITLE,
     template: "%s | Cognito",
   },
-  description:
-    "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
+
+  description: APP_DESCRIPTION,
+
+  applicationName: APP_NAME,
+
+  authors: [
+    {
+      name: "Godswill Ezeala",
+      url: "https://godswillezeala.online",
+    },
+  ],
+
+  creator: "Godswill Ezeala",
+  publisher: "Godswill Ezeala",
+
+  category: "technology",
+
+  robots: noIndexRobots,
+
   openGraph: {
-    title: "Cognito Chat",
-    description:
-      "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
-    url: "https://cognito.bobslab.xyz",
-    siteName: "Cognito",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Cognito Chat",
-      },
-    ],
-    locale: "en_US",
     type: "website",
+    siteName: APP_NAME,
+    locale: "en_US",
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    images: [OG_IMAGE_PNG, OG_IMAGE],
   },
+
   twitter: {
     card: "summary_large_image",
-    title: "Cognito Chat",
-    description:
-      "Meet Cognito — your AI companion for getting things done. Chat naturally, attach files, and keep every conversation and document organized in one searchable library.",
-    images: ["/og-image.png"],
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
+
   icons: {
     icon: [
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/cognito-icon.svg", type: "image/svg+xml" },
+      {
+        url: "/favicon/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/favicon/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+      {
+        url: "/favicon.ico",
+        type: "image/x-icon",
+      },
     ],
-    shortcut: "/favicon-32.png",
-    apple: "/logo.png",
+    shortcut: "/favicon/favicon-32x32.png",
+    apple: [
+      {
+        url: "/favicon/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
+
+  manifest: "/favicon/site.webmanifest",
+
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
   },
 };
 
@@ -73,18 +116,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <body
-        className={cn(
-          geist.variable,
-          geistMono.variable,
-          "h-[calc(100dvh-10px)] sm:h-dvh",
-        )}
-      >
+      <body className={cn(geist.variable, geistMono.variable, "min-h-dvh")}>
         <SessionProvider refetchInterval={0}>
           <Providers>
             {children}
