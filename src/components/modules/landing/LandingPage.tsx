@@ -10,6 +10,7 @@ import { LandingNav } from "./LandingNav";
 import { LandingPricingCta } from "./LandingPricingCta";
 import { LandingProblem } from "./LandingProblem";
 import { LandingValueProps } from "./LandingValueProps";
+import { usePrewarmServices } from "@/hooks/usePrewarmServices";
 
 // Preserved for Backward Compatibility (commented out to keep page punchy & fast):
 // import { LandingSolution } from "./LandingSolution";
@@ -21,6 +22,9 @@ import { LandingValueProps } from "./LandingValueProps";
 // import { LandingWhyCognito } from "./LandingWhyCognito";
 
 export function LandingPage() {
+  // Silently wake up backend auth and API services during idle time
+  usePrewarmServices();
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#FBFBFA] font-sans text-[#111111] antialiased selection:bg-[#111111]/10 selection:text-[#111111]">
       {/* 1. Translucent Navigation */}
