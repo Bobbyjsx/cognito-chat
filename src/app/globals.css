@@ -70,9 +70,7 @@
     @apply border-border outline-ring/50;
   }
   html {
-    @apply font-sans;
-    height: 100vh;
-    height: 100dvh;
+    @apply min-h-dvh font-sans;
   }
 }
 

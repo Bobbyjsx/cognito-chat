@@ -4,11 +4,11 @@ import { requireAuth } from "@/lib/require-auth";
 import { noIndexRobots } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Settings",
+  title: "Library",
   robots: noIndexRobots,
 };
 
-export default async function SettingsLayout({
+export default async function LibraryLayout({
   children,
 }: {
   children: ReactNode;

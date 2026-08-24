@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { Analytics } from "@/lib/analytics";
 import { oauthApi } from "@/lib/oauth-api";
-import { OAUTH_CLIENT_ID } from "@/lib/api-config";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   trustHost: true,
