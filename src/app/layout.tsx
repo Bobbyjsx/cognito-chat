@@ -13,7 +13,7 @@ import {
   APP_URL,
   OG_IMAGE,
   OG_IMAGE_PNG,
-  noIndexRobots,
+  indexRobots,
 } from "@/lib/site";
 
 const geist = Geist({
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
 
   category: "technology",
 
-  robots: noIndexRobots,
+  robots: indexRobots,
 
   openGraph: {
     type: "website",
