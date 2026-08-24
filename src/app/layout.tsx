@@ -120,7 +120,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body className={cn(geist.variable, geistMono.variable, "min-h-dvh")}>
         <SessionProvider refetchInterval={0}>
           <Providers>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PenTool, Code2, Search, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MotionReveal } from "./LandingMotion";
+import { MotionReveal, GsapTextScrub } from "./LandingMotion";
 
 const DOMAINS = [
   {
@@ -227,11 +227,15 @@ export function LandingComparison() {
         </motion.div>
       </AnimatePresence>
 
-      <MotionReveal variant="fade-up" delay={0.2} className="mt-12 text-center">
-        <p className="text-base font-semibold tracking-tight text-[#787774] sm:text-lg">
+      <div className="mt-14 text-center">
+        <GsapTextScrub
+          text="Same question. Different models. Better perspective."
+          className="mx-auto max-w-2xl text-xl font-bold tracking-tight text-[#111111] sm:text-2xl md:text-3xl"
+        />
+        <p className="mt-2 text-sm font-medium text-[#787774]">
           AI is more useful when you have options.
         </p>
-      </MotionReveal>
+      </div>
     </section>
   );
 }

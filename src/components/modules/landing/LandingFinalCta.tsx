@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { MotionReveal } from "./LandingMotion";
 
 export function LandingFinalCta() {
@@ -32,12 +32,6 @@ export function LandingFinalCta() {
               <span>Start using Cognito</span>
               <ArrowRight className="size-4" />
             </Link>
-            <a
-              href="#solution"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(0,0,0,0.08)] bg-white px-6 py-3.5 text-sm font-medium text-[#111111] transition-all duration-150 hover:bg-[#EAEAEA] active:scale-[0.98] sm:w-auto"
-            >
-              <span>Explore the workspace</span>
-            </a>
           </div>
         </MotionReveal>
 
