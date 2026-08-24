@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Check, X, Calculator } from "lucide-react";
-import { MotionReveal, HoverLift } from "./LandingMotion";
+import { MotionReveal, HoverLift, GsapMagnetic } from "./LandingMotion";
 
 export function LandingMoney() {
   return (
@@ -176,12 +176,14 @@ export function LandingMoney() {
               </div>
 
               <div className="mt-7 border-t border-[rgba(0,0,0,0.06)] pt-5">
-                <Link
-                  href="/login"
-                  className="block w-full rounded-xl bg-[#111111] py-3 text-center text-sm font-medium text-white transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
-                >
-                  Get Cognito
-                </Link>
+                <GsapMagnetic strength={0.25} className="w-full">
+                  <Link
+                    href="/login"
+                    className="block w-full rounded-xl bg-[#111111] py-3 text-center text-sm font-medium text-white transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
+                  >
+                    Get Cognito
+                  </Link>
+                </GsapMagnetic>
               </div>
             </div>
           </HoverLift>

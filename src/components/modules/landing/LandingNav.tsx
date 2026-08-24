@@ -18,16 +18,44 @@ const NAV_LINKS = [
 export function LandingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const handleScrollToTop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMobileOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (window.location.hash) {
+      history.replaceState(null, "", window.location.pathname);
+    }
+  };
+
+  const handleScrollToSection = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+  ) => {
+    if (href.startsWith("#")) {
+      e.preventDefault();
+      setMobileOpen(false);
+      const target = document.querySelector(href);
+      if (target) {
+        const navHeight = 90;
+        const targetTop =
+          target.getBoundingClientRect().top + window.pageYOffset - navHeight;
+        window.scrollTo({ top: targetTop, behavior: "smooth" });
+        history.pushState(null, "", href);
+      }
+    }
+  };
+
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-50 transition-all duration-300">
         <div className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 sm:pt-4 lg:px-8">
           <nav className="relative flex items-center justify-between rounded-xl border border-[rgba(0,0,0,0.08)] bg-[#FBFBFA]/85 px-4 py-2.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] backdrop-blur-xl sm:px-6">
-            {/* Logo */}
+            {/* Logo - Smooth scroll to top */}
             <Link
               href="/"
+              onClick={handleScrollToTop}
               aria-label="Cognito Home"
-              className="group flex items-center gap-2 transition-transform active:scale-[0.98]"
+              className="group flex cursor-pointer items-center gap-2 transition-transform active:scale-[0.98]"
             >
               <Logo
                 textClassName="text-[#111111] text-base tracking-tight font-semibold"
@@ -41,7 +69,8 @@ export function LandingNav() {
                 <a
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#787774] transition-all duration-150 hover:bg-[#F7F6F3] hover:text-[#111111] active:scale-[0.97] xl:text-sm"
+                  onClick={(e) => handleScrollToSection(e, item.href)}
+                  className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-[#787774] transition-all duration-150 hover:bg-[#F7F6F3] hover:text-[#111111] active:scale-[0.97] xl:text-sm"
                 >
                   {item.label}
                 </a>
@@ -98,8 +127,8 @@ export function LandingNav() {
                 <a
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-[#787774] transition-colors hover:bg-[#F7F6F3] hover:text-[#111111]"
+                  onClick={(e) => handleScrollToSection(e, item.href)}
+                  className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-[#787774] transition-colors hover:bg-[#F7F6F3] hover:text-[#111111]"
                 >
                   {item.label}
                 </a>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
-import { MotionReveal, HoverLift } from "./LandingMotion";
+import { MotionReveal, HoverLift, GsapMagnetic } from "./LandingMotion";
 
 export function LandingPricingCta() {
   return (
@@ -89,13 +89,15 @@ export function LandingPricingCta() {
               </div>
             </div>
 
-            <Link
-              href="/login"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
-            >
-              <span>Start with Cognito</span>
-              <ArrowRight className="size-4" />
-            </Link>
+            <GsapMagnetic strength={0.3} className="w-full">
+              <Link
+                href="/login"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
+              >
+                <span>Start with Cognito</span>
+                <ArrowRight className="size-4" />
+              </Link>
+            </GsapMagnetic>
 
             <p className="mt-4 text-xs text-[#787774]">
               Cancel anytime. Your conversations stay organized in one place.
