@@ -146,6 +146,8 @@ export interface AppConfig {
   allowedImageModels: string[];
   allowedVideoModels: string[];
   allowedTools: string[];
+  enableSmartRouting?: boolean;
+  defaultRoutingMode?: string;
   enableAiStt: boolean;
   sttModel: string;
   enableAttachments: boolean;

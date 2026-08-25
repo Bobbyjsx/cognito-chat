@@ -312,18 +312,6 @@ export function GlobalSearchModal({
     (modelId: string) => {
       setSelectedModelId(modelId);
 
-      const storageKey = activeSessionId
-        ? `chat_settings_${activeSessionId}`
-        : "chat_settings_default";
-      try {
-        const saved = localStorage.getItem(storageKey);
-        const data = saved ? JSON.parse(saved) : {};
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({ ...data, model: modelId }),
-        );
-      } catch {}
-
       if (onSelectModel) {
         onSelectModel(modelId);
       }
@@ -338,25 +326,13 @@ export function GlobalSearchModal({
         );
       }
     },
-    [activeSessionId, availableModels, onOpenChange, onSelectModel],
+    [availableModels, onOpenChange, onSelectModel],
   );
 
   // Handle Reasoning Selection: Applies reasoning AND closes modal
   const handleSelectReasoning = React.useCallback(
     (level: string) => {
       onOpenChange(false);
-
-      const storageKey = activeSessionId
-        ? `chat_settings_${activeSessionId}`
-        : "chat_settings_default";
-      try {
-        const saved = localStorage.getItem(storageKey);
-        const data = saved ? JSON.parse(saved) : {};
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({ ...data, reasoning: level }),
-        );
-      } catch {}
 
       if (onSelectReasoning) {
         onSelectReasoning(level);
@@ -365,7 +341,7 @@ export function GlobalSearchModal({
         `Model set to ${formatModelLabel(selectedModelId)} with ${level} reasoning`,
       );
     },
-    [activeSessionId, onOpenChange, onSelectReasoning, selectedModelId],
+    [onOpenChange, onSelectReasoning, selectedModelId],
   );
 
   // Keyboard navigation for tabs
