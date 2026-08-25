@@ -287,10 +287,16 @@ export function ChatMessageItem({
 
   const waitingForFirstToken =
     Boolean(isStreaming) && !messageHasVisibleContent(message);
+  const resolvedModel = (msgObj.model as string) || undefined;
+  const resolvedReasoning = (msgObj.reasoning as string) || undefined;
 
   return (
     <Message from="assistant" className="max-w-full">
-      <AssistantHeader isWaiting={waitingForFirstToken} />
+      <AssistantHeader
+        isWaiting={waitingForFirstToken}
+        model={resolvedModel}
+        reasoning={resolvedReasoning}
+      />
       <MessageContent className="w-full max-w-full">
         {hasFailed ? (
           <div className="my-2 space-y-1 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-left">

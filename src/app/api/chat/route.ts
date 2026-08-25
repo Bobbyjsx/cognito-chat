@@ -59,14 +59,21 @@ export async function POST(req: Request) {
     sessionId: sessionId || null,
   });
 
+  const isAuto = !model || model.toLowerCase() === "auto";
+  const effectiveRoutingMode = isAuto
+    ? reasoning
+      ? reasoning.toLowerCase()
+      : "balanced"
+    : undefined;
+
   let backendResponse: AxiosResponse<Readable>;
   try {
     backendResponse = await api.post<Readable>(
       path,
       {
         message: lastMessage,
-        model,
-        reasoning,
+        ...(isAuto ? {} : { model, reasoning }),
+        ...(effectiveRoutingMode ? { routing_mode: effectiveRoutingMode } : {}),
         ...(Array.isArray(attachments) && attachments.length > 0
           ? { attachments }
           : {}),

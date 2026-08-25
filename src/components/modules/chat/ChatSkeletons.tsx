@@ -15,9 +15,11 @@ function Bone({ className }: { className?: string }) {
   );
 }
 
-function AssistantHeader({
+export function AssistantHeader({
   isWaiting: _isWaiting,
-}: { isWaiting?: boolean } = {}) {
+  model,
+  reasoning,
+}: { isWaiting?: boolean; model?: string; reasoning?: string } = {}) {
   return (
     <div className="mb-1 flex items-center gap-2">
       <Logo
@@ -28,6 +30,16 @@ function AssistantHeader({
       <span className="font-label-md text-label-md text-primary font-bold">
         Cognito
       </span>
+      {model && (
+        <span className="text-muted-foreground/80 border-border/40 bg-muted/40 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] font-normal">
+          {model}
+          {reasoning && reasoning !== "none" && (
+            <span className="text-muted-foreground/60 capitalize">
+              · {reasoning}
+            </span>
+          )}
+        </span>
+      )}
     </div>
   );
 }
@@ -133,5 +145,3 @@ export function RecentConversationsSkeleton() {
     </div>
   );
 }
-
-export { AssistantHeader };
