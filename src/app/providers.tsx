@@ -12,6 +12,7 @@ import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import type React from "react";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ArtifactProvider } from "@/hooks/useArtifactStore";
 import { Analytics } from "@/lib/analytics";
 import { authManager } from "@/lib/auth-manager";
 
@@ -161,17 +162,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider delay={200}>
-        {children}
-        <ProgressBar
-          height="3px"
-          color="#1a73e8"
-          options={{ showSpinner: false }}
-          shallowRouting
-        />
-        <SessionExpiredDialog isOpen={sessionExpired} />
-        <ReactQueryDevtools initialIsOpen={false} />
-      </TooltipProvider>
+      <ArtifactProvider>
+        <TooltipProvider delay={200}>
+          {children}
+          <ProgressBar
+            height="3px"
+            color="#1a73e8"
+            options={{ showSpinner: false }}
+            shallowRouting
+          />
+          <SessionExpiredDialog isOpen={sessionExpired} />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </TooltipProvider>
+      </ArtifactProvider>
     </QueryClientProvider>
   );
 }

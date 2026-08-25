@@ -10,7 +10,12 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PanelRightOpen,
+} from "lucide-react";
+import { useArtifactStore } from "@/hooks/useArtifactStore";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import {
   createContext,
@@ -342,6 +347,36 @@ const CodeBlockTitle = dynamic(
   { ssr: false },
 );
 
+function CodeBlockOpenCanvasButton({
+  code,
+  language,
+}: {
+  code: string;
+  language: string;
+}) {
+  const { openArtifact } = useArtifactStore();
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className="h-7 w-7 text-xs text-gray-300 hover:bg-white/10 hover:text-white"
+      onClick={() =>
+        openArtifact({
+          id: `art-${Date.now()}`,
+          title: `${(language || "Code").toUpperCase()} Artifact`,
+          language: language || "text",
+          content: code,
+          type: "code",
+        })
+      }
+      title="Open in Canvas"
+      aria-label="Open in Canvas"
+    >
+      <PanelRightOpen className="h-3.5 w-3.5" />
+    </Button>
+  );
+}
+
 const streamdownComponents = {
   code({ className, children, ...props }: ComponentProps<"code">) {
     const match = /language-(\w+)/.exec((className as string) || "");
@@ -363,6 +398,10 @@ const streamdownComponents = {
                 </span>
               </CodeBlockTitle>
               <CodeBlockActions>
+                <CodeBlockOpenCanvasButton
+                  code={rawText}
+                  language={language || "code"}
+                />
                 <CodeBlockCopyButton className="h-7 px-2 text-xs text-gray-300 hover:bg-white/10 hover:text-white" />
               </CodeBlockActions>
             </CodeBlockHeader>
