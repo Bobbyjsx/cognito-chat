@@ -19,6 +19,7 @@ import { Navbar } from "./Navbar";
 import { ArtifactCanvas } from "./ArtifactCanvas";
 import { useArtifactStore } from "@/hooks/useArtifactStore";
 import { GripVertical } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function toAssistantRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
@@ -35,6 +36,9 @@ function ResizableCanvasPanel() {
   const isDraggingRef = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only allow resizing on desktop viewports
+    if (typeof window !== "undefined" && window.innerWidth < 768) return;
+
     e.preventDefault();
     isDraggingRef.current = true;
     document.body.style.cursor = "col-resize";
@@ -67,17 +71,23 @@ function ResizableCanvasPanel() {
 
   return (
     <div
-      className="relative flex h-full shrink-0 overflow-hidden border-l border-[#313244] bg-[#1e1e2e] transition-none"
-      style={{
-        width: `${panelWidth}px`,
-        minWidth: "360px",
-        maxWidth: "min(850px, calc(100vw - 380px))",
-      }}
+      className={cn(
+        "overflow-hidden bg-[#1e1e2e] transition-none",
+        // Mobile: full width positioned below the top navbar (h-14 = 56px), never overlapping header
+        "absolute inset-x-0 top-14 bottom-0 z-30 flex w-full flex-col pb-[env(safe-area-inset-bottom)]",
+        // Desktop: side-by-side resizable panel
+        "md:static md:inset-x-auto md:top-0 md:bottom-auto md:h-full md:w-[var(--canvas-width)] md:max-w-[min(850px,calc(100vw-380px))] md:min-w-[360px] md:shrink-0 md:border-l md:border-[#313244] md:pb-0",
+      )}
+      style={
+        {
+          "--canvas-width": `${panelWidth}px`,
+        } as React.CSSProperties
+      }
     >
-      {/* Resizer Handle */}
+      {/* Resizer Handle (Desktop only) */}
       <div
         onMouseDown={handleMouseDown}
-        className="group/resizer absolute top-0 bottom-0 -left-1.5 z-30 flex w-3 cursor-col-resize items-center justify-center transition-colors hover:bg-white/10"
+        className="group/resizer absolute top-0 bottom-0 -left-1.5 z-30 hidden w-3 cursor-col-resize items-center justify-center transition-colors hover:bg-white/10 md:flex"
         title="Drag to resize canvas"
       >
         <div className="z-10 flex h-8 w-1 items-center justify-center rounded-full bg-[#313244] transition-colors group-hover/resizer:bg-[#cba6f7]">

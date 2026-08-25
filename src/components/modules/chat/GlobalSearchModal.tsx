@@ -68,13 +68,15 @@ function getProviderInfo(modelId: string): { provider: string; color: string } {
   if (id.includes("gemini")) {
     return {
       provider: "Google",
-      color: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+      color:
+        "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20",
     };
   }
   if (id.includes("claude")) {
     return {
       provider: "Anthropic",
-      color: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+      color:
+        "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20",
     };
   }
   if (
@@ -85,18 +87,21 @@ function getProviderInfo(modelId: string): { provider: string; color: string } {
   ) {
     return {
       provider: "OpenAI",
-      color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+      color:
+        "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20",
     };
   }
   if (id.includes("deepseek")) {
     return {
       provider: "DeepSeek",
-      color: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400",
+      color:
+        "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20",
     };
   }
   return {
     provider: "AI Model",
-    color: "bg-gray-500/10 text-gray-700 dark:text-gray-400",
+    color:
+      "bg-gray-500/10 text-gray-700 dark:text-gray-400 border border-gray-500/20",
   };
 }
 
@@ -135,6 +140,7 @@ export function GlobalSearchModal({
   const [activeTab, setActiveTab] = React.useState<PaletteTab>(defaultTab);
   const [searchInput, setSearchInput] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
+  const [selectedModelId, setSelectedModelId] = React.useState(activeModel);
 
   const inputRef = React.useRef<HTMLInputElement>(null);
   const virtualListRef = React.useRef<HTMLDivElement>(null);
@@ -147,9 +153,10 @@ export function GlobalSearchModal({
       setSearchInput("");
       setDebouncedQuery("");
       setActiveTab(defaultTab);
+      setSelectedModelId(activeModel);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [open, defaultTab]);
+  }, [open, defaultTab, activeModel]);
 
   // Debounce search input for backend chat search
   React.useEffect(() => {
@@ -284,10 +291,10 @@ export function GlobalSearchModal({
     );
   }, [actions, searchInput]);
 
-  // Handle Model Selection
+  // Handle Model Selection: Keeps modal OPEN so reasoning mode can be picked
   const handleSelectModel = React.useCallback(
     (modelId: string) => {
-      onOpenChange(false);
+      setSelectedModelId(modelId);
 
       const storageKey = activeSessionId
         ? `chat_settings_${activeSessionId}`
@@ -304,12 +311,21 @@ export function GlobalSearchModal({
       if (onSelectModel) {
         onSelectModel(modelId);
       }
-      toast.success(`Switched active model to ${formatModelLabel(modelId)}`);
+
+      const modelObj = availableModels.find((m) => m.id === modelId);
+      if (!modelObj?.reasoningModes || modelObj.reasoningModes.length === 0) {
+        onOpenChange(false);
+        toast.success(`Switched model to ${formatModelLabel(modelId)}`);
+      } else {
+        toast.info(
+          `Selected ${formatModelLabel(modelId)}. Choose a reasoning depth below.`,
+        );
+      }
     },
-    [activeSessionId, onOpenChange, onSelectModel],
+    [activeSessionId, availableModels, onOpenChange, onSelectModel],
   );
 
-  // Handle Reasoning Selection
+  // Handle Reasoning Selection: Applies reasoning AND closes modal
   const handleSelectReasoning = React.useCallback(
     (level: string) => {
       onOpenChange(false);
@@ -329,9 +345,11 @@ export function GlobalSearchModal({
       if (onSelectReasoning) {
         onSelectReasoning(level);
       }
-      toast.success(`Reasoning depth set to ${level}`);
+      toast.success(
+        `Model set to ${formatModelLabel(selectedModelId)} with ${level} reasoning`,
+      );
     },
-    [activeSessionId, onOpenChange, onSelectReasoning],
+    [activeSessionId, onOpenChange, onSelectReasoning, selectedModelId],
   );
 
   // Virtualizer for conversations list
@@ -354,22 +372,38 @@ export function GlobalSearchModal({
     }
   };
 
-  const tabs: { id: PaletteTab; label: string; count?: number }[] = [
-    { id: "all", label: "All" },
-    { id: "chats", label: "Conversations", count: sessions.length },
+  const tabs: {
+    id: PaletteTab;
+    label: string;
+    mobileLabel: string;
+    count?: number;
+  }[] = [
+    { id: "all", label: "All", mobileLabel: "All" },
+    {
+      id: "chats",
+      label: "Conversations",
+      mobileLabel: "Chats",
+      count: sessions.length,
+    },
     {
       id: "models",
       label: "Models & Reasoning",
+      mobileLabel: "Models",
       count: availableModels.length,
     },
-    { id: "actions", label: "Actions", count: actions.length },
+    {
+      id: "actions",
+      label: "Actions",
+      mobileLabel: "Actions",
+      count: actions.length,
+    },
   ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="top-[10%] w-full max-w-[calc(100vw-1.5rem)] translate-y-0 overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-0 shadow-2xl sm:top-[15%] sm:max-w-[680px] md:max-w-[740px] dark:bg-[#18181b]"
+        className="border-border/80 top-[8%] w-full max-w-[calc(100vw-1rem)] translate-y-0 overflow-hidden rounded-2xl border bg-white p-0 shadow-2xl sm:top-[12%] sm:max-w-[640px] md:max-w-[720px] dark:bg-[#18181b]"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Workspace Command Palette</DialogTitle>
@@ -392,12 +426,12 @@ export function GlobalSearchModal({
                   ? "Search AI models..."
                   : activeTab === "actions"
                     ? "Search workspace actions..."
-                    : "Type a command, model name, or search chats..."
+                    : "Search chats, models, actions..."
             }
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="text-foreground placeholder:text-muted-foreground/60 w-full bg-transparent text-[14px] font-normal outline-none sm:text-[15px]"
+            className="text-foreground placeholder:text-muted-foreground/60 w-full min-w-0 bg-transparent text-[14px] font-normal outline-none sm:text-[15px]"
           />
           {searchInput && (
             <button
@@ -410,8 +444,8 @@ export function GlobalSearchModal({
           )}
         </div>
 
-        {/* Tab Switcher Header */}
-        <div className="border-border/50 bg-surface/50 flex items-center gap-1 overflow-x-auto border-b px-3 py-1.5 backdrop-blur-xs">
+        {/* Tab Switcher Header (Responsive, No Overflow Clipping) */}
+        <div className="border-border/50 bg-muted/30 flex [scrollbar-width:none] items-center gap-1.5 overflow-x-auto border-b px-3 py-1.5 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -420,13 +454,14 @@ export function GlobalSearchModal({
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all",
+                  "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-all",
                   isActive
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                    ? "bg-background text-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                 )}
               >
-                <span>{tab.label}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.mobileLabel}</span>
                 {tab.count !== undefined && tab.count > 0 && (
                   <span
                     className={cn(
@@ -445,7 +480,7 @@ export function GlobalSearchModal({
         </div>
 
         {/* Main Content Body */}
-        <div className="h-[380px] max-h-[65vh] overflow-y-auto p-2.5 sm:h-[430px] sm:p-3">
+        <div className="h-[360px] max-h-[60vh] overflow-y-auto p-2.5 sm:h-[420px] sm:p-3">
           {/* ─── TAB: ALL or ACTIONS ─── */}
           {(activeTab === "all" || activeTab === "actions") &&
             filteredActions.length > 0 && (
@@ -462,21 +497,21 @@ export function GlobalSearchModal({
                       onClick={action.onSelect}
                       className="hover:bg-muted/70 group flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left transition-colors"
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
                         <div className="bg-surface-container-high/80 text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.06)]">
                           <Icon className="h-3.5 w-3.5" />
                         </div>
-                        <div>
-                          <div className="text-foreground text-[13px] font-medium">
+                        <div className="min-w-0">
+                          <div className="text-foreground truncate text-[13px] font-medium">
                             {action.title}
                           </div>
-                          <div className="text-muted-foreground text-[11px]">
+                          <div className="text-muted-foreground truncate text-[11px]">
                             {action.description}
                           </div>
                         </div>
                       </div>
                       {action.shortcut && (
-                        <kbd className="bg-muted text-muted-foreground rounded border border-[rgba(0,0,0,0.06)] px-1.5 py-0.5 font-mono text-[10px]">
+                        <kbd className="bg-muted text-muted-foreground shrink-0 rounded border border-[rgba(0,0,0,0.06)] px-1.5 py-0.5 font-mono text-[10px]">
                           {action.shortcut}
                         </kbd>
                       )}
@@ -491,37 +526,46 @@ export function GlobalSearchModal({
             filteredModels.length > 0 && (
               <div className="mb-3 space-y-1">
                 <div className="text-muted-foreground/70 flex items-center justify-between px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wider uppercase">
-                  <span>AI Models & Reasoning</span>
+                  <span>AI Models</span>
                   <span className="text-muted-foreground/60 font-sans text-[10px] normal-case">
-                    Click to switch model
+                    Click model to set reasoning depth
                   </span>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {filteredModels.map((m) => {
-                    const isCurrent = activeModel === m.id;
+                    const isSelected = selectedModelId === m.id;
+                    const isCurrentlyActive = activeModel === m.id;
                     const provider = getProviderInfo(m.id);
 
                     return (
                       <div
                         key={m.id}
                         className={cn(
-                          "group rounded-xl border p-2.5 transition-all",
-                          isCurrent
-                            ? "border-primary/30 bg-primary/5 shadow-xs"
-                            : "border-border/50 hover:bg-muted/40 hover:border-border",
+                          "group rounded-xl border p-3 transition-all",
+                          isSelected
+                            ? "border-primary/40 bg-primary/[0.04] ring-primary/20 shadow-xs ring-1"
+                            : "border-border/60 hover:bg-muted/40 hover:border-border",
                         )}
                       >
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-start justify-between gap-2">
                           <button
                             type="button"
                             onClick={() => handleSelectModel(m.id)}
-                            className="flex flex-1 items-start gap-2.5 text-left"
+                            className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
                           >
-                            <div className="bg-surface-container-high/60 mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.06)]">
-                              <Cpu className="text-foreground h-3.5 w-3.5" />
+                            <div
+                              className={cn(
+                                "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                                isSelected
+                                  ? "border-primary/30 bg-primary/10 text-primary"
+                                  : "border-border/60 bg-muted/60 text-muted-foreground",
+                              )}
+                            >
+                              <Cpu className="h-3.5 w-3.5" />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <span className="text-foreground text-[13px] font-semibold">
                                   {m.name}
                                 </span>
@@ -533,47 +577,58 @@ export function GlobalSearchModal({
                                 >
                                   {provider.provider}
                                 </span>
-                                {isCurrent && (
-                                  <span className="bg-primary text-primary-foreground py-0.2 flex items-center gap-1 rounded-full px-1.5 font-mono text-[9px] font-semibold tracking-wide uppercase">
+                                {isCurrentlyActive && (
+                                  <span className="bg-primary/15 text-primary border-primary/30 py-0.2 flex items-center gap-1 rounded-full border px-1.5 font-mono text-[9px] font-semibold tracking-wide uppercase">
                                     <Check className="h-2.5 w-2.5" />
                                     Active
                                   </span>
                                 )}
                               </div>
-                              <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
+
+                              <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed break-words">
                                 {m.description}
                               </p>
                             </div>
                           </button>
                         </div>
 
-                        {/* Inline Reasoning Levels if selected model */}
-                        {isCurrent && m.reasoningModes.length > 0 && (
-                          <div className="mt-2.5 flex items-center gap-1.5 border-t border-[rgba(0,0,0,0.06)] pt-2 pl-9">
-                            <span className="text-muted-foreground flex items-center gap-1 text-[10px] font-medium">
-                              <Brain className="h-3 w-3" />
-                              Reasoning:
-                            </span>
-                            {m.reasoningModes.map((level) => {
-                              const isReasoningActive =
-                                activeReasoning.toLowerCase() ===
-                                level.toLowerCase();
-                              return (
-                                <button
-                                  key={level}
-                                  type="button"
-                                  onClick={() => handleSelectReasoning(level)}
-                                  className={cn(
-                                    "rounded-md px-2 py-0.5 text-[10px] font-medium capitalize transition-all",
-                                    isReasoningActive
-                                      ? "bg-foreground text-background font-semibold shadow-xs"
-                                      : "bg-muted/80 text-muted-foreground hover:text-foreground",
-                                  )}
-                                >
-                                  {level}
-                                </button>
-                              );
-                            })}
+                        {/* Inline Reasoning Depth Selector */}
+                        {isSelected && m.reasoningModes.length > 0 && (
+                          <div className="border-border/50 mt-3 border-t pt-2.5">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-medium">
+                                <Brain className="text-primary h-3.5 w-3.5 shrink-0" />
+                                <span>Select reasoning mode to apply:</span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {m.reasoningModes.map((level) => {
+                                  const isReasoningActive =
+                                    activeReasoning.toLowerCase() ===
+                                    level.toLowerCase();
+                                  return (
+                                    <button
+                                      key={level}
+                                      type="button"
+                                      onClick={() =>
+                                        handleSelectReasoning(level)
+                                      }
+                                      className={cn(
+                                        "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium capitalize transition-all",
+                                        isReasoningActive
+                                          ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                                          : "bg-muted hover:bg-muted/80 text-foreground hover:text-foreground border-border/60 border",
+                                      )}
+                                    >
+                                      <span>{level}</span>
+                                      {isReasoningActive && (
+                                        <Check className="h-3 w-3" />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -685,13 +740,13 @@ export function GlobalSearchModal({
               <kbd className="bg-muted rounded border border-[rgba(0,0,0,0.06)] px-1.5 py-0.5 font-mono text-[10px]">
                 Tab
               </kbd>
-              <span>switch view</span>
+              <span className="hidden sm:inline">switch view</span>
             </span>
             <span className="flex items-center gap-1">
               <kbd className="bg-muted rounded border border-[rgba(0,0,0,0.06)] px-1.5 py-0.5 font-mono text-[10px]">
                 ↵
               </kbd>
-              <span>select</span>
+              <span className="hidden sm:inline">select</span>
             </span>
           </div>
           <div className="text-muted-foreground/70 flex items-center gap-1 text-[10px]">
