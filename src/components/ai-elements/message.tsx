@@ -359,7 +359,7 @@ function CodeBlockOpenCanvasButton({
     <Button
       variant="ghost"
       size="sm"
-      className="h-7 gap-1.5 rounded-md px-2 text-[11px] font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+      className="h-7 gap-1.5 rounded-md px-2 text-[11px] font-medium text-[#a6adc8] transition-colors hover:bg-[#313244] hover:text-[#cdd6f4]"
       onClick={() =>
         openArtifact({
           id: `art-${Date.now()}`,
@@ -387,14 +387,14 @@ const streamdownComponents = {
     if (isMultiLine) {
       const language = (match ? match[1] : "") as BundledLanguage;
       return (
-        <div className="my-3 overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#1e1e1e] shadow-lg">
+        <div className="my-3 overflow-hidden rounded-xl border border-[#313244] bg-[#1e1e2e] shadow-lg">
           <CodeBlock
             code={rawText}
             language={language || ("text" as BundledLanguage)}
           >
-            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3 py-1.5 font-mono text-xs text-gray-300">
+            <CodeBlockHeader className="flex items-center justify-between border-b border-[#313244] bg-[#181825] px-3 py-1.5 font-mono text-xs text-[#cdd6f4]">
               <CodeBlockTitle>
-                <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-gray-300 uppercase">
+                <span className="rounded bg-[#313244] px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-[#a6adc8] uppercase">
                   {language || "code"}
                 </span>
               </CodeBlockTitle>
@@ -403,7 +403,7 @@ const streamdownComponents = {
                   code={rawText}
                   language={language || "code"}
                 />
-                <CodeBlockCopyButton className="h-7 px-2 text-xs text-gray-300 hover:bg-white/10 hover:text-white" />
+                <CodeBlockCopyButton className="h-7 px-2 text-xs text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4]" />
               </CodeBlockActions>
             </CodeBlockHeader>
           </CodeBlock>
