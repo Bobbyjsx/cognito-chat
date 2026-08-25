@@ -521,6 +521,7 @@ export function ChatSidebar({
       <GlobalSearchModal
         open={searchModalOpen}
         onOpenChange={setSearchModalOpen}
+        defaultTab="chats"
         activeSessionId={activeSessionId}
         activeModel={activeModel}
         onSelectModel={onSelectModel}

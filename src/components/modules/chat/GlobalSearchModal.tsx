@@ -34,6 +34,7 @@ export type PaletteTab = "all" | "chats" | "models" | "actions";
 interface GlobalSearchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultTab?: PaletteTab;
   activeSessionId?: string | null;
   activeModel?: string;
   onSelectModel?: (model: string) => void;
@@ -122,6 +123,7 @@ function formatModelLabel(id: string): string {
 export function GlobalSearchModal({
   open,
   onOpenChange,
+  defaultTab = "chats",
   activeSessionId,
   activeModel = "gemini-3.6-flash",
   onSelectModel,
@@ -130,7 +132,7 @@ export function GlobalSearchModal({
   onNewChat,
 }: GlobalSearchModalProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = React.useState<PaletteTab>("all");
+  const [activeTab, setActiveTab] = React.useState<PaletteTab>(defaultTab);
   const [searchInput, setSearchInput] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
 
@@ -144,10 +146,10 @@ export function GlobalSearchModal({
     if (open) {
       setSearchInput("");
       setDebouncedQuery("");
-      setActiveTab("all");
+      setActiveTab(defaultTab);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [open]);
+  }, [open, defaultTab]);
 
   // Debounce search input for backend chat search
   React.useEffect(() => {
@@ -287,7 +289,6 @@ export function GlobalSearchModal({
     (modelId: string) => {
       onOpenChange(false);
 
-      // Save to localStorage
       const storageKey = activeSessionId
         ? `chat_settings_${activeSessionId}`
         : "chat_settings_default";
@@ -341,15 +342,15 @@ export function GlobalSearchModal({
     overscan: 8,
   });
 
-  // Keyboard navigation
+  // Keyboard navigation for tabs
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Tab") {
       e.preventDefault();
-      const tabs: PaletteTab[] = ["all", "chats", "models", "actions"];
+      const tabList: PaletteTab[] = ["all", "chats", "models", "actions"];
       const nextIdx =
-        (tabs.indexOf(activeTab) + (e.shiftKey ? -1 : 1) + tabs.length) %
-        tabs.length;
-      setActiveTab(tabs[nextIdx]);
+        (tabList.indexOf(activeTab) + (e.shiftKey ? -1 : 1) + tabList.length) %
+        tabList.length;
+      setActiveTab(tabList[nextIdx]);
     }
   };
 
@@ -368,7 +369,7 @@ export function GlobalSearchModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="top-[18%] w-full max-w-[620px] translate-y-0 overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-0 shadow-2xl dark:bg-[#18181b]"
+        className="top-[10%] w-full max-w-[calc(100vw-1.5rem)] translate-y-0 overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-0 shadow-2xl sm:top-[15%] sm:max-w-[680px] md:max-w-[740px] dark:bg-[#18181b]"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Workspace Command Palette</DialogTitle>
@@ -379,8 +380,8 @@ export function GlobalSearchModal({
         </DialogHeader>
 
         {/* Search Bar */}
-        <div className="border-border/60 flex items-center gap-3 border-b px-4 py-3.5">
-          <Search className="text-muted-foreground h-4 w-4 shrink-0" />
+        <div className="border-border/60 flex items-center gap-3 border-b px-4 py-3.5 sm:py-4">
+          <Search className="text-muted-foreground h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
           <input
             ref={inputRef}
             type="text"
@@ -396,7 +397,7 @@ export function GlobalSearchModal({
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="text-foreground placeholder:text-muted-foreground/60 w-full bg-transparent text-[14px] font-normal outline-none"
+            className="text-foreground placeholder:text-muted-foreground/60 w-full bg-transparent text-[14px] font-normal outline-none sm:text-[15px]"
           />
           {searchInput && (
             <button
@@ -404,24 +405,22 @@ export function GlobalSearchModal({
               onClick={() => setSearchInput("")}
               className="text-muted-foreground hover:text-foreground rounded p-1"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
         {/* Tab Switcher Header */}
-        <div className="border-border/50 bg-surface/50 flex items-center gap-1 border-b px-3 py-1.5 backdrop-blur-xs">
+        <div className="border-border/50 bg-surface/50 flex items-center gap-1 overflow-x-auto border-b px-3 py-1.5 backdrop-blur-xs">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => {
-                  setActiveTab(tab.id);
-                }}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all",
+                  "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all",
                   isActive
                     ? "bg-background text-foreground shadow-xs"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -446,7 +445,7 @@ export function GlobalSearchModal({
         </div>
 
         {/* Main Content Body */}
-        <div className="max-h-[380px] min-h-[220px] overflow-y-auto p-2">
+        <div className="h-[380px] max-h-[65vh] overflow-y-auto p-2.5 sm:h-[430px] sm:p-3">
           {/* ─── TAB: ALL or ACTIONS ─── */}
           {(activeTab === "all" || activeTab === "actions") &&
             filteredActions.length > 0 && (
@@ -609,8 +608,8 @@ export function GlobalSearchModal({
                   ref={virtualListRef}
                   className="relative overflow-y-auto pr-1"
                   style={{
-                    maxHeight: activeTab === "all" ? "220px" : "320px",
-                    minHeight: "100px",
+                    maxHeight: activeTab === "all" ? "240px" : "360px",
+                    minHeight: "140px",
                   }}
                 >
                   <div
