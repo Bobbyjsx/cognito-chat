@@ -8,7 +8,7 @@ import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachm
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { attachmentById } from "@/lib/attachments";
 import { markGlobalMutation } from "@/lib/axios";
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { notifyServerError } from "@/lib/server-error";
 import type { MessageSchema } from "@/types";
@@ -16,6 +16,7 @@ import { ChatInput } from "./ChatInput";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatSidebar } from "./ChatSidebar";
 import { Navbar } from "./Navbar";
+import { ArtifactCanvas } from "./ArtifactCanvas";
 
 function toAssistantRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
@@ -34,7 +35,6 @@ function sessionIdFromParams(
 export function ChatShell() {
   const pathname = usePathname();
   const params = useParams();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: config } = useGetConfig();
 
@@ -458,6 +458,10 @@ export function ChatShell() {
         onNewChat={handleNewChat}
         open={sidebarOpen}
         onOpenChange={setSidebarOpen}
+        activeModel={activeModel}
+        onSelectModel={handleSelectModel}
+        activeReasoning={activeReasoning}
+        onSelectReasoning={handleSelectReasoning}
       />
 
       <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
@@ -489,6 +493,8 @@ export function ChatShell() {
           onSelectReasoning={handleSelectReasoning}
         />
       </main>
+
+      <ArtifactCanvas />
     </div>
   );
 }

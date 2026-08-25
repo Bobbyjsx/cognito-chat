@@ -35,6 +35,10 @@ interface ChatSidebarProps {
   onNewChat?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  activeModel?: string;
+  onSelectModel?: (model: string) => void;
+  activeReasoning?: string;
+  onSelectReasoning?: (reasoning: string) => void;
 }
 
 function formatRelativeTime(isoString: string | null | undefined): string {
@@ -89,6 +93,10 @@ export function ChatSidebar({
   onNewChat,
   open = false,
   onOpenChange,
+  activeModel,
+  onSelectModel,
+  activeReasoning,
+  onSelectReasoning,
 }: ChatSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -477,7 +485,11 @@ export function ChatSidebar({
                 hasNextPage={hasNextPage}
                 isFetchingNextPage={isFetchingNextPage}
                 fetchNextPage={fetchNextPage}
-                endMessage={data?.pages && data.pages.length > 1 ? "You're all caught up" : ""}
+                endMessage={
+                  data?.pages && data.pages.length > 1
+                    ? "You're all caught up"
+                    : ""
+                }
               />
             </div>
           </div>
@@ -509,6 +521,12 @@ export function ChatSidebar({
       <GlobalSearchModal
         open={searchModalOpen}
         onOpenChange={setSearchModalOpen}
+        activeSessionId={activeSessionId}
+        activeModel={activeModel}
+        onSelectModel={onSelectModel}
+        activeReasoning={activeReasoning}
+        onSelectReasoning={onSelectReasoning}
+        onNewChat={onNewChat}
       />
 
       {/* Desktop fixed sidebar */}

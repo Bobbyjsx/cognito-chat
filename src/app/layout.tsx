@@ -6,6 +6,7 @@ import { Toaster as SonnerToaster } from "sonner";
 
 import "./globals.css";
 import { Providers } from "./providers";
+import { ServiceWorkerRegister } from "@/components/modules/pwa/ServiceWorkerRegister";
 import {
   APP_DESCRIPTION,
   APP_NAME,
@@ -99,7 +100,13 @@ export const metadata: Metadata = {
     ],
   },
 
-  manifest: "/favicon/site.webmanifest",
+  manifest: "/manifest.webmanifest",
+
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: APP_NAME,
+  },
 
   formatDetection: {
     email: false,
@@ -111,7 +118,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ffffff",
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#FBFBFA",
 };
 
 export default function RootLayout({
@@ -126,6 +135,7 @@ export default function RootLayout({
           <Providers>
             {children}
             <SonnerToaster richColors theme="light" />
+            <ServiceWorkerRegister />
           </Providers>
         </SessionProvider>
       </body>
