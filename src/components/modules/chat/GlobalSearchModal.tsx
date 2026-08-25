@@ -129,9 +129,9 @@ export function GlobalSearchModal({
   onOpenChange,
   defaultTab = "all",
   activeSessionId,
-  activeModel = "gemini-3.6-flash",
+  activeModel = "Auto",
   onSelectModel,
-  activeReasoning = "medium",
+  activeReasoning = "balanced",
   onSelectReasoning,
   onNewChat,
 }: GlobalSearchModalProps) {
@@ -218,14 +218,30 @@ export function GlobalSearchModal({
       ];
     }
 
-    return Object.entries(rawList)
+    const autoModel = {
+      id: "Auto",
+      name: "Auto (Smart Router)",
+      description:
+        "Intelligent automatic model routing based on query complexity and intent",
+      reasoningModes: ["balanced", "speed", "quality", "cost"],
+    };
+
+    const models = Object.entries(rawList)
       .filter(([, cfg]) => cfg.enabled)
       .map(([id, cfg]) => ({
         id,
         name: formatModelLabel(id),
         description: cfg.description || "General intelligence model",
-        reasoningModes: cfg.reasoningModes || ["low", "medium", "high"],
+        reasoningModes: cfg.reasoningModes || [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+        ],
       }));
+
+    return [autoModel, ...models];
   }, [config]);
 
   // Filtered models

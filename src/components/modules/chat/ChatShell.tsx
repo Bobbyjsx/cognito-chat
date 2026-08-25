@@ -139,10 +139,8 @@ export function ChatShell() {
   const hasSentAttachmentsRef = useRef(false);
 
   const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
-  const activeModel =
-    userSelectedModel || config?.defaultTextModel || "gemini-3.6-flash";
-  const activeReasoning =
-    userSelectedReasoning || config?.defaultReasoningLevel || "medium";
+  const activeModel = userSelectedModel || "Auto";
+  const activeReasoning = userSelectedReasoning || "balanced";
 
   // Use refs to avoid stale closures in useChat callbacks
   const currentModelRef = useRef(userSelectedModel);
@@ -523,6 +521,8 @@ export function ChatShell() {
     setHydratedSessionId(null);
     setPendingSessionId(null);
     streamedSessionRef.current = null;
+    setUserSelectedModel(null);
+    setUserSelectedReasoning(null);
     setAiMessages([]);
   }, [setAiMessages, isStreaming]);
 
