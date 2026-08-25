@@ -139,8 +139,18 @@ export function ChatShell() {
   const hasSentAttachmentsRef = useRef(false);
 
   const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
-  const activeModel = userSelectedModel || "Auto";
-  const activeReasoning = userSelectedReasoning || "balanced";
+
+  const defaultModel =
+    config?.enableSmartRouting !== false
+      ? "Auto"
+      : config?.defaultTextModel || "gemini-3.6-flash";
+  const defaultReasoning =
+    config?.enableSmartRouting !== false
+      ? config?.defaultRoutingMode || "balanced"
+      : config?.defaultReasoningLevel || "medium";
+
+  const activeModel = userSelectedModel || defaultModel;
+  const activeReasoning = userSelectedReasoning || defaultReasoning;
 
   // Use refs to avoid stale closures in useChat callbacks
   const currentModelRef = useRef(userSelectedModel);
@@ -190,21 +200,6 @@ export function ChatShell() {
       const nextId = data?.sessionId;
       if (!nextId) return;
 
-      // Copy current settings to the new session
-      try {
-        const modelToSave = currentModelRef.current;
-        const reasoningToSave = currentReasoningRef.current;
-        if (modelToSave || reasoningToSave) {
-          localStorage.setItem(
-            `chat_settings_${nextId}`,
-            JSON.stringify({
-              model: modelToSave,
-              reasoning: reasoningToSave,
-            }),
-          );
-        }
-      } catch {}
-
       setStreamSessionId(nextId);
       setHydratedSessionId(nextId);
       streamedSessionRef.current = nextId;
@@ -242,93 +237,13 @@ export function ChatShell() {
   const isSessionSwitchPending =
     pendingSessionId !== null && pendingSessionId !== routeSessionId;
 
-  // Load from localStorage when activeSessionId or config changes
-  useEffect(() => {
-    if (!config || isStreaming) return;
-    const storageKey = activeSessionId
-      ? `chat_settings_${activeSessionId}`
-      : "chat_settings_default";
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const { model, reasoning } = JSON.parse(saved);
+  const handleSelectModel = useCallback((model: string) => {
+    setUserSelectedModel(model);
+  }, []);
 
-        queueMicrotask(() => {
-          const modelsList = config.modelsList ?? {};
-          const globalAllowedReasoning = config.allowedReasoningLevels;
-          const allowedModels = Object.entries(modelsList)
-            .filter(([, cfg]) => cfg.enabled)
-            .map(([name]) => name);
-
-          let validModel: string | null = null;
-          if (model && allowedModels.includes(model)) {
-            validModel = model;
-            setUserSelectedModel(model);
-          } else {
-            setUserSelectedModel(null);
-          }
-
-          const modelToUse = validModel ?? config.defaultTextModel;
-          const modelCfg = modelsList[modelToUse];
-          const allowedReasoningForModel = modelCfg
-            ? modelCfg.reasoningModes.filter((m) =>
-                globalAllowedReasoning.includes(m),
-              )
-            : globalAllowedReasoning;
-
-          if (
-            reasoning &&
-            globalAllowedReasoning.includes(reasoning) &&
-            allowedReasoningForModel.includes(reasoning)
-          ) {
-            setUserSelectedReasoning(reasoning);
-          } else {
-            setUserSelectedReasoning(null);
-          }
-        });
-      } else {
-        queueMicrotask(() => {
-          setUserSelectedModel(null);
-          setUserSelectedReasoning(null);
-        });
-      }
-    } catch (err) {
-      console.error("Failed to parse saved chat settings", err);
-    }
-  }, [activeSessionId, config, isStreaming]);
-
-  const handleSelectModel = useCallback(
-    (model: string) => {
-      setUserSelectedModel(model);
-      const storageKey = activeSessionId
-        ? `chat_settings_${activeSessionId}`
-        : "chat_settings_default";
-      try {
-        const saved = localStorage.getItem(storageKey);
-        const data = saved ? JSON.parse(saved) : {};
-        localStorage.setItem(storageKey, JSON.stringify({ ...data, model }));
-      } catch {}
-    },
-    [activeSessionId],
-  );
-
-  const handleSelectReasoning = useCallback(
-    (reasoning: string) => {
-      setUserSelectedReasoning(reasoning);
-      const storageKey = activeSessionId
-        ? `chat_settings_${activeSessionId}`
-        : "chat_settings_default";
-      try {
-        const saved = localStorage.getItem(storageKey);
-        const data = saved ? JSON.parse(saved) : {};
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({ ...data, reasoning }),
-        );
-      } catch {}
-    },
-    [activeSessionId],
-  );
+  const handleSelectReasoning = useCallback((reasoning: string) => {
+    setUserSelectedReasoning(reasoning);
+  }, []);
 
   // Hydrate from session history when navigating between existing sessions
   useEffect(() => {
