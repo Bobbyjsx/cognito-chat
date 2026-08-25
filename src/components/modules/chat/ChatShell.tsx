@@ -140,14 +140,8 @@ export function ChatShell() {
 
   const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
 
-  const defaultModel =
-    config?.enableSmartRouting !== false
-      ? "Auto"
-      : config?.defaultTextModel || "gemini-3.6-flash";
-  const defaultReasoning =
-    config?.enableSmartRouting !== false
-      ? config?.defaultRoutingMode || "balanced"
-      : config?.defaultReasoningLevel || "medium";
+  const defaultModel = config?.defaultTextModel || "gemini-3.6-flash";
+  const defaultReasoning = config?.defaultReasoningLevel || "medium";
 
   const activeModel = userSelectedModel || defaultModel;
   const activeReasoning = userSelectedReasoning || defaultReasoning;
