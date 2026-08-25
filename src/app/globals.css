@@ -92,6 +92,34 @@
   .tracking-tight-editorial {
     letter-spacing: -0.025em;
   }
+
+  /* Sleek Mocha Code Scrollbars */
+  .code-scrollbar {
+    scrollbar-color: #313244 transparent;
+    scrollbar-width: thin;
+  }
+
+  .code-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .code-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .code-scrollbar::-webkit-scrollbar-thumb {
+    background: #313244;
+    border-radius: 9999px;
+  }
+
+  .code-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #45475a;
+  }
+
+  .code-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 @theme inline {

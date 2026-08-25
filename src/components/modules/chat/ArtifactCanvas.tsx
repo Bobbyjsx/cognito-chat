@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useMemo, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Code2,
   Copy,
@@ -12,10 +12,9 @@ import {
   Minimize2,
   X,
   FileCode2,
-  Sparkles,
   WrapText,
-  GripVertical,
 } from "lucide-react";
+import { CognitoIcon } from "@/components/ui/logo";
 import { useArtifactStore } from "@/hooks/useArtifactStore";
 import { IconTooltipButton } from "@/components/ui/icon-tooltip-button";
 import { CodeBlockContent } from "@/components/ai-elements/code-block";
@@ -66,7 +65,11 @@ function getFileExtension(language: string): string {
   }
 }
 
-export function ArtifactCanvas() {
+interface ArtifactCanvasProps {
+  className?: string;
+}
+
+export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
   const {
     artifact,
     isOpen,
@@ -79,37 +82,6 @@ export function ArtifactCanvas() {
 
   const [copied, setCopied] = useState(false);
   const [isWrapped, setIsWrapped] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(520);
-  const isResizingRef = useRef(false);
-
-  // Resize handler for desktop side-by-side view
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizingRef.current = true;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!isResizingRef.current) return;
-      const calculatedWidth = window.innerWidth - moveEvent.clientX;
-      const minWidth = 360;
-      const maxWidth = Math.min(window.innerWidth * 0.75, 960);
-      if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
-        setPanelWidth(calculatedWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      isResizingRef.current = false;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  }, []);
 
   const isHtmlOrPreviewable = useMemo(() => {
     if (!artifact) return false;
@@ -193,209 +165,180 @@ export function ArtifactCanvas() {
   if (!isOpen || !artifact) return null;
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       <motion.aside
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 20 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        style={{
-          width: isFullScreen ? "100vw" : undefined,
-        }}
+        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
-          "bg-surface border-border flex flex-col shadow-2xl transition-all duration-150",
-          isFullScreen
-            ? "fixed inset-0 z-50 h-dvh w-dvw"
-            : "fixed inset-0 z-50 h-dvh w-full lg:relative lg:inset-auto lg:z-10 lg:h-full lg:border-l",
+          "flex h-full w-full flex-col overflow-hidden bg-[#1e1e2e] text-[#cdd6f4]",
+          isFullScreen && "fixed inset-0 z-50 h-dvh w-dvw bg-[#1e1e2e]",
+          className,
         )}
       >
-        {/* Desktop Left Resize Handle */}
-        {!isFullScreen && (
-          <div
-            onMouseDown={handleMouseDown}
-            className="group/resizer hover:bg-primary/10 absolute top-0 bottom-0 -left-1.5 z-30 hidden w-3 cursor-col-resize items-center justify-center lg:flex"
-            title="Drag to resize sidebar"
-          >
-            <div className="bg-border group-hover/resizer:bg-primary flex h-8 w-1 items-center justify-center rounded-full transition-colors">
-              <GripVertical className="text-muted-foreground h-3 w-3 opacity-0 group-hover/resizer:opacity-100" />
+        {/* Mocha Top Bar Header */}
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-[#313244] bg-[#181825] px-3.5 backdrop-blur-md">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#313244] bg-[#313244]/50 text-[#cba6f7]">
+              <FileCode2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-xs font-semibold text-[#cdd6f4]">
+                  {artifact.title || "Artifact"}
+                </span>
+                <span className="py-0.2 rounded bg-[#313244] px-1.5 font-mono text-[10px] font-medium tracking-wide text-[#a6adc8] uppercase">
+                  {artifact.language || "text"}
+                </span>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Dynamic Width Style on Desktop */}
-        <div
-          className="flex h-full w-full flex-col overflow-hidden"
-          style={{
-            width:
-              !isFullScreen &&
-              typeof window !== "undefined" &&
-              window.innerWidth >= 1024
-                ? `${panelWidth}px`
-                : "100%",
-          }}
-        >
-          {/* Top Bar Header */}
-          <div className="border-border bg-surface/90 flex h-14 shrink-0 items-center justify-between border-b px-4 backdrop-blur-md">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <div className="bg-primary/5 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.06)]">
-                <FileCode2 className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-foreground truncate text-xs font-semibold">
-                    {artifact.title || "Artifact Canvas"}
-                  </span>
-                  <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide uppercase">
-                    {artifact.language || "text"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Header Action Controls */}
-            <div className="flex items-center gap-1">
-              {/* Tab Switcher for Previewables */}
-              {isHtmlOrPreviewable && (
-                <div className="bg-muted/70 mr-1.5 flex rounded-lg p-0.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("code")}
-                    className={cn(
-                      "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-all",
-                      activeTab === "code"
-                        ? "bg-background text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <Code2 className="h-3.5 w-3.5" />
-                    <span>Code</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("preview")}
-                    className={cn(
-                      "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-all",
-                      activeTab === "preview"
-                        ? "bg-background text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    <span>Preview</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Wrap / Unwrap Toggle */}
-              {activeTab === "code" && (
-                <IconTooltipButton
-                  label={isWrapped ? "Unwrap lines" : "Wrap lines"}
-                  side="bottom"
-                  onClick={() => setIsWrapped((prev) => !prev)}
+          {/* Header Action Controls */}
+          <div className="flex items-center gap-1">
+            {/* Tab Switcher for Previewables */}
+            {isHtmlOrPreviewable && (
+              <div className="mr-1 flex rounded-lg border border-[#313244] bg-[#11111b] p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("code")}
                   className={cn(
-                    "text-muted-foreground hover:text-foreground h-8 w-8",
-                    isWrapped && "bg-muted text-foreground",
+                    "flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                    activeTab === "code"
+                      ? "bg-[#313244] text-[#cdd6f4] shadow-xs"
+                      : "text-[#6c7086] hover:text-[#cdd6f4]",
                   )}
                 >
-                  <WrapText className="h-4 w-4" />
-                </IconTooltipButton>
-              )}
-
-              {/* Copy */}
-              <IconTooltipButton
-                label={copied ? "Copied" : "Copy content"}
-                side="bottom"
-                onClick={handleCopy}
-                className="text-muted-foreground hover:text-foreground h-8 w-8"
-              >
-                {copied ? (
-                  <Check className="text-primary h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </IconTooltipButton>
-
-              {/* Download */}
-              <IconTooltipButton
-                label="Download file"
-                side="bottom"
-                onClick={handleDownload}
-                className="text-muted-foreground hover:text-foreground h-8 w-8"
-              >
-                <Download className="h-4 w-4" />
-              </IconTooltipButton>
-
-              {/* Fullscreen (Desktop) */}
-              <IconTooltipButton
-                label={isFullScreen ? "Exit fullscreen" : "Fullscreen"}
-                side="bottom"
-                onClick={toggleFullScreen}
-                className="text-muted-foreground hover:text-foreground hidden h-8 w-8 lg:inline-flex"
-              >
-                {isFullScreen ? (
-                  <Minimize2 className="h-4 w-4" />
-                ) : (
-                  <Maximize2 className="h-4 w-4" />
-                )}
-              </IconTooltipButton>
-
-              {/* Close */}
-              <IconTooltipButton
-                label="Close canvas"
-                side="bottom"
-                onClick={closeArtifact}
-                className="text-muted-foreground hover:text-foreground h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </IconTooltipButton>
-            </div>
-          </div>
-
-          {/* Canvas Scrollable Content */}
-          <div className="relative flex-1 overflow-auto bg-[#1e1e1e]">
-            {activeTab === "preview" && isHtmlOrPreviewable ? (
-              artifact.language === "markdown" ||
-              artifact.type === "markdown" ? (
-                <div className="bg-background text-foreground h-full overflow-y-auto p-6">
-                  <StreamdownWrapper>{artifact.content}</StreamdownWrapper>
-                </div>
-              ) : (
-                <iframe
-                  title="Artifact Live Preview"
-                  srcDoc={previewHtml}
-                  sandbox="allow-scripts allow-same-origin"
-                  className="h-full w-full border-0 bg-white"
-                />
-              )
-            ) : (
-              <div className="h-full overflow-auto">
-                <CodeBlockContent
-                  code={artifact.content}
-                  language={(artifact.language || "text") as BundledLanguage}
-                  showLineNumbers
-                  wrap={isWrapped}
-                />
+                  <Code2 className="h-3 w-3" />
+                  <span>Code</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("preview")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                    activeTab === "preview"
+                      ? "bg-[#313244] text-[#cdd6f4] shadow-xs"
+                      : "text-[#6c7086] hover:text-[#cdd6f4]",
+                  )}
+                >
+                  <Eye className="h-3 w-3" />
+                  <span>Preview</span>
+                </button>
               </div>
             )}
-          </div>
 
-          {/* Canvas Footer */}
-          <div className="border-border bg-surface text-muted-foreground flex h-8 shrink-0 items-center justify-between border-t px-4 font-mono text-[11px]">
-            <div className="flex items-center gap-2">
-              <span>{artifact.content.split("\n").length} lines</span>
-              <span>•</span>
-              <span>{artifact.content.length} chars</span>
-              {isWrapped && (
-                <>
-                  <span>•</span>
-                  <span className="text-primary">wrapped</span>
-                </>
+            {/* Wrap / Unwrap Toggle */}
+            {activeTab === "code" && (
+              <IconTooltipButton
+                label={isWrapped ? "Unwrap lines" : "Wrap lines"}
+                side="bottom"
+                onClick={() => setIsWrapped((prev) => !prev)}
+                className={cn(
+                  "h-7 w-7 text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4]",
+                  isWrapped && "bg-[#313244] text-[#cba6f7]",
+                )}
+              >
+                <WrapText className="h-3.5 w-3.5" />
+              </IconTooltipButton>
+            )}
+
+            {/* Copy */}
+            <IconTooltipButton
+              label={copied ? "Copied" : "Copy content"}
+              side="bottom"
+              onClick={handleCopy}
+              className="h-7 w-7 text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4]"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-[#a6e3a1]" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
               )}
+            </IconTooltipButton>
+
+            {/* Download */}
+            <IconTooltipButton
+              label="Download file"
+              side="bottom"
+              onClick={handleDownload}
+              className="h-7 w-7 text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4]"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </IconTooltipButton>
+
+            {/* Fullscreen (Desktop only) */}
+            <IconTooltipButton
+              label={isFullScreen ? "Exit fullscreen" : "Fullscreen"}
+              side="bottom"
+              onClick={toggleFullScreen}
+              className="hidden h-7 w-7 text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4] lg:inline-flex"
+            >
+              {isFullScreen ? (
+                <Minimize2 className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )}
+            </IconTooltipButton>
+
+            {/* Close */}
+            <IconTooltipButton
+              label="Close canvas"
+              side="bottom"
+              onClick={closeArtifact}
+              className="h-7 w-7 text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4]"
+            >
+              <X className="h-3.5 w-3.5" />
+            </IconTooltipButton>
+          </div>
+        </div>
+
+        {/* Canvas Body with Mocha Editor */}
+        <div className="relative flex-1 overflow-hidden bg-[#1e1e2e]">
+          {activeTab === "preview" && isHtmlOrPreviewable ? (
+            artifact.language === "markdown" || artifact.type === "markdown" ? (
+              <div className="bg-background text-foreground h-full overflow-y-auto p-6">
+                <StreamdownWrapper>{artifact.content}</StreamdownWrapper>
+              </div>
+            ) : (
+              <iframe
+                title="Artifact Live Preview"
+                srcDoc={previewHtml}
+                sandbox="allow-scripts allow-same-origin"
+                className="h-full w-full border-0 bg-white"
+              />
+            )
+          ) : (
+            <div className="h-full w-full overflow-hidden">
+              <CodeBlockContent
+                code={artifact.content}
+                language={(artifact.language || "text") as BundledLanguage}
+                showLineNumbers
+                wrap={isWrapped}
+              />
             </div>
-            <div className="text-muted-foreground/80 flex items-center gap-1.5 text-xs">
-              <Sparkles className="h-3 w-3" />
-              <span>Cognito Artifact</span>
-            </div>
+          )}
+        </div>
+
+        {/* Canvas Footer */}
+        <div className="flex h-7 shrink-0 items-center justify-between border-t border-[#313244] bg-[#181825] px-3.5 font-mono text-[10px] text-[#6c7086]">
+          <div className="flex items-center gap-2">
+            <span>{artifact.content.split("\n").length} lines</span>
+            <span>•</span>
+            <span>{artifact.content.length} chars</span>
+            {isWrapped && (
+              <>
+                <span>•</span>
+                <span className="font-sans font-medium text-[#cba6f7]">
+                  wrapped
+                </span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-[#6c7086]">
+            <CognitoIcon size={12} className="text-[#cba6f7]" />
+            <span>Cognito Canvas</span>
           </div>
         </div>
       </motion.aside>

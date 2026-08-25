@@ -17,10 +17,77 @@ import { ChatMessageList } from "./ChatMessageList";
 import { ChatSidebar } from "./ChatSidebar";
 import { Navbar } from "./Navbar";
 import { ArtifactCanvas } from "./ArtifactCanvas";
+import { useArtifactStore } from "@/hooks/useArtifactStore";
+import { GripVertical } from "lucide-react";
 
 function toAssistantRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
   return "assistant";
+}
+
+function ResizableCanvasPanel() {
+  const [panelWidth, setPanelWidth] = useState(() => {
+    if (typeof window !== "undefined") {
+      return Math.min(Math.max(window.innerWidth * 0.45, 380), 720);
+    }
+    return 520;
+  });
+  const isDraggingRef = useRef(false);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const newWidth = window.innerWidth - moveEvent.clientX;
+      const minWidth = 360;
+      const maxWidth = Math.max(
+        360,
+        Math.min(window.innerWidth - 380, window.innerWidth * 0.75),
+      );
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        setPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }, []);
+
+  return (
+    <div
+      className="relative flex h-full shrink-0 overflow-hidden border-l border-[#313244] bg-[#1e1e2e] transition-none"
+      style={{
+        width: `${panelWidth}px`,
+        minWidth: "360px",
+        maxWidth: "min(850px, calc(100vw - 380px))",
+      }}
+    >
+      {/* Resizer Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className="group/resizer absolute top-0 bottom-0 -left-1.5 z-30 flex w-3 cursor-col-resize items-center justify-center transition-colors hover:bg-white/10"
+        title="Drag to resize canvas"
+      >
+        <div className="z-10 flex h-8 w-1 items-center justify-center rounded-full bg-[#313244] transition-colors group-hover/resizer:bg-[#cba6f7]">
+          <GripVertical className="h-3 w-3 text-[#6c7086] opacity-0 group-hover/resizer:opacity-100" />
+        </div>
+      </div>
+
+      <ArtifactCanvas />
+    </div>
+  );
 }
 
 function sessionIdFromParams(
@@ -450,8 +517,11 @@ export function ChatShell() {
           !sessionData ||
           sessionData.id !== routeSessionId)));
 
+  const { artifact, isOpen: isArtifactOpen } = useArtifactStore();
+  const showArtifact = Boolean(isArtifactOpen && artifact);
+
   return (
-    <div className="bg-background font-body-md text-body-md text-on-surface flex h-full overflow-hidden">
+    <div className="bg-background font-body-md text-body-md text-on-surface flex h-full w-full overflow-hidden">
       <ChatSidebar
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
@@ -494,7 +564,7 @@ export function ChatShell() {
         />
       </main>
 
-      <ArtifactCanvas />
+      {showArtifact && <ResizableCanvasPanel />}
     </div>
   );
 }
