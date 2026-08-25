@@ -375,10 +375,14 @@ export const CodeBlockContent = ({
   code,
   language,
   showLineNumbers = false,
+  wrap = false,
+  className,
 }: {
   code: string;
   language: BundledLanguage;
   showLineNumbers?: boolean;
+  wrap?: boolean;
+  className?: string;
 }) => {
   // Memoized raw tokens for immediate display
   const rawTokens = useMemo(() => createRawTokens(code), [code]);
@@ -420,8 +424,22 @@ export const CodeBlockContent = ({
   const tokenized = asyncTokens ?? syncTokens;
 
   return (
-    <div className="relative overflow-auto">
-      <CodeBlockBody showLineNumbers={showLineNumbers} tokenized={tokenized} />
+    <div
+      className={cn(
+        "relative overflow-auto",
+        wrap && "overflow-x-hidden",
+        className,
+      )}
+    >
+      <CodeBlockBody
+        showLineNumbers={showLineNumbers}
+        tokenized={tokenized}
+        className={
+          wrap
+            ? "break-words whitespace-pre-wrap"
+            : "overflow-x-auto whitespace-pre"
+        }
+      />
     </div>
   );
 };

@@ -358,8 +358,8 @@ function CodeBlockOpenCanvasButton({
   return (
     <Button
       variant="ghost"
-      size="icon-sm"
-      className="h-7 w-7 text-xs text-gray-300 hover:bg-white/10 hover:text-white"
+      size="sm"
+      className="h-7 gap-1.5 rounded-md px-2 text-[11px] font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
       onClick={() =>
         openArtifact({
           id: `art-${Date.now()}`,
@@ -373,6 +373,7 @@ function CodeBlockOpenCanvasButton({
       aria-label="Open in Canvas"
     >
       <PanelRightOpen className="h-3.5 w-3.5" />
+      <span>Open in Canvas</span>
     </Button>
   );
 }
@@ -386,18 +387,18 @@ const streamdownComponents = {
     if (isMultiLine) {
       const language = (match ? match[1] : "") as BundledLanguage;
       return (
-        <div className="my-3 overflow-hidden rounded-xl border border-[rgba(0,0,0,0.08)] bg-[#1e1e1e] shadow-md">
+        <div className="my-3 overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#1e1e1e] shadow-lg">
           <CodeBlock
             code={rawText}
             language={language || ("text" as BundledLanguage)}
           >
-            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3.5 py-1.5 font-mono text-xs text-gray-300">
+            <CodeBlockHeader className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#252526] px-3 py-1.5 font-mono text-xs text-gray-300">
               <CodeBlockTitle>
-                <span className="font-mono text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-gray-300 uppercase">
                   {language || "code"}
                 </span>
               </CodeBlockTitle>
-              <CodeBlockActions>
+              <CodeBlockActions className="flex items-center gap-1">
                 <CodeBlockOpenCanvasButton
                   code={rawText}
                   language={language || "code"}
