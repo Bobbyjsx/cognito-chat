@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
@@ -75,28 +76,78 @@ export const ConversationScrollButton = ({
   className,
   ...props
 }: ConversationScrollButtonProps) => {
-  const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+  const { isAtBottom, scrollToBottom, scrollRef } = useStickToBottomContext();
+  const [lastScrollDirection, setLastScrollDirection] = useState<"up" | "down">(
+    "up",
+  );
+  const lastScrollTopRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
+    if (!scrollElement) return;
+
+    lastScrollTopRef.current = scrollElement.scrollTop;
+
+    const handleScroll = () => {
+      const currentScrollTop = scrollElement.scrollTop;
+      if (lastScrollTopRef.current === null) {
+        lastScrollTopRef.current = currentScrollTop;
+        return;
+      }
+
+      const diff = currentScrollTop - lastScrollTopRef.current;
+
+      // Filter subpixel jitter
+      if (Math.abs(diff) >= 3) {
+        if (diff > 0) {
+          // Scrolled downward (towards bottom)
+          setLastScrollDirection("down");
+        } else {
+          // Scrolled upward (towards top)
+          setLastScrollDirection("up");
+        }
+        lastScrollTopRef.current = currentScrollTop;
+      }
+    };
+
+    scrollElement.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollElement.removeEventListener("scroll", handleScroll);
+  }, [scrollRef]);
 
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
   }, [scrollToBottom]);
 
+  // Hide when last scroll was to top, only show when last scroll was to bottom and not at bottom yet
+  const shouldShow = !isAtBottom && lastScrollDirection === "down";
+
   return (
-    !isAtBottom && (
-      <Button
-        className={cn(
-          "dark:bg-background dark:hover:bg-muted absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full",
-          className,
-        )}
-        onClick={handleScrollToBottom}
-        size="icon"
-        type="button"
-        variant="outline"
-        {...props}
-      >
-        <ArrowDownIcon className="size-4" />
-      </Button>
-    )
+    <AnimatePresence>
+      {shouldShow && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.85, y: 8 }}
+          transition={{ duration: 0.15 }}
+          className="absolute bottom-4 left-[50%] z-20 translate-x-[-50%]"
+        >
+          <Button
+            className={cn(
+              "bg-background/95 hover:bg-background text-foreground border-border h-9 w-9 rounded-full border p-0 shadow-md backdrop-blur-xs",
+              className,
+            )}
+            onClick={handleScrollToBottom}
+            size="icon"
+            type="button"
+            variant="outline"
+            aria-label="Scroll to bottom"
+            {...props}
+          >
+            <ArrowDownIcon className="size-4" />
+          </Button>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

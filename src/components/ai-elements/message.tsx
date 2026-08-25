@@ -14,6 +14,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   PanelRightOpen,
+  ExternalLink,
 } from "lucide-react";
 import { useArtifactStore } from "@/hooks/useArtifactStore";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
@@ -421,6 +422,137 @@ const streamdownComponents = {
       >
         {children}
       </code>
+    );
+  },
+
+  a({ href, children, className, ...props }: ComponentProps<"a">) {
+    const isExternal =
+      typeof href === "string" &&
+      (href.startsWith("http://") ||
+        href.startsWith("https://") ||
+        href.startsWith("//"));
+    const textContent = typeof children === "string" ? children.trim() : "";
+    const isCitationBadge =
+      /^(?:\[\^?\d+\]|\^?\d+|\d+)$/.test(textContent) ||
+      (props as Record<string, unknown>)["data-footnote-ref"] !== undefined;
+
+    if (isCitationBadge) {
+      return (
+        <a
+          href={href}
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noopener noreferrer" : undefined}
+          className={cn(
+            "text-primary bg-primary/10 hover:bg-primary/20 py-0.2 mx-0.5 inline-flex items-center justify-center rounded-md px-1 align-super font-mono text-[10px] font-semibold no-underline transition-colors",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    }
+
+    return (
+      <a
+        href={href}
+        target={isExternal ? "_blank" : undefined}
+        rel={isExternal ? "noopener noreferrer" : undefined}
+        className={cn(
+          "text-primary decoration-primary/40 hover:decoration-primary inline-flex items-center gap-0.5 font-medium underline underline-offset-4 transition-colors",
+          className,
+        )}
+        {...props}
+      >
+        <span>{children}</span>
+        {isExternal && (
+          <ExternalLink className="ml-0.5 inline h-3 w-3 shrink-0 opacity-70" />
+        )}
+      </a>
+    );
+  },
+
+  sup({ className, children, ...props }: ComponentProps<"sup">) {
+    return (
+      <sup
+        className={cn(
+          "text-primary ml-0.5 align-super font-mono text-[11px] leading-none font-semibold",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </sup>
+    );
+  },
+
+  section({ className, children, ...props }: ComponentProps<"section">) {
+    const isFootnotes =
+      (props as Record<string, unknown>)["data-footnotes"] !== undefined ||
+      className?.includes("footnotes");
+
+    if (isFootnotes) {
+      return (
+        <section
+          className={cn(
+            "border-border/60 text-muted-foreground mt-6 space-y-2 border-t pt-4 text-xs [&_li]:mt-1.5 [&_li]:leading-relaxed [&_ol]:list-decimal [&_ol]:pl-4",
+            className,
+          )}
+          {...props}
+        >
+          <div className="text-foreground mb-2 text-[11px] font-semibold tracking-wider uppercase">
+            References & Sources
+          </div>
+          {children}
+        </section>
+      );
+    }
+
+    return (
+      <section className={className} {...props}>
+        {children}
+      </section>
+    );
+  },
+
+  table({ className, children, ...props }: ComponentProps<"table">) {
+    return (
+      <div className="border-border/60 bg-surface/50 my-3 overflow-x-auto rounded-xl border">
+        <table
+          className={cn("w-full border-collapse text-left text-xs", className)}
+          {...props}
+        >
+          {children}
+        </table>
+      </div>
+    );
+  },
+
+  th({ className, children, ...props }: ComponentProps<"th">) {
+    return (
+      <th
+        className={cn(
+          "border-border/60 bg-muted/60 text-foreground border-b px-3 py-2 font-semibold",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </th>
+    );
+  },
+
+  td({ className, children, ...props }: ComponentProps<"td">) {
+    return (
+      <td
+        className={cn(
+          "border-border/40 text-foreground/90 border-b px-3 py-2 last:border-b-0",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </td>
     );
   },
 };

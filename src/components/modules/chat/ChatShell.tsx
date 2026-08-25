@@ -386,7 +386,32 @@ export function ChatShell() {
             }
 
             const parts: UIMessage["parts"] = [];
-            if (m.content.trim().length > 0) {
+            if (Array.isArray(m.parts) && m.parts.length > 0) {
+              for (const p of m.parts) {
+                if (p.type === "text" && typeof (p as any).text === "string") {
+                  parts.push({ type: "text", text: (p as any).text });
+                } else if (
+                  p.type === "reasoning" &&
+                  typeof (p as any).text === "string"
+                ) {
+                  parts.push({ type: "reasoning", text: (p as any).text });
+                } else if (
+                  p.type === "tool" ||
+                  (p as any).type === "dynamic-tool"
+                ) {
+                  parts.push({
+                    type: "dynamic-tool",
+                    toolName: (p as any).toolName || "tool",
+                    toolCallId: (p as any).toolCallId || `tool-${idx}`,
+                    state: (p as any).state || "output-available",
+                    input: (p as any).input,
+                    output: (p as any).output,
+                  } as any);
+                }
+              }
+            }
+
+            if (parts.length === 0 && m.content.trim().length > 0) {
               parts.push({ type: "text", text: m.content });
             }
 
