@@ -18,7 +18,6 @@ import {
 import { useGetSessions } from "@/hooks/data/useChats/useChats";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import type { ChatSessionListItem } from "@/types";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Dialog,
   DialogContent,
@@ -128,7 +127,7 @@ function formatModelLabel(id: string): string {
 export function GlobalSearchModal({
   open,
   onOpenChange,
-  defaultTab = "chats",
+  defaultTab = "all",
   activeSessionId,
   activeModel = "gemini-3.6-flash",
   onSelectModel,
@@ -143,19 +142,20 @@ export function GlobalSearchModal({
   const [selectedModelId, setSelectedModelId] = React.useState(activeModel);
 
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const virtualListRef = React.useRef<HTMLDivElement>(null);
+  const prevOpenRef = React.useRef(false);
 
   const { data: config } = useGetConfig();
 
-  // Reset state when opening modal
+  // Reset state strictly when modal is opened (not on internal model/reasoning selection)
   React.useEffect(() => {
-    if (open) {
+    if (open && !prevOpenRef.current) {
       setSearchInput("");
       setDebouncedQuery("");
       setActiveTab(defaultTab);
       setSelectedModelId(activeModel);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
+    prevOpenRef.current = open;
   }, [open, defaultTab, activeModel]);
 
   // Debounce search input for backend chat search
@@ -291,7 +291,7 @@ export function GlobalSearchModal({
     );
   }, [actions, searchInput]);
 
-  // Handle Model Selection: Keeps modal OPEN so reasoning mode can be picked
+  // Handle Model Selection: Keeps modal OPEN on the current tab so reasoning mode can be picked
   const handleSelectModel = React.useCallback(
     (modelId: string) => {
       setSelectedModelId(modelId);
@@ -351,14 +351,6 @@ export function GlobalSearchModal({
     },
     [activeSessionId, onOpenChange, onSelectReasoning, selectedModelId],
   );
-
-  // Virtualizer for conversations list
-  const sessionRowVirtualizer = useVirtualizer({
-    count: sessions.length,
-    getScrollElement: () => virtualListRef.current,
-    estimateSize: () => 48,
-    overscan: 8,
-  });
 
   // Keyboard navigation for tabs
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -638,7 +630,7 @@ export function GlobalSearchModal({
               </div>
             )}
 
-          {/* ─── TAB: ALL or CHATS (Virtualized) ─── */}
+          {/* ─── TAB: ALL or CHATS ─── */}
           {(activeTab === "all" || activeTab === "chats") && (
             <div className="space-y-1">
               <div className="text-muted-foreground/70 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wider uppercase">
@@ -648,9 +640,9 @@ export function GlobalSearchModal({
               </div>
 
               {isSessionsLoading ? (
-                <div className="space-y-2 p-3">
-                  <div className="bg-muted/60 h-8 w-3/4 animate-pulse rounded-lg" />
-                  <div className="bg-muted/40 h-8 w-1/2 animate-pulse rounded-lg" />
+                <div className="space-y-2 p-2">
+                  <div className="bg-muted/60 h-9 w-3/4 animate-pulse rounded-xl" />
+                  <div className="bg-muted/40 h-9 w-1/2 animate-pulse rounded-xl" />
                 </div>
               ) : sessions.length === 0 ? (
                 <div className="text-muted-foreground/70 border-border/40 my-2 rounded-xl border border-dashed p-6 text-center text-xs">
@@ -660,73 +652,53 @@ export function GlobalSearchModal({
                 </div>
               ) : (
                 <div
-                  ref={virtualListRef}
-                  className="relative overflow-y-auto pr-1"
+                  className="relative space-y-1 overflow-y-auto pr-1"
                   style={{
                     maxHeight: activeTab === "all" ? "240px" : "360px",
-                    minHeight: "140px",
                   }}
                 >
-                  <div
-                    className="relative w-full"
-                    style={{
-                      height: `${sessionRowVirtualizer.getTotalSize()}px`,
-                    }}
-                  >
-                    {sessionRowVirtualizer
-                      .getVirtualItems()
-                      .map((virtualItem) => {
-                        const session = sessions[virtualItem.index];
-                        const title =
-                          session.title?.trim() ||
-                          session.lastMessageContent?.trim() ||
-                          "New Conversation";
-                        const relativeTime = formatRelativeTime(
-                          session.updatedAt || session.createdAt,
-                        );
-                        const isCurrentSession = activeSessionId === session.id;
+                  {sessions.map((session) => {
+                    const title =
+                      session.title?.trim() ||
+                      session.lastMessageContent?.trim() ||
+                      "New Conversation";
+                    const relativeTime = formatRelativeTime(
+                      session.updatedAt || session.createdAt,
+                    );
+                    const isCurrentSession = activeSessionId === session.id;
 
-                        return (
-                          <div
-                            key={session.id}
-                            className="absolute top-0 left-0 w-full px-0.5 py-0.5"
-                            style={{
-                              height: `${virtualItem.size}px`,
-                              transform: `translateY(${virtualItem.start}px)`,
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onOpenChange(false);
-                                router.push(`/chat/${session.id}`);
-                              }}
-                              className={cn(
-                                "group flex h-full w-full items-center justify-between rounded-xl px-2.5 py-2 text-left transition-all duration-150",
-                                isCurrentSession
-                                  ? "bg-muted text-foreground font-medium"
-                                  : "hover:bg-muted/60 text-muted-foreground hover:text-foreground",
-                              )}
-                            >
-                              <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                                <History className="text-muted-foreground/60 group-hover:text-foreground h-3.5 w-3.5 shrink-0 transition-colors" />
-                                <span className="truncate text-[13px] font-medium">
-                                  {title}
-                                </span>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-2 pl-2">
-                                {relativeTime && (
-                                  <span className="text-muted-foreground/50 font-mono text-[10px]">
-                                    {relativeTime}
-                                  </span>
-                                )}
-                                <ArrowRight className="text-muted-foreground/40 group-hover:text-foreground h-3 w-3 transition-colors" />
-                              </div>
-                            </button>
-                          </div>
-                        );
-                      })}
-                  </div>
+                    return (
+                      <button
+                        key={session.id}
+                        type="button"
+                        onClick={() => {
+                          onOpenChange(false);
+                          router.push(`/chat/${session.id}`);
+                        }}
+                        className={cn(
+                          "group flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left transition-all duration-150",
+                          isCurrentSession
+                            ? "bg-muted text-foreground font-medium"
+                            : "hover:bg-muted/60 text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                          <History className="text-muted-foreground/60 group-hover:text-foreground h-3.5 w-3.5 shrink-0 transition-colors" />
+                          <span className="truncate text-[13px] font-medium">
+                            {title}
+                          </span>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2 pl-2">
+                          {relativeTime && (
+                            <span className="text-muted-foreground/50 font-mono text-[10px]">
+                              {relativeTime}
+                            </span>
+                          )}
+                          <ArrowRight className="text-muted-foreground/40 group-hover:text-foreground h-3 w-3 transition-colors" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -27,7 +27,7 @@ import {
   useGetSessions,
 } from "@/hooks/data/useChats/useChats";
 import { cn } from "@/lib/utils";
-import { GlobalSearchModal } from "./GlobalSearchModal";
+import { GlobalSearchModal, type PaletteTab } from "./GlobalSearchModal";
 
 interface ChatSidebarProps {
   activeSessionId?: string | null;
@@ -102,14 +102,16 @@ export function ChatSidebar({
   const pathname = usePathname();
   const listRef = useRef<HTMLDivElement>(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchDefaultTab, setSearchDefaultTab] = useState<PaletteTab>("all");
   const [isDesktopOpen, setIsDesktopOpen] = useState(true);
 
-  // Global shortcut for Cmd+K / Ctrl+K
+  // Global shortcut for Cmd+K / Ctrl+K (opens in 'all' tab)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setSearchModalOpen((open) => !open);
+        setSearchDefaultTab("all");
+        setSearchModalOpen(true);
       }
     };
     document.addEventListener("keydown", down);
@@ -222,7 +224,10 @@ export function ChatSidebar({
         label="Search"
         shortcut="⌘K"
         side="right"
-        onClick={() => setSearchModalOpen(true)}
+        onClick={() => {
+          setSearchDefaultTab("chats");
+          setSearchModalOpen(true);
+        }}
       >
         <Search className="h-5 w-5" />
       </IconTooltipButton>
@@ -282,7 +287,10 @@ export function ChatSidebar({
             label="Search"
             shortcut="⌘K"
             side="bottom"
-            onClick={() => setSearchModalOpen(true)}
+            onClick={() => {
+              setSearchDefaultTab("chats");
+              setSearchModalOpen(true);
+            }}
           >
             <Search className="h-4 w-4" />
           </IconTooltipButton>
@@ -521,7 +529,7 @@ export function ChatSidebar({
       <GlobalSearchModal
         open={searchModalOpen}
         onOpenChange={setSearchModalOpen}
-        defaultTab="chats"
+        defaultTab={searchDefaultTab}
         activeSessionId={activeSessionId}
         activeModel={activeModel}
         onSelectModel={onSelectModel}
