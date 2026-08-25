@@ -7,6 +7,7 @@ import { Toaster as SonnerToaster } from "sonner";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ServiceWorkerRegister } from "@/components/modules/pwa/ServiceWorkerRegister";
+import { PwaInstallPrompt } from "@/components/modules/pwa/PwaInstallPrompt";
 import {
   APP_DESCRIPTION,
   APP_NAME,
@@ -136,6 +137,7 @@ export default function RootLayout({
             {children}
             <SonnerToaster richColors theme="light" />
             <ServiceWorkerRegister />
+            <PwaInstallPrompt />
           </Providers>
         </SessionProvider>
       </body>
