@@ -18,23 +18,28 @@ interface ModelSelectorProps {
   className?: string;
 }
 
-const ROUTING_POLICIES = [
+export interface EffortMode {
+  id: "fast" | "balanced" | "extended";
+  label: string;
+  desc: string;
+}
+
+export const EFFORT_MODES: EffortMode[] = [
+  {
+    id: "fast",
+    label: "Fast",
+    desc: "Instant responses, minimal/no thinking latency",
+  },
   {
     id: "balanced",
     label: "Balanced",
-    desc: "Best balance of speed and intelligence",
+    desc: "Smart reasoning, optimal everyday intelligence",
   },
   {
-    id: "speed",
-    label: "Speed",
-    desc: "Instant response with minimal latency",
+    id: "extended",
+    label: "Extended",
+    desc: "Deep multi-step reasoning for complex problems",
   },
-  {
-    id: "quality",
-    label: "Quality",
-    desc: "Deep reasoning and high intelligence",
-  },
-  { id: "cost", label: "Cost", desc: "Quota-friendly & token efficient" },
 ];
 
 export function ModelSelector({
@@ -52,9 +57,9 @@ export function ModelSelector({
   );
 
   const modelsList = config?.modelsList ?? {};
-  const globalAllowedReasoning = (config?.allowedReasoningLevels ?? []).map(
-    (r) => r.toLowerCase(),
-  );
+  const globalAllowedReasoning = (
+    config?.allowedReasoningLevels ?? ["fast", "balanced", "extended"]
+  ).map((r) => r.toLowerCase());
 
   // Derive enabled models from modelsList
   const allowedModels = Object.entries(modelsList)
@@ -66,7 +71,7 @@ export function ModelSelector({
   // Intersect a model's own reasoning_modes with the global list
   const getModesForModel = (modelName: string) => {
     if (modelName.toLowerCase() === "auto") {
-      return ROUTING_POLICIES.map((p) => p.id);
+      return EFFORT_MODES.map((p) => p.id);
     }
     const modelCfg = modelsList[modelName];
     if (!modelCfg) return globalAllowedReasoning;
@@ -129,7 +134,7 @@ export function ModelSelector({
           <div className="text-gray-medium flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium tracking-wider uppercase">
             <span>Select AI Model</span>
             <span className="text-gray-medium/80 text-[10px]">
-              {isAuto ? "Policy Options ➔" : "Reasoning Options ➔"}
+              Effort Options ➔
             </span>
           </div>
 
@@ -178,23 +183,23 @@ export function ModelSelector({
                     align="start"
                     side="right"
                     sideOffset={8}
-                    className="ambient-shadow w-52 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
+                    className="ambient-shadow w-56 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
                   >
                     <div className="text-gray-medium px-2 py-1 text-[10px] font-semibold tracking-wider uppercase">
-                      Routing Policy
+                      Effort & Routing Policy
                     </div>
                     <div className="space-y-0.5">
-                      {ROUTING_POLICIES.map((policy) => {
+                      {EFFORT_MODES.map((effort) => {
                         const isCurrent =
                           isAuto &&
-                          (selectedReasoning.toLowerCase() === policy.id ||
-                            (!selectedReasoning && policy.id === "balanced"));
+                          (selectedReasoning.toLowerCase() === effort.id ||
+                            (!selectedReasoning && effort.id === "balanced"));
                         return (
                           <button
-                            key={policy.id}
+                            key={effort.id}
                             type="button"
                             onClick={() =>
-                              handleSelectModelAndReasoning("Auto", policy.id)
+                              handleSelectModelAndReasoning("Auto", effort.id)
                             }
                             className={cn(
                               "flex w-full flex-col items-start rounded-md px-2.5 py-1.5 text-xs transition-colors",
@@ -204,13 +209,13 @@ export function ModelSelector({
                             )}
                           >
                             <div className="flex w-full items-center justify-between">
-                              <span className="capitalize">{policy.label}</span>
+                              <span className="capitalize">{effort.label}</span>
                               {isCurrent && (
                                 <Check className="text-on-surface h-3.5 w-3.5" />
                               )}
                             </div>
                             <span className="text-gray-medium/80 text-[10px] leading-tight font-normal">
-                              {policy.desc}
+                              {effort.desc}
                             </span>
                           </button>
                         );
@@ -273,35 +278,43 @@ export function ModelSelector({
                         align="start"
                         side="right"
                         sideOffset={8}
-                        className="ambient-shadow w-48 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
+                        className="ambient-shadow w-56 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
                       >
                         <div className="text-gray-medium px-2 py-1 text-[10px] font-semibold tracking-wider uppercase">
-                          {m} Reasoning
+                          Thinking Effort
                         </div>
                         <div className="space-y-0.5">
-                          {modes.map((level) => {
+                          {EFFORT_MODES.filter((eff) =>
+                            modes.includes(eff.id),
+                          ).map((eff) => {
                             const isCurrent =
                               isSelected &&
-                              selectedReasoning.toLowerCase() ===
-                                level.toLowerCase();
+                              selectedReasoning.toLowerCase() === eff.id;
                             return (
                               <button
-                                key={level}
+                                key={eff.id}
                                 type="button"
                                 onClick={() =>
-                                  handleSelectModelAndReasoning(m, level)
+                                  handleSelectModelAndReasoning(m, eff.id)
                                 }
                                 className={cn(
-                                  "flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs capitalize transition-colors",
+                                  "flex w-full flex-col items-start rounded-md px-2.5 py-1.5 text-xs transition-colors",
                                   isCurrent
                                     ? "bg-surface-container-high text-on-surface font-semibold"
                                     : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
                                 )}
                               >
-                                <span>{level}</span>
-                                {isCurrent && (
-                                  <Check className="text-on-surface h-3.5 w-3.5" />
-                                )}
+                                <div className="flex w-full items-center justify-between">
+                                  <span className="capitalize">
+                                    {eff.label}
+                                  </span>
+                                  {isCurrent && (
+                                    <Check className="text-on-surface h-3.5 w-3.5" />
+                                  )}
+                                </div>
+                                <span className="text-gray-medium/80 text-[10px] leading-tight font-normal">
+                                  {eff.desc}
+                                </span>
                               </button>
                             );
                           })}

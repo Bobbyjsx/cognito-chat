@@ -223,7 +223,7 @@ export function GlobalSearchModal({
       name: "Auto (Smart Router)",
       description:
         "Intelligent automatic model routing based on query complexity and intent",
-      reasoningModes: ["balanced", "speed", "quality", "cost"],
+      reasoningModes: ["fast", "balanced", "extended"],
     };
 
     const models = Object.entries(rawList)
@@ -232,13 +232,7 @@ export function GlobalSearchModal({
         id,
         name: formatModelLabel(id),
         description: cfg.description || "General intelligence model",
-        reasoningModes: cfg.reasoningModes || [
-          "none",
-          "minimal",
-          "low",
-          "medium",
-          "high",
-        ],
+        reasoningModes: cfg.reasoningModes || ["fast", "balanced", "extended"],
       }));
 
     return [autoModel, ...models];
