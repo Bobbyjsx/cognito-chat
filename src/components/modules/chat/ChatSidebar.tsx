@@ -306,16 +306,6 @@ export function ChatSidebar({
               <X className="h-4 w-4" />
             </IconTooltipButton>
           )}
-
-          {/* Desktop: collapse */}
-          <IconTooltipButton
-            label="Collapse sidebar"
-            side="bottom"
-            className="hidden md:inline-flex"
-            onClick={() => setIsDesktopOpen(false)}
-          >
-            <PanelLeftClose className="h-4 w-4" />
-          </IconTooltipButton>
         </div>
       </div>
 
@@ -505,13 +495,13 @@ export function ChatSidebar({
       </div>
 
       {/* Footer */}
-      <div className="border-border mt-auto border-t pt-2">
+      <div className="border-border mt-auto flex items-center justify-between border-t pt-2">
         <Link
           href="/settings"
           onClick={closeSidebar}
           className={cn(
             buttonVariants({ variant: "ghost" }),
-            "w-full justify-start gap-2.5 font-medium",
+            "flex-1 justify-start gap-2.5 font-medium",
             pathname === "/settings"
               ? "bg-muted text-foreground font-semibold"
               : "text-muted-foreground",
@@ -520,6 +510,16 @@ export function ChatSidebar({
           <Settings className="h-4 w-4 shrink-0" />
           Settings
         </Link>
+
+        {/* Desktop: collapse */}
+        <IconTooltipButton
+          label="Collapse sidebar"
+          side="top"
+          className="text-muted-foreground hover:text-foreground hidden shrink-0 md:inline-flex"
+          onClick={() => setIsDesktopOpen(false)}
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </IconTooltipButton>
       </div>
     </div>
   );
