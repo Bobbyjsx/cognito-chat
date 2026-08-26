@@ -8,11 +8,7 @@ export function apiUrl(path: string): string {
   return `${API_BASE_URL}${normalized}`;
 }
 
-export const OAUTH_BASE_URL =
-  process.env.NEXT_PUBLIC_OAUTH_SERVICE_URL ||
-  process.env.OAUTH_SERVICE_URL ||
-  "https://id-api.bobslab.xyz";
-
+export const OAUTH_BASE_URL = process.env.NEXT_PUBLIC_OAUTH_SERVICE_URL || "";
 export const OAUTH_APP_ID_HEADER = "X-Application-Id";
 
 /** Application client ID / tenant key registered with OAuth Service */

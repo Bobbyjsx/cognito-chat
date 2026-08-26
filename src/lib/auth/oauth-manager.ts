@@ -43,8 +43,15 @@ export class OAuthTransitionManager {
       code_challenge_method: "S256",
     });
 
+    const baseUrl = (
+      process.env.NEXT_PUBLIC_OAUTH_SERVICE_URL ||
+      process.env.OAUTH_SERVICE_URL ||
+      OAUTH_BASE_URL ||
+      "https://id-api.bobslab.xyz"
+    ).replace(/\/$/, "");
+
     return {
-      url: `${OAUTH_BASE_URL}/api/v1/oauth/authorize?${params.toString()}`,
+      url: `${baseUrl}/api/v1/oauth/authorize?${params.toString()}`,
       state,
       codeVerifier,
     };

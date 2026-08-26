@@ -1,3 +1,8 @@
+echo "Running lint staged"
 npx lint-staged
+
+echo "Running type checking"
 npx tsc --noEmit
+
+echo "Running unit tests"
 pnpm test

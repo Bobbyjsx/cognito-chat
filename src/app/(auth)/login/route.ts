@@ -29,7 +29,11 @@ export async function GET(request: NextRequest) {
   const { url, state, codeVerifier } =
     await oauthManager.generateAuthorizeUrl(redirectUri);
 
-  const response = NextResponse.redirect(url);
+  const redirectTarget = url.startsWith("http")
+    ? url
+    : new URL(url, request.url).toString();
+
+  const response = NextResponse.redirect(redirectTarget);
   response.cookies.set("oauth_state", state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
