@@ -36,6 +36,7 @@ interface DictationToolbarProps {
   canStop: boolean;
   /** True while attached files are being uploaded to the backend. */
   isUploading?: boolean;
+  lastSentText?: string;
 }
 
 export function DictationToolbar({
@@ -48,6 +49,7 @@ export function DictationToolbar({
   isBusy,
   canStop,
   isUploading = false,
+  lastSentText,
 }: DictationToolbarProps) {
   const { data: config } = useGetConfig();
 
@@ -216,7 +218,12 @@ export function DictationToolbar({
         <DonutQuotaIndicator />
         <PromptInputSubmit
           status={status}
-          onStop={onStop}
+          onStop={() => {
+            onStop?.();
+            if (lastSentText) {
+              controller.textInput.setInput(lastSentText);
+            }
+          }}
           disabled={(isBusy && !canStop) || isUploading}
           className="bg-primary text-on-primary rounded-lg transition-all duration-200 hover:bg-[#3d3f42] active:scale-[0.96]"
         />

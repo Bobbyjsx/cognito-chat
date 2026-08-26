@@ -106,6 +106,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
   const { isLoading: isProfileLoading } = useProfile();
+  const [lastSentText, setLastSentText] = useState("");
 
   const isBusy = status === "submitted" || status === "streaming";
   const canStop = isBusy && Boolean(onStop);
@@ -168,8 +169,9 @@ export function ChatInput({
       }
     });
 
-    // Only pass files to AI SDK if they weren't manually uploaded
     const unuploadedFiles = message.files.filter((f) => !f.uploadedId);
+
+    setLastSentText(message.text);
 
     onSend(
       text,
@@ -214,6 +216,7 @@ export function ChatInput({
                 isBusy={isBusy}
                 canStop={canStop}
                 isUploading={false}
+                lastSentText={lastSentText}
               />
             </PromptInputFooter>
           </PromptInput>
