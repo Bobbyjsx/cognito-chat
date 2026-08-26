@@ -15,6 +15,8 @@ function Bone({ className }: { className?: string }) {
   );
 }
 
+import { formatModelDisplayName } from "@/lib/models";
+
 export function AssistantHeader({
   isWaiting: _isWaiting,
   model,
@@ -32,7 +34,7 @@ export function AssistantHeader({
       </span>
       {model && (
         <span className="text-muted-foreground/80 border-border/40 bg-muted/40 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] font-normal">
-          {model}
+          {formatModelDisplayName(model)}
           {reasoning && reasoning !== "none" && (
             <span className="text-muted-foreground/60 capitalize">
               · {reasoning}

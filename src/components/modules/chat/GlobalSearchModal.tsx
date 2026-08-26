@@ -104,25 +104,7 @@ function getProviderInfo(modelId: string): { provider: string; color: string } {
   };
 }
 
-function formatModelLabel(id: string): string {
-  switch (id) {
-    case "gemini-3.6-flash":
-      return "Gemini 3.6 Flash";
-    case "gemini-2.5-pro":
-      return "Gemini 2.5 Pro";
-    case "gpt-4o":
-      return "GPT-4o";
-    case "claude-3-5-sonnet":
-      return "Claude 3.5 Sonnet";
-    case "deepseek-r1":
-      return "DeepSeek R1";
-    default:
-      return id
-        .split("-")
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ");
-  }
-}
+import { formatModelDisplayName as formatModelLabel } from "@/lib/models";
 
 export function GlobalSearchModal({
   open,
@@ -222,12 +204,13 @@ export function GlobalSearchModal({
       id: "Auto",
       name: "Auto (Smart Router)",
       description:
+        rawList["auto"]?.description ||
         "Intelligent automatic model routing based on query complexity and intent",
       reasoningModes: ["fast", "balanced", "extended"],
     };
 
     const models = Object.entries(rawList)
-      .filter(([, cfg]) => cfg.enabled)
+      .filter(([id, cfg]) => cfg.enabled && id.toLowerCase() !== "auto")
       .map(([id, cfg]) => ({
         id,
         name: formatModelLabel(id),

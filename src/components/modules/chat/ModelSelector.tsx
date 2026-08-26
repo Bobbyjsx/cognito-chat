@@ -42,6 +42,9 @@ export const EFFORT_MODES: EffortMode[] = [
   },
 ];
 
+import { formatModelDisplayName } from "@/lib/models";
+export { formatModelDisplayName };
+
 export function ModelSelector({
   selectedModel,
   onSelectModel,
@@ -61,9 +64,9 @@ export function ModelSelector({
     config?.allowedReasoningLevels ?? ["fast", "balanced", "extended"]
   ).map((r) => r.toLowerCase());
 
-  // Derive enabled models from modelsList
-  const allowedModels = Object.entries(modelsList)
-    .filter(([, cfg]) => cfg.enabled)
+  // Derive enabled models from modelsList excluding 'auto' to ensure 'auto' is pinned first
+  const otherModels = Object.entries(modelsList)
+    .filter(([name, cfg]) => cfg.enabled && name.toLowerCase() !== "auto")
     .map(([name]) => name);
 
   const isAuto = !selectedModel || selectedModel.toLowerCase() === "auto";
@@ -97,6 +100,10 @@ export function ModelSelector({
     setSubReasoningModel(null);
   };
 
+  const autoDescription =
+    modelsList["auto"]?.description ||
+    "Automatically selects the optimal model based on prompt complexity and requirements";
+
   return (
     <div
       className={cn(
@@ -115,7 +122,7 @@ export function ModelSelector({
         <PopoverTrigger className="group text-on-surface hover:bg-surface-container-low inline-flex max-w-[min(100%,14rem)] items-center gap-1 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2 py-1.5 text-xs font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-200 hover:border-[rgba(0,0,0,0.12)] active:scale-[0.98] sm:max-w-none sm:gap-1.5 sm:px-3">
           <Sparkles className="text-on-surface/80 h-3.5 w-3.5 shrink-0" />
           <span className="font-headline-md text-label-md tracking-tight-editorial truncate">
-            {isAuto ? "Auto (Smart Router)" : selectedModel}
+            {formatModelDisplayName(selectedModel)}
           </span>
           {selectedReasoning && (
             <span className="text-gray-medium/70 shrink-0 text-[11px] font-normal capitalize">
@@ -139,7 +146,7 @@ export function ModelSelector({
           </div>
 
           <div className="space-y-0.5">
-            {/* Auto (Smart Router) Option */}
+            {/* Auto (Smart Router) Option - Always Pinned First */}
             <div className="relative">
               <div
                 className={cn(
@@ -151,28 +158,27 @@ export function ModelSelector({
               >
                 <button
                   type="button"
-                  onClick={() => handleSelectModel("Auto")}
+                  onClick={() => handleSelectModel("auto")}
                   className="flex flex-1 items-start gap-2.5 text-left"
                 >
                   <Sparkles className="text-primary mt-0.5 h-4 w-4 shrink-0" />
                   <div className="space-y-0.5">
                     <div className="font-code-sm text-on-surface flex items-center gap-1.5 text-xs font-medium">
-                      Auto (Smart Router)
+                      Auto
                       {isAuto && (
                         <Check className="text-on-surface h-3.5 w-3.5" />
                       )}
                     </div>
                     <p className="text-gray-medium text-[11px] leading-tight font-normal">
-                      Dynamically chooses the best model & reasoning for each
-                      prompt
+                      {autoDescription}
                     </p>
                   </div>
                 </button>
 
                 <Popover
-                  open={subReasoningModel === "Auto"}
+                  open={subReasoningModel === "auto"}
                   onOpenChange={(open) =>
-                    setSubReasoningModel(open ? "Auto" : null)
+                    setSubReasoningModel(open ? "auto" : null)
                   }
                 >
                   <PopoverTrigger className="text-gray-medium hover:bg-surface-container-high hover:text-on-surface ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(0,0,0,0.06)] bg-white transition-colors hover:border-[rgba(0,0,0,0.15)]">
@@ -199,7 +205,7 @@ export function ModelSelector({
                             key={effort.id}
                             type="button"
                             onClick={() =>
-                              handleSelectModelAndReasoning("Auto", effort.id)
+                              handleSelectModelAndReasoning("auto", effort.id)
                             }
                             className={cn(
                               "flex w-full flex-col items-start rounded-md px-2.5 py-1.5 text-xs transition-colors",
@@ -227,7 +233,7 @@ export function ModelSelector({
             </div>
 
             {/* Specific Models */}
-            {allowedModels.map((m) => {
+            {otherModels.map((m) => {
               const isSelected = !isAuto && selectedModel === m;
               const desc = modelsList[m]?.description ?? "Powered by Gemini AI";
               const modes = getModesForModel(m);
@@ -252,7 +258,7 @@ export function ModelSelector({
                       <Cpu className="text-gray-medium mt-0.5 h-4 w-4 shrink-0" />
                       <div className="space-y-0.5">
                         <div className="font-code-sm text-on-surface flex items-center gap-1.5 text-xs font-medium">
-                          {m}
+                          {formatModelDisplayName(m)}
                           {isSelected && (
                             <Check className="text-on-surface h-3.5 w-3.5" />
                           )}
