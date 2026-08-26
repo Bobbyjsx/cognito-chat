@@ -1,14 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { LogOut, Menu, Share } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
+import { Spinner } from "@/components/ui/spinner";
 
 interface NavbarProps {
   onMenuClick?: () => void;
 }
 
 export function Navbar({ onMenuClick }: NavbarProps) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <header className="bg-surface/90 sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-[rgba(0,0,0,0.06)] px-3 backdrop-blur-xl sm:px-4 md:hidden">
       <div className="flex min-w-0 items-center gap-1.5">
@@ -34,11 +47,16 @@ export function Navbar({ onMenuClick }: NavbarProps) {
         </button>
         <button
           type="button"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={handleSignOut}
+          disabled={isSigningOut}
           title="Sign Out"
-          className="text-gray-medium hover:text-error hover:bg-surface-container rounded-lg p-2 transition-colors duration-200"
+          className="text-gray-medium hover:text-error hover:bg-surface-container rounded-lg p-2 transition-colors duration-200 disabled:opacity-60"
         >
-          <LogOut className="h-4 w-4" />
+          {isSigningOut ? (
+            <Spinner className="h-4 w-4" />
+          ) : (
+            <LogOut className="h-4 w-4" />
+          )}
         </button>
       </div>
     </header>

@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { useProfile } from "@/hooks/data/useAuth/useAuth";
 import { getQuotaSnapshot } from "@/lib/quota";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,17 @@ export function SettingsModule() {
   const { data: profile } = useProfile();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      setIsSigningOut(false);
+    }
+  };
+
   useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(timer);
@@ -122,11 +134,16 @@ export function SettingsModule() {
 
                   <Button
                     variant="outline"
-                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
                     className="border-error/20 text-error hover:bg-error/10 hover:text-error"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
+                    {isSigningOut ? (
+                      <Spinner className="mr-2 h-4 w-4" />
+                    ) : (
+                      <LogOut className="mr-2 h-4 w-4" />
+                    )}
+                    {isSigningOut ? "Signing out..." : "Sign Out"}
                   </Button>
                 </div>
               </Card>
