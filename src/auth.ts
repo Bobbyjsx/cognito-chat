@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { Analytics } from "@/lib/analytics";
-import { oauthApi } from "@/lib/oauth-api";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   trustHost: true,
@@ -86,47 +85,11 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         }
       }
 
-      // 3. Return previous token if it has not expired yet
-      if (
-        typeof token.accessTokenExpires === "number" &&
-        Date.now() < token.accessTokenExpires
-      ) {
-        if (token.error) {
-          delete token.error;
-        }
-        return token;
+      if (token.error) {
+        delete token.error;
       }
 
-      // 4. Fallback refresh if expired
-      try {
-        if (!token.refreshToken) {
-          return { ...token, error: "RefreshAccessTokenError" };
-        }
-
-        const res = await oauthApi.post("/api/v1/auth/refresh", {
-          refreshToken: token.refreshToken,
-        });
-
-        const refreshedTokens = res.data;
-
-        return {
-          ...token,
-          accessToken: refreshedTokens.accessToken,
-          accessTokenExpires: Date.now() + 14 * 60 * 1000,
-          refreshToken: refreshedTokens.refreshToken ?? token.refreshToken,
-          error: undefined,
-        };
-      } catch (error) {
-        console.error(
-          "Error refreshing access token in NextAuth jwt callback:",
-          error,
-        );
-        Analytics.captureError(error, { context: "NextAuth jwt refresh" });
-        return {
-          ...token,
-          error: "RefreshAccessTokenError",
-        };
-      }
+      return token;
     },
     async session({ session, token }) {
       if (token?.accessToken) {
