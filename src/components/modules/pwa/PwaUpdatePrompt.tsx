@@ -8,6 +8,16 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePathname } from "next/navigation";
 
+function isStandaloneMode() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: minimal-ui)").matches ||
+    // @ts-expect-error - vendor prefix
+    window.navigator.standalone === true
+  );
+}
+
 export function PwaUpdatePrompt() {
   const [showPrompt, setShowPrompt] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
@@ -40,7 +50,7 @@ export function PwaUpdatePrompt() {
       }>;
       if (customEvent.detail?.waitingWorker) {
         setWaitingWorker(customEvent.detail.waitingWorker);
-        setShowPrompt(true);
+        if (isStandaloneMode()) setShowPrompt(true);
       }
     };
 
@@ -50,7 +60,7 @@ export function PwaUpdatePrompt() {
     navigator.serviceWorker.ready.then((reg) => {
       if (reg.waiting) {
         setWaitingWorker(reg.waiting);
-        setShowPrompt(true);
+        if (isStandaloneMode()) setShowPrompt(true);
       }
 
       reg.addEventListener("updatefound", () => {
@@ -63,7 +73,7 @@ export function PwaUpdatePrompt() {
             navigator.serviceWorker.controller
           ) {
             setWaitingWorker(newWorker);
-            setShowPrompt(true);
+            if (isStandaloneMode()) setShowPrompt(true);
           }
         });
       });
