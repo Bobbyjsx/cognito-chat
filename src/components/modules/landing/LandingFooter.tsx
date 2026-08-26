@@ -98,6 +98,7 @@ export function LandingFooter() {
           </a>
           <Link
             href="/login"
+            prefetch={false}
             className="transition-colors hover:text-[#111111]"
           >
             Sign In

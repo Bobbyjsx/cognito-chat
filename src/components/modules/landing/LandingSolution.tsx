@@ -60,6 +60,7 @@ export function LandingSolution() {
         <MotionReveal variant="fade-up" delay={0.24} className="mt-8">
           <Link
             href="/login"
+            prefetch={false}
             className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
           >
             <span>Explore Cognito</span>

@@ -92,6 +92,7 @@ export function LandingPricingCta() {
             <GsapMagnetic strength={0.3} className="w-full">
               <Link
                 href="/login"
+                prefetch={false}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
               >
                 <span>Start with Cognito</span>

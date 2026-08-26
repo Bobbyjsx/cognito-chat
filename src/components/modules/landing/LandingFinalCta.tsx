@@ -27,6 +27,7 @@ export function LandingFinalCta() {
           <div className="flex w-full flex-col items-center justify-center gap-3 pt-3 sm:w-auto sm:flex-row">
             <Link
               href="/login"
+              prefetch={false}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] px-7 py-3.5 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] sm:w-auto"
             >
               <span>Start using Cognito</span>

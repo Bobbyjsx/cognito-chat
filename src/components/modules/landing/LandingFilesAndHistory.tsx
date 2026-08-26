@@ -34,6 +34,7 @@ export function LandingFilesAndHistory() {
           <div className="pt-2">
             <Link
               href="/login"
+              prefetch={false}
               className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
             >
               <span>Bring your files to Cognito</span>

@@ -179,6 +179,7 @@ export function LandingMoney() {
                 <GsapMagnetic strength={0.25} className="w-full">
                   <Link
                     href="/login"
+                    prefetch={false}
                     className="block w-full rounded-xl bg-[#111111] py-3 text-center text-sm font-medium text-white transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
                   >
                     Get Cognito

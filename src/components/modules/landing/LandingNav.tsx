@@ -81,12 +81,14 @@ export function LandingNav() {
             <div className="flex items-center gap-2.5">
               <Link
                 href="/login"
+                prefetch={false}
                 className="hidden rounded-lg px-3.5 py-1.5 text-xs font-medium text-[#787774] transition-all duration-150 hover:bg-[#F7F6F3] hover:text-[#111111] active:scale-[0.97] sm:inline-flex sm:text-sm"
               >
                 Sign In
               </Link>
               <Link
                 href="/login"
+                prefetch={false}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#111111] px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.97] sm:text-sm"
               >
                 <span>Get Started</span>
@@ -137,6 +139,7 @@ export function LandingNav() {
             <div className="flex flex-col gap-2 pt-2">
               <Link
                 href="/login"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="w-full rounded-lg py-2 text-center text-sm font-medium text-[#787774] transition-colors hover:bg-[#F7F6F3] hover:text-[#111111]"
               >
@@ -144,6 +147,7 @@ export function LandingNav() {
               </Link>
               <Link
                 href="/login"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="w-full rounded-lg bg-[#111111] py-2.5 text-center text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2f3437]"
               >

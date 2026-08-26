@@ -138,6 +138,7 @@ export function LandingHero() {
               <GsapMagnetic strength={0.3} className="w-full sm:w-auto">
                 <Link
                   href="/login"
+                  prefetch={false}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] px-7 py-3.5 text-base font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] sm:w-auto"
                 >
                   <span>Start using Cognito</span>
