@@ -1,10 +1,13 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { Spinner } from "@/components/ui/spinner";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { MotionReveal } from "./LandingMotion";
 
 export function LandingFinalCta() {
+  const { isLoggingIn, login } = useLoginRedirect();
+
   return (
     <section className="w-full border-y border-[rgba(0,0,0,0.06)] bg-[#F7F6F3] px-4 py-20 text-center sm:px-6 sm:py-28 lg:px-8">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -25,13 +28,21 @@ export function LandingFinalCta() {
 
         <MotionReveal variant="fade-up" delay={0.16}>
           <div className="flex w-full flex-col items-center justify-center gap-3 pt-3 sm:w-auto sm:flex-row">
-            <Link
-              href="/login"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] px-7 py-3.5 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] sm:w-auto"
+            <button
+              type="button"
+              onClick={login}
+              disabled={isLoggingIn}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] px-7 py-3.5 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] disabled:opacity-70 sm:w-auto"
             >
-              <span>Start using Cognito</span>
-              <ArrowRight className="size-4" />
-            </Link>
+              {isLoggingIn ? (
+                <Spinner className="size-4" />
+              ) : (
+                <>
+                  <span>Start using Cognito</span>
+                  <ArrowRight className="size-4" />
+                </>
+              )}
+            </button>
           </div>
         </MotionReveal>
 

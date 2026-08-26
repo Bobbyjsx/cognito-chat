@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowRight,
   RefreshCw,
@@ -8,6 +7,8 @@ import {
   Sparkles,
   Sliders,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import {
   MotionReveal,
   StaggerContainer,
@@ -16,6 +17,7 @@ import {
 } from "./LandingMotion";
 
 export function LandingSolution() {
+  const { isLoggingIn, login } = useLoginRedirect();
   return (
     <section
       id="solution"
@@ -58,13 +60,21 @@ export function LandingSolution() {
         </MotionReveal>
 
         <MotionReveal variant="fade-up" delay={0.24} className="mt-8">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
+          <button
+            type="button"
+            onClick={login}
+            disabled={isLoggingIn}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] disabled:opacity-70"
           >
-            <span>Explore Cognito</span>
-            <ArrowRight className="size-4" />
-          </Link>
+            {isLoggingIn ? (
+              <Spinner className="size-4" />
+            ) : (
+              <>
+                <span>Explore Cognito</span>
+                <ArrowRight className="size-4" />
+              </>
+            )}
+          </button>
         </MotionReveal>
       </div>
 

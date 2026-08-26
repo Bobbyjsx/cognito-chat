@@ -1,10 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { FileText, FolderUp, History, ArrowRight } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { MotionReveal } from "./LandingMotion";
 
 export function LandingFilesAndHistory() {
+  const { isLoggingIn, login } = useLoginRedirect();
+
   return (
     <section className="mx-auto w-full max-w-7xl space-y-20 px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       {/* Section 10: Files */}
@@ -32,13 +35,21 @@ export function LandingFilesAndHistory() {
           </p>
 
           <div className="pt-2">
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
+            <button
+              type="button"
+              onClick={login}
+              disabled={isLoggingIn}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-6 py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] disabled:opacity-70"
             >
-              <span>Bring your files to Cognito</span>
-              <ArrowRight className="size-4" />
-            </Link>
+              {isLoggingIn ? (
+                <Spinner className="size-4" />
+              ) : (
+                <>
+                  <span>Bring your files to Cognito</span>
+                  <ArrowRight className="size-4" />
+                </>
+              )}
+            </button>
           </div>
         </MotionReveal>
 

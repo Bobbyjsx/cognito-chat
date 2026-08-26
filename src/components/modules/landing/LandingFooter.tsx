@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
+import { Spinner } from "@/components/ui/spinner";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { APP_NAME } from "@/lib/site";
 
 export function LandingFooter() {
+  const { isLoggingIn, login } = useLoginRedirect();
   const handleScrollToTop = (e: React.MouseEvent) => {
     e.preventDefault();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -96,12 +99,15 @@ export function LandingFooter() {
           >
             FAQ
           </a>
-          <Link
-            href="/login"
-            className="transition-colors hover:text-[#111111]"
+          <button
+            type="button"
+            onClick={login}
+            disabled={isLoggingIn}
+            className="inline-flex items-center gap-1.5 transition-colors hover:text-[#111111] disabled:opacity-70"
           >
-            Sign In
-          </Link>
+            {isLoggingIn ? <Spinner className="size-3" /> : null}
+            <span>Sign In</span>
+          </button>
         </div>
       </div>
 

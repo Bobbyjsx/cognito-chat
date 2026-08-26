@@ -2,7 +2,8 @@
 
 import { ArrowRight, Check } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { Spinner } from "@/components/ui/spinner";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import {
   MotionReveal,
   TextStack,
@@ -11,6 +12,7 @@ import {
 } from "./LandingMotion";
 
 export function LandingHero() {
+  const { isLoggingIn, login } = useLoginRedirect();
   const handleScrollToSection = (
     e: React.MouseEvent<HTMLAnchorElement>,
     href: string,
@@ -136,13 +138,21 @@ export function LandingHero() {
           >
             <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
               <GsapMagnetic strength={0.3} className="w-full sm:w-auto">
-                <Link
-                  href="/login"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] px-7 py-3.5 text-base font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] sm:w-auto"
+                <button
+                  type="button"
+                  onClick={login}
+                  disabled={isLoggingIn}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] px-7 py-3.5 text-base font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] disabled:opacity-70 sm:w-auto"
                 >
-                  <span>Start using Cognito</span>
-                  <ArrowRight className="size-4" />
-                </Link>
+                  {isLoggingIn ? (
+                    <Spinner className="size-4" />
+                  ) : (
+                    <>
+                      <span>Start using Cognito</span>
+                      <ArrowRight className="size-4" />
+                    </>
+                  )}
+                </button>
               </GsapMagnetic>
               <a
                 href="#problem"

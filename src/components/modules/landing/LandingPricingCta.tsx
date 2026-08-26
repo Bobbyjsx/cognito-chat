@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { MotionReveal, HoverLift, GsapMagnetic } from "./LandingMotion";
 
 export function LandingPricingCta() {
+  const { isLoggingIn, login } = useLoginRedirect();
   return (
     <section
       id="pricing"
@@ -90,13 +92,21 @@ export function LandingPricingCta() {
             </div>
 
             <GsapMagnetic strength={0.3} className="w-full">
-              <Link
-                href="/login"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98]"
+              <button
+                type="button"
+                onClick={login}
+                disabled={isLoggingIn}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#111111] py-3 text-sm font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.98] disabled:opacity-70"
               >
-                <span>Start with Cognito</span>
-                <ArrowRight className="size-4" />
-              </Link>
+                {isLoggingIn ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  <>
+                    <span>Start with Cognito</span>
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
+              </button>
             </GsapMagnetic>
 
             <p className="mt-4 text-xs text-[#787774]">

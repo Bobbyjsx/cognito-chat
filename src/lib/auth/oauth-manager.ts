@@ -43,8 +43,10 @@ export class OAuthTransitionManager {
       code_challenge_method: "S256",
     });
 
+    const baseUrl = OAUTH_BASE_URL.replace(/\/$/, "");
+
     return {
-      url: `${OAUTH_BASE_URL}/api/v1/oauth/authorize?${params.toString()}`,
+      url: `${baseUrl}/api/v1/oauth/authorize?${params.toString()}`,
       state,
       codeVerifier,
     };

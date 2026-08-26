@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
+import { Spinner } from "@/components/ui/spinner";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +19,7 @@ const NAV_LINKS = [
 
 export function LandingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isLoggingIn, login } = useLoginRedirect();
 
   const handleScrollToTop = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -79,19 +82,30 @@ export function LandingNav() {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2.5">
-              <Link
-                href="/login"
-                className="hidden rounded-lg px-3.5 py-1.5 text-xs font-medium text-[#787774] transition-all duration-150 hover:bg-[#F7F6F3] hover:text-[#111111] active:scale-[0.97] sm:inline-flex sm:text-sm"
+              <button
+                type="button"
+                onClick={login}
+                disabled={isLoggingIn}
+                className="hidden items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-medium text-[#787774] transition-all duration-150 hover:bg-[#F7F6F3] hover:text-[#111111] active:scale-[0.97] disabled:opacity-70 sm:inline-flex sm:text-sm"
               >
-                Sign In
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#111111] px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.97] sm:text-sm"
+                {isLoggingIn ? <Spinner className="size-3.5" /> : null}
+                <span>Sign In</span>
+              </button>
+              <button
+                type="button"
+                onClick={login}
+                disabled={isLoggingIn}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#111111] px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition-all duration-150 hover:bg-[#2f3437] active:scale-[0.97] disabled:opacity-70 sm:text-sm"
               >
-                <span>Get Started</span>
-                <ArrowRight className="size-3.5" />
-              </Link>
+                {isLoggingIn ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <>
+                    <span>Get Started</span>
+                    <ArrowRight className="size-3.5" />
+                  </>
+                )}
+              </button>
 
               {/* Mobile Menu Toggle Button */}
               <button
@@ -135,20 +149,36 @@ export function LandingNav() {
               ))}
             </div>
             <div className="flex flex-col gap-2 pt-2">
-              <Link
-                href="/login"
-                onClick={() => setMobileOpen(false)}
-                className="w-full rounded-lg py-2 text-center text-sm font-medium text-[#787774] transition-colors hover:bg-[#F7F6F3] hover:text-[#111111]"
+              <button
+                type="button"
+                onClick={(e) => {
+                  setMobileOpen(false);
+                  login(e);
+                }}
+                disabled={isLoggingIn}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg py-2 text-center text-sm font-medium text-[#787774] transition-colors hover:bg-[#F7F6F3] hover:text-[#111111] disabled:opacity-70"
               >
-                Sign In
-              </Link>
-              <Link
-                href="/login"
-                onClick={() => setMobileOpen(false)}
-                className="w-full rounded-lg bg-[#111111] py-2.5 text-center text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2f3437]"
+                {isLoggingIn ? <Spinner className="size-4" /> : null}
+                <span>Sign In</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  setMobileOpen(false);
+                  login(e);
+                }}
+                disabled={isLoggingIn}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#111111] py-2.5 text-center text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2f3437] disabled:opacity-70"
               >
-                Start Using Cognito
-              </Link>
+                {isLoggingIn ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  <>
+                    <span>Start Using Cognito</span>
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
+              </button>
             </div>
           </motion.div>
         )}

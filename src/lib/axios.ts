@@ -67,7 +67,7 @@ api.interceptors.request.use(
     if (method && ["post", "put", "patch", "delete"].includes(method)) {
       lastMutationTime = Date.now();
     } else if (method === "get") {
-      // If a mutation happened in the last 2.5 seconds, force bypass the browser's HTTP cache
+      // If a mutation happened in the last 2.5 seconds, force bypass HTTP cache
       if (Date.now() - lastMutationTime < 2500) {
         setHeader(config, "Cache-Control", "no-cache");
         setHeader(config, "Pragma", "no-cache");
@@ -93,6 +93,17 @@ api.interceptors.request.use(
 // -----------------------------------------------------------------------------
 api.interceptors.response.use(
   (response) => {
+    // 1. Intercept transparent token refresh headers from FastAPI server
+    const newAccessToken = response.headers["x-new-access-token"] as
+      string | undefined;
+    const newRefreshToken = response.headers["x-new-refresh-token"] as
+      string | undefined;
+
+    if (newAccessToken) {
+      void authManager.updateTokens(newAccessToken, newRefreshToken);
+    }
+
+    // 2. Transform response payload keys to camelCase
     if (response.data) {
       response.data = keysToCamel(response.data);
     }
@@ -101,57 +112,8 @@ api.interceptors.response.use(
   async (error) => {
     Analytics.captureApiError(error, error.config?.url, error.config?.method);
 
-    const originalRequest = error.config;
-
-    // Handle 401 Unauthorized globally
-    if (error.response?.status === 401 && originalRequest) {
-      // If we haven't retried yet and this isn't an auth endpoint (prevent loops)
-      if (!originalRequest._retry && !originalRequest.url?.includes("/auth/")) {
-        originalRequest._retry = true;
-
-        try {
-          if (typeof window !== "undefined") {
-            // Client-side: trigger NextAuth jwt callback via our server action wrapper
-            // unstable_update sets accessTokenExpires=0 forcing a refresh_token exchange
-            const { refreshSession } = await import("@/lib/actions/auth");
-            await refreshSession();
-            authManager.clearBrowserSessionCache();
-          } else {
-            // Server-side: use unstable_update exported from our auth.ts
-            const { unstable_update } = await import("@/auth");
-            await unstable_update({ forceRefresh: true });
-          }
-
-          // Fetch the new session
-          const newSession = await authManager.getAuthSession();
-
-          if (newSession?.accessToken) {
-            // Apply the new token directly to the original request
-            if (typeof originalRequest.headers.set === "function") {
-              originalRequest.headers.set(
-                "Authorization",
-                `Bearer ${newSession.accessToken}`,
-              );
-            } else {
-              originalRequest.headers["Authorization"] =
-                `Bearer ${newSession.accessToken}`;
-            }
-
-            // Retry the request with the new token
-            return api(originalRequest);
-          }
-        } catch (refreshError) {
-          console.error(
-            "Token refresh failed during Axios retry:",
-            refreshError,
-          );
-        }
-      }
-
-      // If we get here, it means we either:
-      // 1. Already retried once and failed again
-      // 2. Refresh token attempt threw an error
-      // 3. Failed on an /auth/ endpoint directly
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401) {
       authManager.clearBrowserSessionCache();
       if (typeof window !== "undefined") {
         const { signOut } = await import("next-auth/react");
