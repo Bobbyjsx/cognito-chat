@@ -4,6 +4,7 @@ declare module "next-auth" {
   interface Session {
     forceRefresh?: boolean;
     accessToken?: string;
+    refreshToken?: string;
     user?: {
       id?: string;
       email?: string | null;
@@ -26,6 +27,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     accessToken?: string;
+    refreshToken?: string;
     user?: Record<string, unknown>;
   }
 }

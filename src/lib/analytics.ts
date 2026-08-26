@@ -19,7 +19,13 @@ export class Analytics {
       console.info(message, context);
       return;
     }
-    void loadSentry().then((Sentry) => Sentry?.logger.info(message, context));
+    void loadSentry().then((Sentry) => {
+      if (Sentry?.logger?.info) {
+        Sentry.logger.info(message, context);
+      } else {
+        console.info(message, context);
+      }
+    });
   }
 
   static captureLog(
@@ -31,7 +37,14 @@ export class Analytics {
       console[level === "fatal" ? "error" : level](message, context);
       return;
     }
-    void loadSentry().then((Sentry) => Sentry?.logger[level](message, context));
+    void loadSentry().then((Sentry) => {
+      const loggerFn = Sentry?.logger?.[level];
+      if (typeof loggerFn === "function") {
+        loggerFn(message, context);
+      } else {
+        console[level === "fatal" ? "error" : level](message, context);
+      }
+    });
   }
 
   static captureError(
@@ -44,14 +57,18 @@ export class Analytics {
       return;
     }
     void loadSentry().then((Sentry) => {
-      Sentry?.captureException(e, {
-        captureContext: { level: "error", extra: context },
-      });
-      Sentry?.logger.error(e.message, {
-        name: e.name,
-        stack: e.stack,
-        ...context,
-      });
+      if (typeof Sentry?.captureException === "function") {
+        Sentry.captureException(e, {
+          captureContext: { level: "error", extra: context },
+        });
+      }
+      if (Sentry?.logger?.error) {
+        Sentry.logger.error(e.message, {
+          name: e.name,
+          stack: e.stack,
+          ...context,
+        });
+      }
     });
   }
 
@@ -77,10 +94,14 @@ export class Analytics {
     }
 
     void loadSentry().then((Sentry) => {
-      Sentry?.captureException(e, {
-        extra: { url, method, status, data, ...context },
-      });
-      Sentry?.logger.error(message, { url, method, status });
+      if (typeof Sentry?.captureException === "function") {
+        Sentry.captureException(e, {
+          extra: { url, method, status, data, ...context },
+        });
+      }
+      if (Sentry?.logger?.error) {
+        Sentry.logger.error(message, { url, method, status });
+      }
     });
   }
 

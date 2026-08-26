@@ -29,7 +29,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
             accessToken: credentials.accessToken as string,
             refreshToken: credentials.refreshToken as string,
           };
-        } catch (err) {
+        } catch {
           return null;
         }
       },
@@ -39,8 +39,12 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async jwt({ token, account, user, trigger, session }) {
       // 1. Initial login: user is returned from authorize()
       if (user && account) {
-        token.accessToken = (user as any).accessToken;
-        token.refreshToken = (user as any).refreshToken;
+        token.accessToken = (
+          user as unknown as { accessToken: string }
+        ).accessToken;
+        token.refreshToken = (
+          user as unknown as { refreshToken: string }
+        ).refreshToken;
 
         token.user = {
           id: user.id,
@@ -57,10 +61,10 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         return token;
       }
 
-      // 2. Client manual trigger updates
+      // 2. Client manual trigger updates (e.g. after FastAPI rotated tokens)
       if (trigger === "update" && session) {
         if (session.forceRefresh) {
-          token.accessTokenExpires = 0; // Force it to expire so it falls through to the refresh block
+          token.accessTokenExpires = 0;
         } else if (session.user) {
           token.user = {
             ...(token.user as Record<string, unknown>),
@@ -77,7 +81,6 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
             delete token.error;
           }
         }
-        // If forceRefresh was true, we DO NOT return token here, we let it fall through to step 4!
         if (!session.forceRefresh) {
           return token;
         }
@@ -94,7 +97,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         return token;
       }
 
-      // 4. Access token has expired -> attempt to refresh it automatically via refresh_token
+      // 4. Fallback refresh if expired
       try {
         if (!token.refreshToken) {
           return { ...token, error: "RefreshAccessTokenError" };
@@ -106,13 +109,12 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
 
         const refreshedTokens = res.data;
 
-        const { error, ...tokenWithoutError } = token;
-
         return {
-          ...tokenWithoutError,
+          ...token,
           accessToken: refreshedTokens.accessToken,
           accessTokenExpires: Date.now() + 14 * 60 * 1000,
           refreshToken: refreshedTokens.refreshToken ?? token.refreshToken,
+          error: undefined,
         };
       } catch (error) {
         console.error(
@@ -129,6 +131,9 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async session({ session, token }) {
       if (token?.accessToken) {
         session.accessToken = token.accessToken as string;
+      }
+      if (token?.refreshToken) {
+        session.refreshToken = token.refreshToken as string;
       }
       if (token?.user) {
         session.user = token.user as unknown as typeof session.user;
