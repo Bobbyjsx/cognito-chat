@@ -479,7 +479,10 @@ export function ChatShell() {
       />
 
       <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+        <Navbar
+          onMenuClick={() => setSidebarOpen(true)}
+          onNewChat={activeSessionId ? handleNewChat : undefined}
+        />
 
         <ChatMessageList
           messages={aiMessages}

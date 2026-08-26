@@ -1,5 +1,9 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
+import { useProfile } from "@/hooks/data/useAuth/useAuth";
+import type { UserProfile } from "@/types";
+
 import type { UIMessage } from "ai";
 import { useLayoutEffect } from "react";
 import { VirtualMessageList } from "./VirtualMessageList";
@@ -94,16 +98,14 @@ export function ChatMessageList({
 
   return (
     <Conversation className="min-h-0 flex-1">
-      <ConversationContent className="mx-auto flex min-h-full w-full max-w-[800px] flex-col gap-6 px-3 pt-4 pb-6 sm:gap-8 sm:px-4 sm:pt-6 sm:pb-8 md:px-6 lg:px-0">
+      <ConversationContent className="mx-auto flex min-h-full w-full max-w-[800px] flex-col gap-6 px-3 pt-4 pb-[140px] sm:gap-8 sm:px-4 sm:pt-6 sm:pb-[160px] md:px-6 lg:px-0">
         {showSessionSkeleton ? (
           <SessionMessagesSkeleton />
         ) : isEmpty ? (
           <div className="my-auto flex w-full flex-col items-center justify-center gap-5 py-4 text-center sm:gap-7 sm:py-6">
             {/* Heading */}
             <div className="space-y-1.5 sm:space-y-2">
-              <h1 className="text-on-surface text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
-                What can I help with?
-              </h1>
+              <DynamicGreeting />
               <p className="text-muted-foreground text-xs sm:text-sm">
                 Ask anything, or choose a suggestion to get started.
               </p>
@@ -155,6 +157,65 @@ export function ChatMessageList({
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>
+  );
+}
+
+function getFirstName(profile?: UserProfile) {
+  if (!profile) return "";
+  if (profile.firstName) return profile.firstName;
+  if (profile.fullName) return profile.fullName.split(" ")[0];
+  return "";
+}
+
+function getTimeBasedGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function DynamicGreeting() {
+  const { data: profile, isLoading } = useProfile();
+  const [greeting, setGreeting] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const firstName = getFirstName(profile);
+    const timeGreeting = getTimeBasedGreeting();
+
+    const options = [
+      "What can I help with?",
+      firstName ? `${timeGreeting}, ${firstName}` : timeGreeting,
+      firstName ? `Ready to dive in, ${firstName}?` : "Ready to dive in?",
+      firstName
+        ? `Hi ${firstName}, shoot me a message.`
+        : "Hi, shoot me a message.",
+      firstName
+        ? `How can I assist you today, ${firstName}?`
+        : "How can I assist you today?",
+      firstName
+        ? `Let's build something great, ${firstName}.`
+        : "Let's build something great.",
+    ];
+
+    const randomIndex = Math.floor(Math.random() * options.length);
+    // eslint-disable-next-line
+    setGreeting(options[randomIndex]);
+  }, [isLoading, profile]);
+
+  if (!greeting) {
+    return (
+      <h1 className="text-2xl font-semibold tracking-tight text-transparent sm:text-3xl md:text-4xl">
+        What can I help with?
+      </h1>
+    );
+  }
+
+  return (
+    <h1 className="text-on-surface animate-in fade-in text-2xl font-semibold tracking-tight duration-500 sm:text-3xl md:text-4xl">
+      {greeting}
+    </h1>
   );
 }
 

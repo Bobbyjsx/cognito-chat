@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { signOut } from "next-auth/react";
-import { LogOut, Menu, Share } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LogOut, Menu, SquarePen } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Spinner } from "@/components/ui/spinner";
 
 interface NavbarProps {
   onMenuClick?: () => void;
+  onNewChat?: () => void;
 }
 
-export function Navbar({ onMenuClick }: NavbarProps) {
+export function Navbar({ onMenuClick, onNewChat }: NavbarProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const router = useRouter();
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -20,6 +23,13 @@ export function Navbar({ onMenuClick }: NavbarProps) {
     } catch {
       setIsSigningOut(false);
     }
+  };
+
+  const handleNewChatClick = () => {
+    if (onNewChat) {
+      onNewChat();
+    }
+    router.push("/chat");
   };
 
   return (
@@ -38,13 +48,17 @@ export function Navbar({ onMenuClick }: NavbarProps) {
         <Logo />
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <button
-          type="button"
-          className="text-gray-medium hover:text-on-surface hover:bg-surface-container rounded-lg p-2 transition-colors duration-200"
-          title="Share"
-        >
-          <Share className="h-4 w-4" />
-        </button>
+        {onNewChat && (
+          <button
+            type="button"
+            onClick={handleNewChatClick}
+            className="text-gray-medium hover:text-on-surface hover:bg-surface-container rounded-lg p-2 transition-colors duration-200"
+            title="New Chat"
+            aria-label="New Chat"
+          >
+            <SquarePen className="h-4 w-4" />
+          </button>
+        )}
         <button
           type="button"
           onClick={handleSignOut}
