@@ -26,7 +26,7 @@ export function LandingPage() {
   usePrewarmServices();
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#FBFBFA] font-sans text-[#111111] antialiased selection:bg-[#111111]/10 selection:text-[#111111]">
+    <div className="relative min-h-dvh overflow-x-hidden bg-[#FBFBFA] font-sans text-[#111111] antialiased selection:bg-[#111111]/10 selection:text-[#111111]">
       {/* 1. Translucent Navigation */}
       <LandingNav />
 

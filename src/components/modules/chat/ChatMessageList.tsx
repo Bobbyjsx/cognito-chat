@@ -10,14 +10,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import { SessionMessagesSkeleton } from "./ChatSkeletons";
-import {
-  Lightbulb,
-  Code2,
-  PenLine,
-  ImageIcon,
-  Globe,
-  FlaskConical,
-} from "lucide-react";
+import { Lightbulb, Code2, PenLine, Globe } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface SuggestionPrompt {
@@ -101,43 +94,50 @@ export function ChatMessageList({
 
   return (
     <Conversation className="min-h-0 flex-1">
-      <ConversationContent className="mx-auto w-full max-w-[800px] gap-8 px-4 pt-6 pb-8 md:px-6 lg:px-0">
+      <ConversationContent className="mx-auto flex min-h-full w-full max-w-[800px] flex-col gap-6 px-3 pt-4 pb-6 sm:gap-8 sm:px-4 sm:pt-6 sm:pb-8 md:px-6 lg:px-0">
         {showSessionSkeleton ? (
           <SessionMessagesSkeleton />
         ) : isEmpty ? (
-          <div className="flex min-h-[55vh] flex-col items-center justify-center gap-10 py-8 text-center">
+          <div className="my-auto flex w-full flex-col items-center justify-center gap-5 py-4 text-center sm:gap-7 sm:py-6">
             {/* Heading */}
-            <div className="space-y-3">
-              <h1 className="text-on-surface text-3xl font-semibold tracking-tight sm:text-4xl md:text-[2.75rem]">
+            <div className="space-y-1.5 sm:space-y-2">
+              <h1 className="text-on-surface text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
                 What can I help with?
               </h1>
-              <p className="text-muted-foreground text-sm sm:text-base">
+              <p className="text-muted-foreground text-xs sm:text-sm">
                 Ask anything, or choose a suggestion to get started.
               </p>
             </div>
 
-            {/* Suggestion card grid */}
-            <div className="grid w-full max-w-[640px] grid-cols-1 gap-2 sm:grid-cols-2">
+            {/* Suggestion pill/card grid */}
+            <div className="grid w-full max-w-[640px] grid-cols-2 gap-2 sm:gap-2.5">
               {EMPTY_STATE_PROMPTS.map((prompt) => (
                 <button
                   key={prompt.label}
+                  type="button"
                   onClick={() => onSuggestionClick?.(prompt.text)}
-                  className="group border-border/50 bg-surface-container-low/50 hover:border-border hover:bg-surface-container-low flex items-start gap-3.5 rounded-2xl border p-4 text-left transition-all duration-150 hover:shadow-sm active:scale-[0.98]"
+                  className="group border-border/50 bg-surface-container-low/70 hover:border-border hover:bg-surface-container-low flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all duration-150 hover:shadow-xs active:scale-[0.98] sm:items-start sm:gap-3.5 sm:rounded-2xl sm:p-3.5"
                 >
-                  <span className="bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors duration-150">
+                  <span className="bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 sm:h-8 sm:w-8 sm:rounded-xl">
                     {prompt.icon}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-on-surface text-sm font-medium">
+                    <p className="text-on-surface truncate text-xs font-medium sm:text-sm">
                       {prompt.label}
                     </p>
-                    <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
+                    <p className="text-muted-foreground mt-0.5 line-clamp-1 hidden text-xs sm:block">
                       {prompt.description}
                     </p>
                   </div>
                 </button>
               ))}
             </div>
+
+            {/* Disclaimer (only shown on new chats) */}
+            <p className="font-label-md text-gray-medium pt-2 text-center text-[10px] sm:text-[11px]">
+              Cognito Chat can make mistakes. Consider verifying important
+              information.
+            </p>
           </div>
         ) : (
           <VirtualMessageList

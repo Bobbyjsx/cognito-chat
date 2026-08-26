@@ -281,9 +281,18 @@ export function ChatMessageItem({
   const msgObj = message as unknown as Record<string, unknown>;
   const hasExplicitError = Boolean(msgObj.error);
   const isContentEmpty = !messageHasVisibleContent(message);
-  const hasFailed = !isStreaming && (hasExplicitError || isContentEmpty);
   const errorDetail =
-    (msgObj.error as string) || "Model generation failed. Please try again.";
+    typeof msgObj.error === "string"
+      ? msgObj.error
+      : (msgObj.error as Error)?.message ||
+        "Model generation failed. Please try again.";
+
+  const isCancelled =
+    errorDetail.toLowerCase().includes("abort") ||
+    errorDetail.toLowerCase().includes("cancel");
+
+  const hasFailed =
+    !isStreaming && (hasExplicitError || isContentEmpty) && !isCancelled;
 
   const waitingForFirstToken =
     Boolean(isStreaming) && !messageHasVisibleContent(message);

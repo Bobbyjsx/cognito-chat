@@ -110,7 +110,9 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    Analytics.captureApiError(error, error.config?.url, error.config?.method);
+    if (!axios.isCancel(error) && error.name !== "CanceledError") {
+      Analytics.captureApiError(error, error.config?.url, error.config?.method);
+    }
 
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {

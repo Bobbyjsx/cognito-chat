@@ -13,6 +13,18 @@ export function ServiceWorkerRegister() {
         navigator.serviceWorker
           .register("/sw.js")
           .then((registration) => {
+            // Check if there is an already waiting worker
+            if (registration.waiting) {
+              window.dispatchEvent(
+                new CustomEvent("cognito:sw-update", {
+                  detail: {
+                    registration,
+                    waitingWorker: registration.waiting,
+                  },
+                }),
+              );
+            }
+
             // Optional registration update handler
             registration.onupdatefound = () => {
               const installingWorker = registration.installing;
@@ -24,6 +36,14 @@ export function ServiceWorkerRegister() {
                   ) {
                     console.info(
                       "Cognito PWA: New content available; please refresh.",
+                    );
+                    window.dispatchEvent(
+                      new CustomEvent("cognito:sw-update", {
+                        detail: {
+                          registration,
+                          waitingWorker: installingWorker,
+                        },
+                      }),
                     );
                   }
                 };

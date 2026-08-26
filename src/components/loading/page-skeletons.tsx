@@ -16,12 +16,12 @@ function Bone({ className }: { className?: string }) {
 export function ChatShellLoading() {
   return (
     <div
-      className="bg-background flex h-screen overflow-hidden"
+      className="bg-background flex h-dvh overflow-hidden"
       aria-busy="true"
       aria-label="Loading chat"
     >
       {/* Desktop sidebar placeholder */}
-      <aside className="bg-surface-container-low hidden h-screen w-64 shrink-0 flex-col border-r border-[rgba(0,0,0,0.06)] p-4 md:flex">
+      <aside className="bg-surface-container-low hidden h-dvh w-64 shrink-0 flex-col border-r border-[rgba(0,0,0,0.06)] p-4 md:flex">
         <Bone className="mb-6 h-8 w-28" />
         <Bone className="mb-6 h-10 w-full rounded-lg" />
         <div className="space-y-2">
@@ -33,7 +33,7 @@ export function ChatShellLoading() {
         </div>
       </aside>
 
-      <main className="relative flex h-screen min-w-0 flex-1 flex-col">
+      <main className="relative flex h-dvh min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
         <div className="flex h-14 items-center justify-between border-b border-[rgba(0,0,0,0.06)] px-3 md:hidden">
           <Bone className="h-8 w-8 rounded-lg" />
@@ -95,11 +95,11 @@ export function AuthPageLoading() {
 export function SettingsPageLoading() {
   return (
     <div
-      className="bg-background flex h-screen overflow-hidden"
+      className="bg-background flex h-dvh overflow-hidden"
       aria-busy="true"
       aria-label="Loading settings"
     >
-      <aside className="bg-surface-container-low hidden h-screen w-64 shrink-0 border-r border-[rgba(0,0,0,0.06)] p-4 md:block">
+      <aside className="bg-surface-container-low hidden h-dvh w-64 shrink-0 border-r border-[rgba(0,0,0,0.06)] p-4 md:block">
         <Bone className="mb-6 h-8 w-28" />
         <Bone className="mb-4 h-10 w-full rounded-lg" />
         <div className="space-y-2">

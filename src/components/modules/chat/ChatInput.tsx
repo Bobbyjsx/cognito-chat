@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PaperclipIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   PromptInput,
@@ -183,8 +182,8 @@ export function ChatInput({
   };
 
   return (
-    <div className="bg-background/80 shrink-0 border-t border-[rgba(0,0,0,0.06)] px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-4 md:p-6 md:pb-6">
-      <div className="relative mx-auto w-full max-w-[800px] space-y-2.5 sm:space-y-3">
+    <div className="bg-background/80 shrink-0 border-t border-[rgba(0,0,0,0.06)] px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-3.5 sm:pb-4 md:p-6 md:pb-6">
+      <div className="relative mx-auto w-full max-w-[800px]">
         <PromptInputProvider>
           <PromptInput
             onSubmit={handleSubmit}
@@ -200,7 +199,7 @@ export function ChatInput({
               <PromptInputTextarea
                 placeholder="Ask anything"
                 disabled={isBusy}
-                className="font-body-md text-on-surface placeholder:text-gray-medium max-h-[40vh] min-h-[52px] px-3 py-2.5 focus:outline-none sm:min-h-[64px] sm:px-4 sm:py-3"
+                className="font-body-md text-on-surface placeholder:text-gray-medium max-h-[40dvh] min-h-[52px] px-3 py-2.5 focus:outline-none sm:min-h-[64px] sm:px-4 sm:py-3"
               />
             </PromptInputBody>
             <PromptInputFooter className="bg-surface-container-low flex flex-wrap items-center justify-between gap-2 border-t border-[rgba(0,0,0,0.04)] px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5">
@@ -219,11 +218,6 @@ export function ChatInput({
             </PromptInputFooter>
           </PromptInput>
         </PromptInputProvider>
-
-        <p className="font-label-md text-gray-medium px-1 text-center text-[10px] sm:text-[11px]">
-          Cognito Chat can make mistakes. Consider verifying important
-          information.
-        </p>
       </div>
     </div>
   );

@@ -62,7 +62,7 @@ export function LibraryGalleryModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Square-ish: wide and not too tall */}
-      <DialogContent className="flex max-h-[72vh] w-full max-w-4xl flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[72dvh] w-full max-w-4xl flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-5 py-3.5">
           <DialogTitle className="text-sm font-semibold">Library</DialogTitle>
         </DialogHeader>

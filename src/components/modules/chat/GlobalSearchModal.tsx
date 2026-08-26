@@ -441,7 +441,7 @@ export function GlobalSearchModal({
         </div>
 
         {/* Main Content Body */}
-        <div className="h-[360px] max-h-[60vh] overflow-y-auto p-2.5 sm:h-[420px] sm:p-3">
+        <div className="h-[360px] max-h-[60dvh] overflow-y-auto p-2.5 sm:h-[420px] sm:p-3">
           {/* ─── TAB: ALL or ACTIONS ─── */}
           {(activeTab === "all" || activeTab === "actions") &&
             filteredActions.length > 0 && (

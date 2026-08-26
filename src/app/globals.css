@@ -120,6 +120,11 @@
   .code-scrollbar::-webkit-scrollbar-corner {
     background: transparent;
   }
+
+  /* Prevent Hydration Mismatch Flashes */
+  html.skip-startup .startup-screen {
+    display: none !important;
+  }
 }
 
 @theme inline {

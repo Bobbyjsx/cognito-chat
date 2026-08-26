@@ -8,6 +8,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { ServiceWorkerRegister } from "@/components/modules/pwa/ServiceWorkerRegister";
 import { PwaInstallPrompt } from "@/components/modules/pwa/PwaInstallPrompt";
+import { PwaUpdatePrompt } from "@/components/modules/pwa/PwaUpdatePrompt";
+import { AppStartupScreen } from "@/components/modules/pwa/AppStartupScreen";
 import {
   APP_DESCRIPTION,
   APP_NAME,
@@ -130,14 +132,40 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className={cn(geist.variable, geistMono.variable, "min-h-dvh")}>
+    <html lang="en" className="scroll-smooth bg-[#FBFBFA]">
+      <head>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `html,body{background-color:#FBFBFA;color:#111111;}`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (sessionStorage.getItem("cognito_startup_shown") === "true") {
+                  document.documentElement.classList.add("skip-startup");
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
+      <body
+        className={cn(
+          geist.variable,
+          geistMono.variable,
+          "min-h-dvh bg-[#FBFBFA]",
+        )}
+      >
+        <AppStartupScreen />
         <SessionProvider refetchInterval={0}>
           <Providers>
             {children}
             <SonnerToaster richColors theme="light" />
             <ServiceWorkerRegister />
             <PwaInstallPrompt />
+            <PwaUpdatePrompt />
           </Providers>
         </SessionProvider>
       </body>

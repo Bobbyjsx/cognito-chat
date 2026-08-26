@@ -1110,7 +1110,7 @@ export const PromptInput = ({
       >
         <InputGroup
           className={cn(
-            "overflow-hidden transition-all duration-200",
+            "overflow-hidden transition-all duration-200 has-disabled:opacity-100",
             isDragging &&
               "ring-primary/50 bg-surface-container-low scale-[1.01] shadow-md ring-2",
           )}
@@ -1415,10 +1415,12 @@ export const PromptInputSubmit = ({
   status,
   onStop,
   onClick,
+  disabled,
   children,
   ...props
 }: PromptInputSubmitProps) => {
   const isGenerating = status === "submitted" || status === "streaming";
+  const canStop = isGenerating && Boolean(onStop);
 
   const ctx = useOptionalPromptInputController();
   const isUploading = ctx?.attachments.files.some(
@@ -1427,39 +1429,52 @@ export const PromptInputSubmit = ({
 
   let Icon = <SendIcon className="size-4" />;
 
-  if (status === "submitted" || isUploading) {
+  if (canStop) {
+    Icon = <SquareIcon className="size-3.5 fill-current" />;
+  } else if (isGenerating || isUploading) {
     Icon = <Spinner />;
-  } else if (status === "streaming") {
-    Icon = <SquareIcon className="size-4" />;
-  } else if (status === "error") {
-    Icon = <XIcon className="size-4" />;
   }
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (isGenerating && onStop) {
+      if (canStop && onStop) {
         e.preventDefault();
+        e.stopPropagation();
         onStop();
         return;
       }
       // base-ui Button onClick uses BaseUIEvent; cast keeps AI Elements call sites simple
       onClick?.(e as Parameters<NonNullable<typeof onClick>>[0]);
     },
-    [isGenerating, onStop, onClick],
+    [canStop, onStop, onClick],
   );
+
+  // When the user can stop generation, the button must remain active and clickable
+  const isButtonDisabled = canStop
+    ? false
+    : (disabled ?? (isUploading || (isGenerating && !onStop)));
 
   return (
     <InputGroupButton
       aria-label={
-        isGenerating ? "Stop" : isUploading ? "Uploading..." : "Submit"
+        canStop
+          ? "Stop generation"
+          : isUploading
+            ? "Uploading..."
+            : isGenerating
+              ? "Generating..."
+              : "Submit message"
       }
-      className={cn(className)}
+      className={cn(
+        canStop && "hover:bg-destructive hover:text-destructive-foreground",
+        className,
+      )}
       onClick={
         handleClick as React.ComponentProps<typeof InputGroupButton>["onClick"]
       }
       size={size}
-      disabled={isUploading}
-      type={isGenerating && onStop ? "button" : "submit"}
+      disabled={isButtonDisabled}
+      type={canStop ? "button" : "submit"}
       variant={variant}
       {...props}
     >

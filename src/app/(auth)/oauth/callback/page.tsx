@@ -62,7 +62,7 @@ function OAuthCallbackContent() {
 
   if (error) {
     return (
-      <div className="bg-background flex min-h-screen flex-col items-center justify-center p-4">
+      <div className="bg-background flex min-h-dvh flex-col items-center justify-center p-4">
         <div className="flex w-full max-w-sm flex-col items-center space-y-8 text-center">
           <Logo logoOnly />
 
@@ -89,7 +89,7 @@ function OAuthCallbackContent() {
   }
 
   return (
-    <div className="bg-background flex min-h-screen flex-col items-center justify-center p-4">
+    <div className="bg-background flex min-h-dvh flex-col items-center justify-center p-4">
       <div className="flex w-full max-w-sm flex-col items-center space-y-8 text-center">
         <Logo logoOnly />
 
@@ -106,7 +106,7 @@ export default function OAuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="bg-background flex min-h-screen flex-col items-center justify-center p-4">
+        <div className="bg-background flex min-h-dvh flex-col items-center justify-center p-4">
           <div className="flex w-full max-w-sm flex-col items-center space-y-8 text-center">
             <Logo logoOnly />
             <div className="flex flex-col items-center space-y-3">

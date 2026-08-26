@@ -15,6 +15,7 @@ import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -146,7 +147,14 @@ export function PwaInstallPrompt() {
     } catch {}
   };
 
-  if (!showPrompt) {
+  const pathname = usePathname();
+  const isAuthRoute =
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/register") ||
+    pathname?.startsWith("/forgot-password") ||
+    pathname?.startsWith("/oauth");
+
+  if (isAuthRoute) {
     return null;
   }
 
