@@ -1,12 +1,10 @@
 import {
   useMutation,
-  useQuery,
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
 import type {
-  ChatSession,
   ChatSessionListItem,
   PaginatedResponse,
   SessionWithPaginatedMessages,
