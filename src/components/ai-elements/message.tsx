@@ -347,6 +347,15 @@ const CodeBlockTitle = dynamic(
   () => import("./code-block").then((m) => m.CodeBlockTitle),
   { ssr: false },
 );
+const MermaidDiagram = dynamic(
+  () => import("./mermaid-diagram").then((m) => m.MermaidDiagram),
+  { ssr: false },
+);
+
+const CodeBlockContent = dynamic(
+  () => import("./code-block").then((m) => m.CodeBlockContent),
+  { ssr: false },
+);
 
 function CodeBlockOpenCanvasButton({
   code,
@@ -387,6 +396,7 @@ const streamdownComponents = {
 
     if (isMultiLine) {
       const language = (match ? match[1] : "") as BundledLanguage;
+
       return (
         <div className="my-3 overflow-hidden rounded-xl border border-[#313244] bg-[#1e1e2e] shadow-lg">
           <CodeBlock
@@ -407,6 +417,14 @@ const streamdownComponents = {
                 <CodeBlockCopyButton className="h-7 px-2 text-xs text-[#a6adc8] hover:bg-[#313244] hover:text-[#cdd6f4]" />
               </CodeBlockActions>
             </CodeBlockHeader>
+            {language === "mermaid" ? (
+              <MermaidDiagram code={rawText} />
+            ) : (
+              <CodeBlockContent
+                code={rawText}
+                language={language || ("text" as BundledLanguage)}
+              />
+            )}
           </CodeBlock>
         </div>
       );
