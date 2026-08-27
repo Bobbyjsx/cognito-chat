@@ -31,7 +31,13 @@ function OAuthCallbackContent() {
   const exchangeToken = async (state: string, code: string) => {
     try {
       authManager.clearBrowserSessionCache();
-      const { tokens, user } = await completeOAuthLogin(code, state);
+      const resultData = await completeOAuthLogin(code, state);
+      
+      if (resultData.error || !resultData.tokens || !resultData.user) {
+        throw new Error(resultData.error || "Failed to complete login");
+      }
+
+      const { tokens, user } = resultData;
 
       const result = await signIn("manual-oauth", {
         accessToken: tokens.access_token,
