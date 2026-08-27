@@ -32,6 +32,10 @@ export function AppBootstrap() {
       return;
     }
 
+    if (pathname === "/chat" || pathname.startsWith("/chat/")) {
+      void import("@/components/modules/chat/ChatShell");
+    }
+
     let cancelled = false;
 
     void Promise.allSettled([
