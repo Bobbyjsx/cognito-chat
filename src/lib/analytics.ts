@@ -10,9 +10,7 @@ let sentryLoader: Promise<SentrySdk | null> | undefined;
 
 function loadSentry() {
   if (!sentryEnabled) return Promise.resolve(null);
-  sentryLoader ??= import(/* webpackIgnore: true */ "@sentry/nextjs").catch(
-    () => null,
-  );
+  sentryLoader ??= import("@sentry/nextjs").catch(() => null);
   return sentryLoader;
 }
 
