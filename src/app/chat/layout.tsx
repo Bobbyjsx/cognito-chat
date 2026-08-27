@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { requireAuth } from "@/lib/require-auth";
+import { Suspense } from "react";
+import { AuthGate } from "@/components/modules/auth/AuthGate";
+import { ChatShellLoading } from "@/components/loading/page-skeletons";
 import { noIndexRobots } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -8,11 +10,12 @@ export const metadata: Metadata = {
   robots: noIndexRobots,
 };
 
-export default async function ChatLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  await requireAuth();
-  return <div className="h-dvh overflow-hidden">{children}</div>;
+export default function ChatLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="h-dvh overflow-hidden">
+      <Suspense fallback={<ChatShellLoading />}>
+        <AuthGate>{children}</AuthGate>
+      </Suspense>
+    </div>
+  );
 }

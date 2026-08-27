@@ -1,6 +1,8 @@
 import { getErrorMessage } from "@/lib/server-error";
 
-const sentryEnabled = process.env.CLOUDFLARE !== "1";
+const sentryEnabled =
+  process.env.CLOUDFLARE !== "1" &&
+  process.env.NEXT_PUBLIC_SENTRY_DISABLED !== "1";
 
 type SentrySdk = typeof import("@sentry/nextjs");
 

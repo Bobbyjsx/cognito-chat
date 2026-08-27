@@ -10,22 +10,42 @@ import type {
   SessionWithPaginatedMessages,
 } from "@/types";
 
+export const sessionsQueryKey = (searchQuery = "") =>
+  ["chat-sessions", searchQuery] as const;
+
+export async function fetchChatSessions({
+  pageParam = 0,
+  searchQuery = "",
+  limit = 15,
+}: {
+  pageParam?: number;
+  searchQuery?: string;
+  limit?: number;
+}) {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: pageParam.toString(),
+  });
+  if (searchQuery.trim()) {
+    params.append("q", searchQuery.trim());
+  }
+  const { data } = await api.get<PaginatedResponse<ChatSessionListItem>>(
+    `/agent/sessions?${params.toString()}`,
+  );
+  return data;
+}
+
 export function useGetSessions(searchQuery?: string, limit: number = 15) {
+  const normalizedQuery = searchQuery || "";
+
   return useInfiniteQuery({
-    queryKey: ["chat-sessions", searchQuery || ""],
-    queryFn: async ({ pageParam = 0 }) => {
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: pageParam.toString(),
-      });
-      if (searchQuery?.trim()) {
-        params.append("q", searchQuery.trim());
-      }
-      const { data } = await api.get<PaginatedResponse<ChatSessionListItem>>(
-        `/agent/sessions?${params.toString()}`,
-      );
-      return data;
-    },
+    queryKey: sessionsQueryKey(normalizedQuery),
+    queryFn: ({ pageParam = 0 }) =>
+      fetchChatSessions({
+        pageParam: Number(pageParam) || 0,
+        searchQuery: normalizedQuery,
+        limit,
+      }),
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.offset + lastPage.limit : undefined,
     initialPageParam: 0,

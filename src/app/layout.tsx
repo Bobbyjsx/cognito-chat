@@ -133,20 +133,48 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth bg-[#FBFBFA]">
+    <html
+      lang="en"
+      className="scroll-smooth bg-[#FBFBFA]"
+      suppressHydrationWarning
+    >
       <head>
         <style
           dangerouslySetInnerHTML={{
-            __html: `html,body{background-color:#FBFBFA;color:#111111;}`,
+            __html: `html,body{background-color:#FBFBFA;color:#111111;}
+.startup-screen{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#FBFBFA;color:#111;padding:0 16px;user-select:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:opacity .45s ease,transform .45s ease}
+.startup-screen.is-exiting{opacity:0;transform:scale(1.02);pointer-events:none}
+html.skip-startup .startup-screen{display:none!important}
+.startup-logo{animation:startup-pulse 1s ease-in-out infinite}
+@keyframes startup-pulse{50%{opacity:.55}}
+.startup-copy{margin-top:24px;text-align:center}
+.startup-type-row{display:flex;min-height:28px;align-items:center;justify-content:center}
+.startup-type{display:inline-block;overflow:hidden;white-space:nowrap;font-size:14px;font-weight:500;letter-spacing:-.02em;max-width:0;animation:startup-type 1.1s steps(29,end) forwards}
+.startup-type.is-static{animation:none;max-width:none}
+@keyframes startup-type{to{max-width:32ch}}
+.startup-caret{margin-left:1px;color:#2f3437;animation:startup-blink 1s step-end infinite}
+@keyframes startup-blink{50%{opacity:0}}
+.startup-kicker{display:block;margin-top:6px;font-size:11px;color:#787774}
+@media (prefers-reduced-motion:reduce){.startup-type,.startup-logo,.startup-caret{animation:none}.startup-type{max-width:none}}`,
           }}
         />
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                if (sessionStorage.getItem("cognito_startup_shown") === "true") {
+                var params = new URLSearchParams(location.search);
+                var forceStartup = params.get("startup") === "1";
+                var standalone =
+                  window.matchMedia("(display-mode: standalone)").matches ||
+                  window.matchMedia("(display-mode: fullscreen)").matches ||
+                  window.matchMedia("(display-mode: minimal-ui)").matches ||
+                  window.navigator.standalone === true ||
+                  document.referrer.indexOf("android-app://") !== -1;
+                var shown = sessionStorage.getItem("cognito_startup_shown") === "true";
+                if (!forceStartup && (shown || !standalone)) {
                   document.documentElement.classList.add("skip-startup");
                 }
+                window.__COGNITO_STARTUP_AT = performance.now();
               } catch (e) {}
             `,
           }}
