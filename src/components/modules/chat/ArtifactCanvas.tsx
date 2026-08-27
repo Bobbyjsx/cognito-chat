@@ -319,7 +319,7 @@ export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
               artifact.type === "diagram" ? (
               <div className="h-full w-full bg-[#1e1e2e] text-[#cdd6f4]">
                 <TransformWrapper
-                  minScale={0.1}
+                  minScale={1}
                   maxScale={8}
                   centerOnInit
                   wheel={{ step: 0.05 }}
