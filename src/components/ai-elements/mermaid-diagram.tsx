@@ -25,6 +25,7 @@ export function MermaidDiagram({
 
   useEffect(() => {
     let isMounted = true;
+    let errorTimeout: NodeJS.Timeout;
 
     async function renderDiagram() {
       if (!code.trim()) return;
@@ -32,7 +33,6 @@ export function MermaidDiagram({
         setError(null);
 
         // Use mermaid.parse to validate syntax before attempting to render
-        // This prevents mermaid from auto-injecting huge error SVGs into the DOM
         try {
           await mermaid.parse(code, { suppressErrors: true });
         } catch (parseError) {
@@ -46,7 +46,14 @@ export function MermaidDiagram({
         }
       } catch (err) {
         if (isMounted) {
-          setError((err as Error).message || "Failed to render diagram");
+          // If it fails to parse (often due to incomplete code during streaming),
+          // delay showing the error. If new code arrives, this timeout is cleared.
+          // This gives the agent time to finish typing the diagram without flashing errors.
+          errorTimeout = setTimeout(() => {
+            if (isMounted) {
+              setError((err as Error).message || "Failed to render diagram");
+            }
+          }, 1500);
         }
       }
     }
@@ -55,6 +62,7 @@ export function MermaidDiagram({
 
     return () => {
       isMounted = false;
+      clearTimeout(errorTimeout);
     };
   }, [code]);
 
