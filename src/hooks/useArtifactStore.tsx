@@ -43,8 +43,14 @@ export function ArtifactProvider({ children }: { children: ReactNode }) {
   const openArtifact = useCallback((art: Artifact) => {
     setArtifact(art);
     setIsOpen(true);
-    // If HTML or SVG or markdown, default to preview or code intelligently
-    if (art.type === "html" || art.language === "html" || art.type === "svg") {
+    // If HTML or SVG, diagram, or markdown, default to preview or code intelligently
+    if (
+      art.type === "html" ||
+      art.language === "html" ||
+      art.type === "svg" ||
+      art.type === "diagram" ||
+      art.language === "mermaid"
+    ) {
       setActiveTab("preview");
     } else {
       setActiveTab("code");
