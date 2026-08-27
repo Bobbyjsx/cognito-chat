@@ -76,7 +76,7 @@ function ResizableCanvasPanel() {
         // Mobile: full width positioned below the top navbar (h-14 = 56px), never overlapping header
         "absolute inset-x-0 top-14 bottom-0 z-30 flex w-full flex-col pb-[env(safe-area-inset-bottom)]",
         // Desktop: side-by-side resizable panel
-        "md:static md:inset-x-auto md:top-0 md:bottom-auto md:h-full md:w-[var(--canvas-width)] md:max-w-[min(850px,calc(100vw-380px))] md:min-w-[360px] md:shrink-0 md:border-l md:border-[#313244] md:pb-0",
+        "md:relative md:inset-x-auto md:top-0 md:bottom-auto md:h-full md:w-[var(--canvas-width)] md:max-w-[min(850px,calc(100vw-380px))] md:min-w-[360px] md:shrink-0 md:border-l md:border-[#313244] md:pb-0",
       )}
       style={
         {
