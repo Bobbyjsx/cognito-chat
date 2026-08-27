@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
 
   productionBrowserSourceMaps: false,
 
-  serverExternalPackages: isCloudflareBuild ? ["@sentry/nextjs", "shiki"] : [],
+  // serverExternalPackages removed
 };
 
 initOpenNextCloudflareForDev();
