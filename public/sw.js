@@ -1,10 +1,8 @@
 // Cognito PWA Service Worker
-const CACHE_NAME = "cognito-cache-v1";
+const CACHE_NAME = "cognito-cache-v2";
 const OFFLINE_URL = "/chat";
 
 const PRECACHE_ASSETS = [
-  "/",
-  "/chat",
   "/favicon/favicon.ico",
   "/favicon/android-chrome-192x192.png",
   "/favicon/android-chrome-512x512.png",
