@@ -3,12 +3,8 @@ import type { UserProfile } from "@/types";
 export type CountdownStyle = "short" | "long";
 
 export type QuotaSnapshot = {
-  used6h: number;
-  limit6h: number;
   pct6h: number;
   reset6hText: string;
-  usedWeekly: number;
-  limitWeekly: number;
   pctWeekly: number;
   resetWeeklyText: string;
 };
@@ -64,27 +60,8 @@ export function getQuotaSnapshot(
 ): QuotaSnapshot {
   const raw = profile as unknown as Record<string, unknown> | undefined;
 
-  const used6h = num(
-    profile?.tokensUsed6h ?? raw?.tokensUsed_6h ?? profile?.tokensUsed,
-  );
-  const limit6h = num(
-    profile?.tokenLimit6h ?? raw?.tokenLimit_6h ?? profile?.tokenLimit,
-    60_000,
-  );
-  const pct6h = num(
-    profile?.pct6h ?? raw?.pct_6h,
-    Math.min(Math.round((used6h / Math.max(limit6h, 1)) * 100), 100),
-  );
-
-  const usedWeekly = num(profile?.tokensUsedWeekly ?? raw?.tokensUsed_weekly);
-  const limitWeekly = num(
-    profile?.tokenLimitWeekly ?? raw?.tokenLimit_weekly,
-    300_000,
-  );
-  const pctWeekly = num(
-    profile?.pctWeekly ?? raw?.pct_weekly,
-    Math.min(Math.round((usedWeekly / Math.max(limitWeekly, 1)) * 100), 100),
-  );
+  const pct6h = num(profile?.pct6h ?? raw?.pct_6h, 0);
+  const pctWeekly = num(profile?.pctWeekly ?? raw?.pct_weekly, 0);
 
   const reset6hText =
     str(profile?.resetCountdown6h) ||
@@ -105,12 +82,8 @@ export function getQuotaSnapshot(
     );
 
   return {
-    used6h,
-    limit6h,
     pct6h,
     reset6hText,
-    usedWeekly,
-    limitWeekly,
     pctWeekly,
     resetWeeklyText,
   };
