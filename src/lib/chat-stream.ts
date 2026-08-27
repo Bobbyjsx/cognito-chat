@@ -336,13 +336,11 @@ export async function pipeBackendStreamToUIMessage({
           if (typeof payload.session_id === "string") {
             Analytics.captureEvent("chat.stream.complete", {
               sessionId: payload.session_id,
-              tokensUsed: payload.tokens_used,
               model: payload.model,
               reasoning: payload.reasoning,
               durationMs: Date.now() - startedAt,
             });
             writeSession(payload.session_id, {
-              tokensUsed: payload.tokens_used,
               model: payload.model,
               reasoning: payload.reasoning,
             });

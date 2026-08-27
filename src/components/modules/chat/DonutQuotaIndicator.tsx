@@ -25,7 +25,7 @@ export function DonutQuotaIndicator() {
   const q = getQuotaSnapshot(profile, nowMs, "short");
 
   return (
-    <Context usedTokens={q.used6h} maxTokens={q.limit6h}>
+    <Context usedTokens={q.pct6h} maxTokens={100}>
       <ContextTrigger className="font-label-md hover:bg-surface-container-low h-8 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2.5 py-1 text-xs transition-all duration-200 hover:border-[rgba(0,0,0,0.12)]" />
 
       <ContextContent
@@ -61,10 +61,7 @@ export function DonutQuotaIndicator() {
               </span>
               <span className="text-on-surface font-semibold">{q.pct6h}%</span>
             </div>
-            <div className="text-gray-medium text-[11px]">
-              {q.used6h.toLocaleString()} / {q.limit6h.toLocaleString()} tokens
-            </div>
-            <div className="text-gray-medium text-[11px] font-medium italic">
+            <div className="text-gray-medium mt-1 text-[11px] font-medium italic">
               ⏱ 6-Hour {q.reset6hText}
             </div>
           </div>
@@ -81,11 +78,7 @@ export function DonutQuotaIndicator() {
                 {q.pctWeekly}%
               </span>
             </div>
-            <div className="text-gray-medium text-[11px]">
-              {q.usedWeekly.toLocaleString()} / {q.limitWeekly.toLocaleString()}{" "}
-              tokens
-            </div>
-            <div className="text-gray-medium text-[11px] font-medium italic">
+            <div className="text-gray-medium mt-1 text-[11px] font-medium italic">
               ⏱ Weekly {q.resetWeeklyText}
             </div>
           </div>

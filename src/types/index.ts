@@ -4,15 +4,9 @@ export interface UserProfile {
   firstName?: string;
   lastName?: string;
   fullName?: string;
-  tokensUsed: number;
-  tokenLimit?: number;
-  tokensUsed6h: number;
-  tokenLimit6h: number;
   resetAt: string | null;
   pct6h?: number;
   resetCountdown6h?: string;
-  tokensUsedWeekly: number;
-  tokenLimitWeekly: number;
   weeklyResetAt: string | null;
   pctWeekly?: number;
   resetCountdownWeekly?: string;

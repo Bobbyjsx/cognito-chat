@@ -172,10 +172,7 @@ export function SettingsModule() {
                       <Zap className="text-primary h-3.5 w-3.5" /> 6-Hour Quota
                       Window
                     </span>
-                    <span className="text-on-surface">
-                      {q.used6h.toLocaleString()} / {q.limit6h.toLocaleString()}{" "}
-                      ({q.pct6h}%)
-                    </span>
+                    <span className="text-on-surface">{q.pct6h}% used</span>
                   </div>
                   <div className="bg-surface-container-high h-2.5 w-full overflow-hidden rounded-full">
                     <div
@@ -202,10 +199,7 @@ export function SettingsModule() {
                       <Calendar className="text-primary h-3.5 w-3.5" /> Weekly
                       Quota Cap
                     </span>
-                    <span className="text-on-surface">
-                      {q.usedWeekly.toLocaleString()} /{" "}
-                      {q.limitWeekly.toLocaleString()} ({q.pctWeekly}%)
-                    </span>
+                    <span className="text-on-surface">{q.pctWeekly}% used</span>
                   </div>
                   <div className="bg-surface-container-high h-2.5 w-full overflow-hidden rounded-full">
                     <div
