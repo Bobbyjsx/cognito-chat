@@ -13,6 +13,9 @@ import {
   X,
   FileCode2,
   WrapText,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 import { CognitoIcon } from "@/components/ui/logo";
 import { useArtifactStore } from "@/hooks/useArtifactStore";
@@ -320,17 +323,41 @@ export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
                   minScale={0.1}
                   maxScale={8}
                   centerOnInit
-                  wheel={{ step: 0.1 }}
+                  wheel={{ step: 0.05 }}
                 >
-                  <TransformComponent
-                    wrapperClass="!w-full !h-full"
-                    contentClass="!w-full !h-full flex items-center justify-center"
-                  >
-                    <MermaidDiagram
-                      code={artifact.content}
-                      className="m-0 flex w-full max-w-none items-center justify-center border-none bg-transparent p-8"
-                    />
-                  </TransformComponent>
+                  {({ zoomIn, zoomOut, resetTransform }) => (
+                    <>
+                      <TransformComponent
+                        wrapperClass="!w-full !h-full"
+                        contentClass="!w-full !h-full flex items-center justify-center"
+                      >
+                        <MermaidDiagram
+                          code={artifact.content}
+                          className="m-0 flex w-full max-w-none items-center justify-center border-none bg-transparent p-8"
+                        />
+                      </TransformComponent>
+                      <div className="absolute right-6 bottom-6 flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#181825]/90 p-1.5 shadow-xl backdrop-blur-md">
+                        <IconTooltipButton
+                          label="Zoom In"
+                          onClick={() => zoomIn()}
+                        >
+                          <ZoomIn className="h-4 w-4" />
+                        </IconTooltipButton>
+                        <IconTooltipButton
+                          label="Zoom Out"
+                          onClick={() => zoomOut()}
+                        >
+                          <ZoomOut className="h-4 w-4" />
+                        </IconTooltipButton>
+                        <IconTooltipButton
+                          label="Reset Zoom"
+                          onClick={() => resetTransform()}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </IconTooltipButton>
+                      </div>
+                    </>
+                  )}
                 </TransformWrapper>
               </div>
             ) : (
