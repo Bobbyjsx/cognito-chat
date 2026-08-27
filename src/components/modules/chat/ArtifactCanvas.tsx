@@ -320,7 +320,7 @@ export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
               <div className="h-full w-full bg-[#1e1e2e] text-[#cdd6f4]">
                 <TransformWrapper
                   initialScale={1}
-                  minScale={0.1}
+                  minScale={1}
                   maxScale={8}
                   centerOnInit
                   wheel={{ step: 0.05 }}
@@ -336,25 +336,28 @@ export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
                           className="m-0 flex w-full max-w-none items-center justify-center border-none bg-transparent p-8"
                         />
                       </TransformComponent>
-                      <div className="absolute right-6 bottom-6 flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#181825]/90 p-1.5 shadow-xl backdrop-blur-md">
-                        <IconTooltipButton
-                          label="Zoom In"
+                      <div className="absolute right-4 bottom-4 flex items-center gap-0.5 rounded-lg border border-white/10 bg-[#181825]/90 p-1 shadow-lg backdrop-blur-md">
+                        <button
+                          type="button"
                           onClick={() => zoomIn()}
+                          className="flex h-6 w-6 items-center justify-center rounded text-[#a6adc8] transition-colors hover:bg-[#313244] hover:text-[#cdd6f4]"
                         >
-                          <ZoomIn className="h-4 w-4" />
-                        </IconTooltipButton>
-                        <IconTooltipButton
-                          label="Zoom Out"
+                          <ZoomIn className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => zoomOut()}
+                          className="flex h-6 w-6 items-center justify-center rounded text-[#a6adc8] transition-colors hover:bg-[#313244] hover:text-[#cdd6f4]"
                         >
-                          <ZoomOut className="h-4 w-4" />
-                        </IconTooltipButton>
-                        <IconTooltipButton
-                          label="Reset Zoom"
+                          <ZoomOut className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => resetTransform()}
+                          className="flex h-6 w-6 items-center justify-center rounded text-[#a6adc8] transition-colors hover:bg-[#313244] hover:text-[#cdd6f4]"
                         >
-                          <RotateCcw className="h-4 w-4" />
-                        </IconTooltipButton>
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </>
                   )}
