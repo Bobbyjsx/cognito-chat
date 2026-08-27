@@ -28,6 +28,14 @@ const StreamdownWrapper = dynamic(
   { ssr: false },
 );
 
+const MermaidDiagram = dynamic(
+  () =>
+    import("@/components/ai-elements/mermaid-diagram").then(
+      (m) => m.MermaidDiagram,
+    ),
+  { ssr: false },
+);
+
 function getFileExtension(language: string): string {
   const lang = language.toLowerCase();
   switch (lang) {
@@ -91,10 +99,12 @@ export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
       type === "html" ||
       type === "svg" ||
       type === "markdown" ||
+      type === "diagram" ||
       lang === "html" ||
       lang === "svg" ||
       lang === "markdown" ||
-      lang === "md"
+      lang === "md" ||
+      lang === "mermaid"
     );
   }, [artifact]);
 
@@ -300,6 +310,11 @@ export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
             artifact.language === "markdown" || artifact.type === "markdown" ? (
               <div className="bg-background text-foreground h-full overflow-y-auto p-6">
                 <StreamdownWrapper>{artifact.content}</StreamdownWrapper>
+              </div>
+            ) : artifact.language === "mermaid" ||
+              artifact.type === "diagram" ? (
+              <div className="bg-background text-foreground flex h-full items-center justify-center overflow-auto p-6">
+                <MermaidDiagram code={artifact.content} />
               </div>
             ) : (
               <iframe

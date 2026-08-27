@@ -1,0 +1,36 @@
+
+> cognito-chat@0.1.0 deploy /Users/bobby/Documents/Workspace/project-cognito/cognito-chat
+> CLOUDFLARE=1 opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --keep-vars
+
+
+┌─────────────────────────────┐
+│ OpenNext — Cloudflare build │
+└─────────────────────────────┘
+
+App directory: /Users/bobby/Documents/Workspace/project-cognito/cognito-chat
+Next.js version : 16.2.12
+@opennextjs/cloudflare version: 1.20.2
+@opennextjs/aws version: 4.1.0
+workerd compatibility_date: 2026-08-15
+
+┌─────────────────────────────────┐
+│ OpenNext — Building Next.js app │
+└─────────────────────────────────┘
+
+
+> cognito-chat@0.1.0 build /Users/bobby/Documents/Workspace/project-cognito/cognito-chat
+> next build
+
+▲ Next.js 16.2.12 (Turbopack)
+- Environments: .env.production, .env
+- Experiments (use with caution):
+  · clientTraceMetadata
+  · optimizePackageImports
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 66s
+  Running next.config.js provided runAfterProductionCompile ...
+sh: line 1: 39106 Terminated: 15          CLOUDFLARE=1 opennextjs-cloudflare build
+ ELIFECYCLE  Command failed with exit code 143.
+ ELIFECYCLE  Command failed with exit code 143.
