@@ -123,3 +123,42 @@ export function useDeleteSession() {
     },
   });
 }
+
+export function useMarkSessionRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { data } = await api.post(`/agent/sessions/${sessionId}/read`);
+      return data;
+    },
+    onMutate: async (sessionId) => {
+      // Optimistically update the UI
+      await queryClient.cancelQueries({ queryKey: ["chat-sessions"] });
+      const previousSessions = queryClient.getQueryData(["chat-sessions"]);
+
+      queryClient.setQueriesData<{
+        pages: PaginatedResponse<ChatSessionListItem>[];
+        pageParams: number[];
+      }>({ queryKey: ["chat-sessions"] }, (old) => {
+        if (!old || !old.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.map((s) =>
+              s.id === sessionId ? { ...s, readStatus: "read" } : s,
+            ),
+          })),
+        };
+      });
+
+      return { previousSessions };
+    },
+    onError: (err, sessionId, context) => {
+      if (context?.previousSessions) {
+        queryClient.setQueryData(["chat-sessions"], context.previousSessions);
+      }
+    },
+  });
+}
