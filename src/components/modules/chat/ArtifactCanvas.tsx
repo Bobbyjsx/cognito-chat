@@ -22,6 +22,7 @@ import type { BundledLanguage } from "shiki";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 const StreamdownWrapper = dynamic(
   () => import("@/components/ai-elements/streamdown-wrapper"),
@@ -313,8 +314,24 @@ export function ArtifactCanvas({ className }: ArtifactCanvasProps) {
               </div>
             ) : artifact.language === "mermaid" ||
               artifact.type === "diagram" ? (
-              <div className="bg-background text-foreground flex h-full items-center justify-center overflow-auto p-6">
-                <MermaidDiagram code={artifact.content} />
+              <div className="h-full w-full bg-[#1e1e2e] text-[#cdd6f4]">
+                <TransformWrapper
+                  initialScale={1}
+                  minScale={0.1}
+                  maxScale={8}
+                  centerOnInit
+                  wheel={{ step: 0.1 }}
+                >
+                  <TransformComponent
+                    wrapperClass="!w-full !h-full"
+                    contentClass="!w-full !h-full flex items-center justify-center"
+                  >
+                    <MermaidDiagram
+                      code={artifact.content}
+                      className="m-0 flex w-full max-w-none items-center justify-center border-none bg-transparent p-8"
+                    />
+                  </TransformComponent>
+                </TransformWrapper>
               </div>
             ) : (
               <iframe

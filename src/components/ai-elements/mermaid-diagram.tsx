@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function MermaidDiagram({ code }: { code: string }) {
+export function MermaidDiagram({
+  code,
+  className,
+}: {
+  code: string;
+  className?: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svgContent, setSvgContent] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +30,15 @@ export function MermaidDiagram({ code }: { code: string }) {
       if (!code.trim()) return;
       try {
         setError(null);
+
+        // Use mermaid.parse to validate syntax before attempting to render
+        // This prevents mermaid from auto-injecting huge error SVGs into the DOM
+        try {
+          await mermaid.parse(code, { suppressErrors: true });
+        } catch (parseError) {
+          throw new Error("Invalid Mermaid syntax");
+        }
+
         const id = `mermaid-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const { svg } = await mermaid.render(id, code);
         if (isMounted) {
@@ -44,16 +60,27 @@ export function MermaidDiagram({ code }: { code: string }) {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 font-mono text-xs text-red-400">
-        Failed to render Mermaid diagram
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 p-4 font-mono text-xs text-red-400",
+          className,
+        )}
+      >
+        <span className="mb-1 font-semibold">Mermaid Error</span>
+        <span className="text-center opacity-80">{error}</span>
       </div>
     );
   }
 
   if (!svgContent) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-xl border border-[#313244] bg-[#1e1e2e]">
-        <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+      <div
+        className={cn(
+          "flex h-32 items-center justify-center rounded-xl border border-[#313244] bg-[#1e1e2e]",
+          className,
+        )}
+      >
+        <Loader2 className="h-5 w-5 animate-spin text-[#a6adc8]" />
       </div>
     );
   }
@@ -61,7 +88,10 @@ export function MermaidDiagram({ code }: { code: string }) {
   return (
     <div
       ref={containerRef}
-      className="mermaid-wrapper my-2 flex justify-center overflow-x-auto rounded-xl bg-white/5 p-4"
+      className={cn(
+        "mermaid-wrapper flex justify-center overflow-x-auto",
+        className,
+      )}
       dangerouslySetInnerHTML={{ __html: svgContent }}
     />
   );
