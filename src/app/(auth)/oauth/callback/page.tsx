@@ -33,15 +33,24 @@ function OAuthCallbackContent() {
       authManager.clearBrowserSessionCache();
       const { tokens, user } = await completeOAuthLogin(code, state);
 
-      await signIn("manual-oauth", {
+      const result = await signIn("manual-oauth", {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         userStr: JSON.stringify(user),
-        callbackUrl: "/",
+        redirect: false,
       });
+      if (result?.error) {
+        throw new Error(result.error);
+      }
       authManager.clearBrowserSessionCache();
+      router.replace("/chat");
     } catch (err: unknown) {
       console.error("OAuth callback error:", err);
+      const digest =
+        typeof err === "object" && err && "digest" in err
+          ? String((err as { digest?: unknown }).digest)
+          : "";
+      if (digest.startsWith("NEXT_REDIRECT")) return;
       const message =
         err instanceof Error ? err.message : "An error occurred during sign in";
       setAsyncError(message);
