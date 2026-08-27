@@ -25,6 +25,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useDeleteSession,
   useGetSessions,
+  useMarkSessionRead,
 } from "@/hooks/data/useChats/useChats";
 import { cn } from "@/lib/utils";
 import { GlobalSearchModal, type PaletteTab } from "./GlobalSearchModal";
@@ -125,6 +126,16 @@ export function ChatSidebar({
       .flatMap((page) => page?.items || [])
       .filter((session) => Boolean(session)) || [];
   const deleteSessionMutation = useDeleteSession();
+  const { mutate: markSessionRead } = useMarkSessionRead();
+
+  // Mark the active session as read if it is unread
+  useEffect(() => {
+    if (!activeSessionId) return;
+    const activeSession = sessions.find((s) => s.id === activeSessionId);
+    if (activeSession && activeSession.readStatus === "not read") {
+      markSessionRead(activeSessionId);
+    }
+  }, [activeSessionId, sessions, markSessionRead]);
 
   useEffect(() => {
     if (!activeSessionId) return;
