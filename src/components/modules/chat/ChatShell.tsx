@@ -27,6 +27,7 @@ function toAssistantRole(role: string): "user" | "assistant" {
 }
 
 function ResizableCanvasPanel() {
+  const { artifact } = useArtifactStore();
   const [panelWidth, setPanelWidth] = useState(() => {
     if (typeof window !== "undefined") {
       return Math.min(Math.max(window.innerWidth * 0.45, 380), 720);
@@ -95,7 +96,7 @@ function ResizableCanvasPanel() {
         </div>
       </div>
 
-      <ArtifactCanvas />
+      <ArtifactCanvas key={artifact?.id} />
     </div>
   );
 }
