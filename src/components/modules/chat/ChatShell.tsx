@@ -168,7 +168,10 @@ export function ChatShell() {
   } = useGetSession(routeSessionId);
 
   const activeGenerationId = sessionPages?.pages[0]?.active_generation_id;
-  useActiveGeneration(activeGenerationId, routeSessionId);
+  const { data: activeGenData } = useActiveGeneration(
+    activeGenerationId,
+    routeSessionId,
+  );
 
   const sessionData =
     sessionPages?.pages[0]?.session ||
@@ -468,6 +471,25 @@ export function ChatShell() {
           !sessionData ||
           sessionData.id !== routeSessionId)));
 
+  const displayMessages = useMemo(() => {
+    const list = [...aiMessages];
+    if (
+      activeGenData &&
+      (activeGenData.status === "queued" ||
+        activeGenData.status === "running_live" ||
+        activeGenData.status === "running_worker") &&
+      activeGenData.buffered_text
+    ) {
+      list.push({
+        id: activeGenData.id,
+        role: "assistant",
+        parts: [{ type: "text", text: activeGenData.buffered_text || "" }],
+        createdAt: new Date(activeGenData.created_at),
+      } as any);
+    }
+    return list;
+  }, [aiMessages, activeGenData]);
+
   const { artifact, isOpen: isArtifactOpen } = useArtifactStore();
   const showArtifact = Boolean(isArtifactOpen && artifact);
 
@@ -492,7 +514,7 @@ export function ChatShell() {
         />
 
         <ChatMessageList
-          messages={aiMessages}
+          messages={displayMessages}
           isStreaming={isStreaming}
           hasActiveBackgroundGeneration={Boolean(activeGenerationId)}
           isSessionLoading={showSessionLoading}
