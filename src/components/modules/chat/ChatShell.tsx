@@ -3,7 +3,10 @@
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage, type FileUIPart } from "ai";
-import { useGetSession } from "@/hooks/data/useChats/useChats";
+import {
+  useGetSession,
+  useActiveGeneration,
+} from "@/hooks/data/useChats/useChats";
 import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachments";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { attachmentById } from "@/lib/attachments";
@@ -163,6 +166,9 @@ export function ChatShell() {
     hasNextPage,
     isFetchingNextPage,
   } = useGetSession(routeSessionId);
+
+  const activeGenerationId = sessionPages?.pages[0]?.active_generation_id;
+  useActiveGeneration(activeGenerationId, routeSessionId);
 
   const sessionData =
     sessionPages?.pages[0]?.session ||
@@ -488,6 +494,7 @@ export function ChatShell() {
         <ChatMessageList
           messages={aiMessages}
           isStreaming={isStreaming}
+          hasActiveBackgroundGeneration={Boolean(activeGenerationId)}
           isSessionLoading={showSessionLoading}
           streamingMessageId={streamingMessageId}
           hasNextPage={hasNextPage}
