@@ -316,7 +316,9 @@ export async function pipeBackendStreamToUIMessage({
         if (parsed.event === "session") {
           if (typeof payload.session_id === "string") {
             lastSessionId = payload.session_id;
-            writeSession(payload.session_id);
+            writeSession(payload.session_id, {
+              generationId: payload.generation_id,
+            });
           }
           continue;
         }

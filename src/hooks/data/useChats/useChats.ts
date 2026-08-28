@@ -1,4 +1,5 @@
 import {
+  useQuery,
   useMutation,
   useQueryClient,
   useInfiniteQuery,
@@ -161,4 +162,53 @@ export function useMarkSessionRead() {
       }
     },
   });
+}
+
+import { useEffect } from "react";
+
+export function useActiveGeneration(
+  generationId: string | null | undefined,
+  sessionId: string | null,
+) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["generation", generationId],
+    queryFn: async () => {
+      if (!generationId) return null;
+      const { data } = await api.get(`/agent/generations/${generationId}`);
+      return data;
+    },
+    enabled: Boolean(generationId),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (
+        data &&
+        (data.status === "completed" ||
+          data.status === "failed" ||
+          data.status === "cancelled")
+      ) {
+        return false;
+      }
+      return 2000;
+    },
+  });
+
+  useEffect(() => {
+    if (
+      query.data &&
+      (query.data.status === "completed" ||
+        query.data.status === "failed" ||
+        query.data.status === "cancelled")
+    ) {
+      if (sessionId) {
+        queryClient.invalidateQueries({
+          queryKey: ["chat-session", sessionId],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
+    }
+  }, [query.data?.status, sessionId, queryClient]);
+
+  return query;
 }

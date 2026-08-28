@@ -55,6 +55,8 @@ interface ChatMessageListProps {
   messages: UIMessage[];
   /** True while a generation stream is open. */
   isStreaming?: boolean;
+  /** True while a background generation is actively running on the server. */
+  hasActiveBackgroundGeneration?: boolean;
   /** True while historical session messages are loading. */
   isSessionLoading?: boolean;
   /** Id of the assistant message currently being streamed, if any. */
@@ -70,6 +72,7 @@ interface ChatMessageListProps {
 export function ChatMessageList({
   messages,
   isStreaming,
+  hasActiveBackgroundGeneration,
   isSessionLoading,
   streamingMessageId,
   hasNextPage = false,
@@ -86,9 +89,15 @@ export function ChatMessageList({
   const showSessionSkeleton = Boolean(isSessionLoading) && !isStreaming;
 
   // Agent reply placeholder before first tokens
-  const showAgentSkeleton = Boolean(isStreaming) && !lastIsAssistant;
+  const showAgentSkeleton =
+    (Boolean(isStreaming) || Boolean(hasActiveBackgroundGeneration)) &&
+    !lastIsAssistant;
 
-  const isEmpty = messages.length === 0 && !isStreaming && !isSessionLoading;
+  const isEmpty =
+    messages.length === 0 &&
+    !isStreaming &&
+    !hasActiveBackgroundGeneration &&
+    !isSessionLoading;
 
   // When switching sessions, the temporary skeleton shrinks the scroll
   // container and the browser clamps scrollTop to the top. Once the target
