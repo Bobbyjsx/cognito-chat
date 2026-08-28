@@ -488,12 +488,23 @@ export function ChatShell() {
       (activeGenData.status === "queued" ||
         activeGenData.status === "running_live" ||
         activeGenData.status === "running_worker") &&
-      activeGenData.buffered_text
+      (activeGenData.buffered_text || activeGenData.buffered_thoughts)
     ) {
+      const parts: any[] = [];
+      if (activeGenData.buffered_thoughts) {
+        parts.push({
+          type: "reasoning",
+          text: activeGenData.buffered_thoughts,
+        });
+      }
+      if (activeGenData.buffered_text) {
+        parts.push({ type: "text", text: activeGenData.buffered_text });
+      }
+
       list.push({
         id: activeGenData.id,
         role: "assistant",
-        parts: [{ type: "text", text: activeGenData.buffered_text || "" }],
+        parts,
         createdAt: new Date(activeGenData.created_at),
       } as any);
     }
