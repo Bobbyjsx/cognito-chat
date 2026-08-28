@@ -424,6 +424,15 @@ export function ChatShell() {
           },
         },
       );
+
+      if (!activeSessionId) {
+        // Optimistically invalidate the sidebar list so it refreshes immediately.
+        // It might take a couple hundreds ms for the DB to populate the session,
+        // so we delay the invalidation slightly.
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
+        }, 500);
+      }
     },
     [
       sendMessage,
@@ -431,6 +440,7 @@ export function ChatShell() {
       activeReasoning,
       activeSessionId,
       sessionAttachments,
+      queryClient,
     ],
   );
 
