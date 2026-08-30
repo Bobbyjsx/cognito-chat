@@ -426,6 +426,8 @@ export function ChatShell() {
       );
 
       if (!activeSessionId) {
+        // Mark global mutation BEFORE the setTimeout so Axios knows to bypass cache
+        markGlobalMutation();
         // Optimistically invalidate the sidebar list so it refreshes immediately.
         // It might take a couple hundreds ms for the DB to populate the session,
         // so we delay the invalidation slightly.
