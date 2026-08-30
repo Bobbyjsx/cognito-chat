@@ -46,12 +46,19 @@ function transformToSnakeCase(config: InternalAxiosRequestConfig) {
 // Request Interceptor
 // -----------------------------------------------------------------------------
 let lastMutationTime = 0;
+if (typeof window !== "undefined") {
+  const stored = sessionStorage.getItem("lastMutationTime");
+  if (stored) lastMutationTime = parseInt(stored, 10);
+}
 
 /**
  * Manually mark a mutation when native fetch or SDKs bypass Axios
  */
 export function markGlobalMutation() {
   lastMutationTime = Date.now();
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem("lastMutationTime", lastMutationTime.toString());
+  }
 }
 
 api.interceptors.request.use(
@@ -66,9 +73,12 @@ api.interceptors.request.use(
     // Track when a mutation occurs via Axios
     if (method && ["post", "put", "patch", "delete"].includes(method)) {
       lastMutationTime = Date.now();
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("lastMutationTime", lastMutationTime.toString());
+      }
     } else if (method === "get") {
-      // If a mutation happened in the last 2.5 seconds, force bypass HTTP cache
-      if (Date.now() - lastMutationTime < 2500) {
+      // If a mutation happened in the last 5 seconds, force bypass HTTP cache
+      if (Date.now() - lastMutationTime < 5000) {
         setHeader(config, "Cache-Control", "no-cache");
         setHeader(config, "Pragma", "no-cache");
       }
