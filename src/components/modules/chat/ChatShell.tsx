@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage, type FileUIPart } from "ai";
 import {
   useGetSession,
+  useGetSessions,
   useActiveGeneration,
 } from "@/hooks/data/useChats/useChats";
 import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachments";
@@ -176,7 +177,16 @@ export function ChatShell() {
     isFetchingNextPage,
   } = useGetSession(routeSessionId);
 
-  const activeGenerationId = sessionPages?.pages[0]?.activeGenerationId;
+  const { data: sessionsData } = useGetSessions();
+  const sidebarSession = useMemo(() => {
+    return sessionsData?.pages
+      ?.flatMap((p) => p.items)
+      ?.find((s) => s.id === (routeSessionId ?? streamSessionId));
+  }, [sessionsData, routeSessionId, streamSessionId]);
+
+  const activeGenerationId =
+    sessionPages?.pages[0]?.activeGenerationId ||
+    sidebarSession?.activeGenerationId;
   const { data: activeGenData } = useActiveGeneration(
     activeGenerationId,
     routeSessionId,
@@ -219,6 +229,14 @@ export function ChatShell() {
       setStreamSessionId(nextId);
       setHydratedSessionId(nextId);
       streamedSessionRef.current = nextId;
+
+      if (
+        typeof window !== "undefined" &&
+        (window.location.pathname === "/chat" ||
+          window.location.pathname === "/chat/")
+      ) {
+        window.history.replaceState(null, "", `/chat/${nextId}`);
+      }
 
       // Immediately stamp activeGenerationId into the sessions cache so the sidebar
       // spinner appears without waiting for the next 3s poll.
@@ -564,9 +582,42 @@ export function ChatShell() {
         : formattedAllMessages;
 
     const list = [...baseList];
-    const hasAlreadyCommitted =
+
+    const isGenActive =
       activeGenData &&
-      list.some(
+      activeGenData.status !== "completed" &&
+      activeGenData.status !== "failed" &&
+      activeGenData.status !== "cancelled";
+
+    if (isGenActive) {
+      const promptText = activeGenData.prompt;
+      const userMsgId =
+        activeGenData.userMessageId || activeGenData.user_message_id;
+
+      // 1. Ensure the user prompt that triggered this generation is in the message list
+      if (
+        promptText &&
+        !list.some(
+          (m) =>
+            m.role === "user" &&
+            ((m as any).content === promptText ||
+              (Boolean(userMsgId) && m.id === userMsgId)),
+        )
+      ) {
+        list.push({
+          id: (userMsgId as string) || `prompt-${activeGenData.id}`,
+          role: "user",
+          content: promptText,
+          parts: [{ type: "text", text: promptText }],
+          createdAt:
+            activeGenData.createdAt || activeGenData.created_at
+              ? new Date(activeGenData.createdAt || activeGenData.created_at)
+              : new Date(),
+        } as any);
+      }
+
+      // 2. Ensure the active assistant response or waiting placeholder is in the message list
+      const hasAlreadyCommitted = list.some(
         (m) =>
           m.role === "assistant" &&
           (m.id === activeGenData.id ||
@@ -574,40 +625,33 @@ export function ChatShell() {
               (m as any).content === activeGenData.bufferedText)),
       );
 
-    // Keep displaying the active/buffered generation until the persisted database message is committed to aiMessages
-    if (
-      !hasAlreadyCommitted &&
-      activeGenData &&
-      (activeGenData.bufferedText ||
-        activeGenData.buffered_text ||
-        activeGenData.bufferedThoughts ||
-        activeGenData.buffered_thoughts ||
-        activeGenData.error)
-    ) {
-      const parts: any[] = [];
-      const thoughts =
-        activeGenData.bufferedThoughts || activeGenData.buffered_thoughts;
-      const text = activeGenData.bufferedText || activeGenData.buffered_text;
-      const created = activeGenData.createdAt || activeGenData.created_at;
+      if (!hasAlreadyCommitted) {
+        const parts: any[] = [];
+        const thoughts =
+          activeGenData.bufferedThoughts || activeGenData.buffered_thoughts;
+        const text = activeGenData.bufferedText || activeGenData.buffered_text;
+        const created = activeGenData.createdAt || activeGenData.created_at;
 
-      if (thoughts) {
-        parts.push({
-          type: "reasoning",
-          text: thoughts,
-        });
-      }
-      if (text) {
-        parts.push({ type: "text", text });
-      }
+        if (thoughts) {
+          parts.push({
+            type: "reasoning",
+            text: thoughts,
+          });
+        }
+        if (text) {
+          parts.push({ type: "text", text });
+        }
 
-      list.push({
-        id: activeGenData.id,
-        role: "assistant",
-        parts,
-        ...(activeGenData.error ? { error: activeGenData.error } : {}),
-        createdAt: created ? new Date(created) : new Date(),
-      } as any);
+        list.push({
+          id: activeGenData.id,
+          role: "assistant",
+          parts,
+          ...(activeGenData.error ? { error: activeGenData.error } : {}),
+          createdAt: created ? new Date(created) : new Date(),
+        } as any);
+      }
     }
+
     return list;
   }, [isStreaming, aiMessages, formattedAllMessages, activeGenData]);
 
