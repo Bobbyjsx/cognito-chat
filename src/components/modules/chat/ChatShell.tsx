@@ -327,6 +327,59 @@ export function ChatShell() {
     setUserSelectedReasoning(reasoning);
   }, []);
 
+  const formattedAllMessages = useMemo<UIMessage[]>(() => {
+    return allMessages.map((m: MessageSchema, idx: number) => {
+      const experimental_attachments: any[] = [];
+
+      for (const attachmentId of m.attachmentIds ?? []) {
+        const attachment = attachmentById(sessionAttachments, attachmentId);
+        if (!attachment) continue;
+        experimental_attachments.push({
+          contentType: attachment.mimeType,
+          name: attachment.filename,
+          url: `/agent/attachments/${attachment.id}/content`,
+          size: attachment.size,
+        });
+      }
+
+      const parts: UIMessage["parts"] = [];
+      if (Array.isArray(m.parts) && m.parts.length > 0) {
+        for (const p of m.parts) {
+          if (p.type === "text" && typeof (p as any).text === "string") {
+            parts.push({ type: "text", text: (p as any).text });
+          } else if (
+            p.type === "reasoning" &&
+            typeof (p as any).text === "string"
+          ) {
+            parts.push({ type: "reasoning", text: (p as any).text });
+          } else if (p.type === "tool" || (p as any).type === "dynamic-tool") {
+            parts.push({
+              type: "dynamic-tool",
+              toolName: (p as any).toolName || "tool",
+              toolCallId: (p as any).toolCallId || `tool-${idx}`,
+              state: (p as any).state || "output-available",
+              input: (p as any).input,
+              output: (p as any).output,
+            } as any);
+          }
+        }
+      }
+
+      if (parts.length === 0 && m.content.trim().length > 0) {
+        parts.push({ type: "text", text: m.content });
+      }
+
+      return {
+        id: m.id || `hist-${idx}`,
+        role: toAssistantRole(m.role),
+        content: m.content,
+        parts,
+        experimental_attachments,
+        ...(m.error ? { error: m.error } : {}),
+      } as any;
+    });
+  }, [allMessages, sessionAttachments]);
+
   // Hydrate from session history when navigating between existing sessions
   useEffect(() => {
     if (isStreaming) return;
@@ -361,67 +414,8 @@ export function ChatShell() {
       if (lastHydratedKeyRef.current !== hydrationKey) {
         lastHydratedKeyRef.current = hydrationKey;
 
-        const formatted: UIMessage[] = allMessages.map(
-          (m: MessageSchema, idx: number) => {
-            const experimental_attachments: any[] = [];
-
-            for (const attachmentId of m.attachmentIds ?? []) {
-              const attachment = attachmentById(
-                sessionAttachments,
-                attachmentId,
-              );
-              if (!attachment) continue;
-              experimental_attachments.push({
-                contentType: attachment.mimeType,
-                name: attachment.filename,
-                url: `/agent/attachments/${attachment.id}/content`,
-                size: attachment.size,
-              });
-            }
-
-            const parts: UIMessage["parts"] = [];
-            if (Array.isArray(m.parts) && m.parts.length > 0) {
-              for (const p of m.parts) {
-                if (p.type === "text" && typeof (p as any).text === "string") {
-                  parts.push({ type: "text", text: (p as any).text });
-                } else if (
-                  p.type === "reasoning" &&
-                  typeof (p as any).text === "string"
-                ) {
-                  parts.push({ type: "reasoning", text: (p as any).text });
-                } else if (
-                  p.type === "tool" ||
-                  (p as any).type === "dynamic-tool"
-                ) {
-                  parts.push({
-                    type: "dynamic-tool",
-                    toolName: (p as any).toolName || "tool",
-                    toolCallId: (p as any).toolCallId || `tool-${idx}`,
-                    state: (p as any).state || "output-available",
-                    input: (p as any).input,
-                    output: (p as any).output,
-                  } as any);
-                }
-              }
-            }
-
-            if (parts.length === 0 && m.content.trim().length > 0) {
-              parts.push({ type: "text", text: m.content });
-            }
-
-            return {
-              id: m.id || `hist-${idx}`,
-              role: toAssistantRole(m.role),
-              content: m.content,
-              parts,
-              experimental_attachments,
-              ...(m.error ? { error: m.error } : {}),
-            } as any;
-          },
-        );
-
         queueMicrotask(() => {
-          setAiMessages(formatted);
+          setAiMessages(formattedAllMessages);
           setHydratedSessionId(routeSessionId);
           setPendingSessionId(null);
         });
@@ -431,11 +425,11 @@ export function ChatShell() {
     routeSessionId,
     sessionData,
     allMessages,
+    formattedAllMessages,
     setAiMessages,
     isStreaming,
     isNewChatRoute,
     streamSessionId,
-    sessionAttachments,
   ]);
 
   const handleSendMessage = useCallback(
@@ -553,6 +547,7 @@ export function ChatShell() {
 
   const showSessionLoading =
     !isStreaming &&
+    !Boolean(activeGenerationId) &&
     (isSessionSwitchPending ||
       (Boolean(routeSessionId) &&
         routeSessionId !== streamSessionId &&
@@ -562,7 +557,13 @@ export function ChatShell() {
           sessionData.id !== routeSessionId)));
 
   const displayMessages = useMemo(() => {
-    const list = [...aiMessages];
+    const baseList = isStreaming
+      ? aiMessages
+      : aiMessages.length > 0
+        ? aiMessages
+        : formattedAllMessages;
+
+    const list = [...baseList];
     const hasAlreadyCommitted =
       activeGenData &&
       list.some(
@@ -608,7 +609,7 @@ export function ChatShell() {
       } as any);
     }
     return list;
-  }, [aiMessages, activeGenData]);
+  }, [isStreaming, aiMessages, formattedAllMessages, activeGenData]);
 
   const { artifact, isOpen: isArtifactOpen } = useArtifactStore();
   const showArtifact = Boolean(isArtifactOpen && artifact);

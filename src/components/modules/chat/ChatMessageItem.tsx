@@ -274,11 +274,35 @@ export function ChatMessageItem({
         ? msgObj.error
         : (msgObj.error as Error)?.message;
 
+    const userText = getMessagePlainText(message);
+    const userFiles = (message.parts ?? []).filter((p) => p.type === "file");
+    const experimentalAttachments =
+      (message as any).experimental_attachments ?? [];
+
     return (
       <div className="flex w-full flex-col items-end">
         <Message from="user" className="items-end">
           <MessageContent>
-            <MessageParts message={message} />
+            {userFiles.map((part, idx) => (
+              <AttachmentPart key={`file-${idx}`} part={part as any} />
+            ))}
+            {experimentalAttachments.map((att: any, idx: number) => (
+              <AttachmentPart
+                key={`exp-file-${idx}`}
+                part={
+                  {
+                    type: "file",
+                    mediaType: att.contentType,
+                    url: att.url,
+                    filename: att.name,
+                    size: att.size,
+                  } as any
+                }
+              />
+            ))}
+            {userText ? (
+              <div className="break-words whitespace-pre-wrap">{userText}</div>
+            ) : null}
           </MessageContent>
           {showCopy ? <CopyMessageButton text={plainText} /> : null}
         </Message>
