@@ -53,6 +53,8 @@ export interface MessageSchema {
   role: "user" | "model" | "assistant" | string;
   /** Flattened text content (for previews / legacy). */
   content: string;
+  /** Error message if generation failed */
+  error?: string | null;
   /** Structured parts for rich rendering (markdown, thoughts, tools). */
   parts?: ChatMessagePart[];
   /** IDs of attachments referenced by this message. */
@@ -75,6 +77,7 @@ export interface ChatSessionListItem {
   lastMessageContent?: string | null;
   lastMessageRole?: string | null;
   readStatus?: "read" | "not read" | string;
+  activeGenerationId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,7 +90,7 @@ export interface ChatSession extends ChatSessionListItem {
 export interface SessionWithPaginatedMessages {
   session: ChatSessionListItem;
   messages: PaginatedResponse<MessageSchema>;
-  active_generation_id?: string | null;
+  activeGenerationId?: string | null;
 }
 
 export interface ChatRequest {

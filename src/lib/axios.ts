@@ -43,8 +43,26 @@ function transformToSnakeCase(config: InternalAxiosRequestConfig) {
 }
 
 // -----------------------------------------------------------------------------
-// Request Interceptor
+// Active Session Generation Tracking & Cache Busting
 // -----------------------------------------------------------------------------
+const activeSessionsWithGeneration = new Set<string>();
+
+/**
+ * Register a session ID that currently has a live background generation in progress.
+ * Requests for this session will bypass the browser HTTP cache.
+ */
+export function registerActiveSession(sessionId: string) {
+  if (sessionId) activeSessionsWithGeneration.add(sessionId);
+}
+
+/**
+ * Unregister a session ID once its background generation has settled (completed/failed).
+ * Subsequent requests will resume standard caching behavior.
+ */
+export function unregisterActiveSession(sessionId: string) {
+  if (sessionId) activeSessionsWithGeneration.delete(sessionId);
+}
+
 let lastMutationTime = 0;
 if (typeof window !== "undefined") {
   const stored = sessionStorage.getItem("lastMutationTime");
@@ -77,8 +95,32 @@ api.interceptors.request.use(
         sessionStorage.setItem("lastMutationTime", lastMutationTime.toString());
       }
     } else if (method === "get") {
-      // If a mutation happened in the last 5 seconds, force bypass HTTP cache
-      if (Date.now() - lastMutationTime < 5000) {
+      const url = config.url ?? "";
+      const isGenerationsEndpoint = url.includes("/generations");
+
+      // Check if this GET request targets an active generating session
+      let isTargetingActiveSession = false;
+      if (activeSessionsWithGeneration.size > 0) {
+        for (const activeId of activeSessionsWithGeneration) {
+          if (
+            url.includes(activeId) ||
+            config.params?.session_id === activeId
+          ) {
+            isTargetingActiveSession = true;
+            break;
+          }
+        }
+      }
+
+      // Bypass cache if:
+      // 1. A mutation occurred in the last 5 seconds
+      // 2. The endpoint is polling /generations
+      // 3. The request is fetching a session currently undergoing active generation
+      if (
+        Date.now() - lastMutationTime < 5000 ||
+        isGenerationsEndpoint ||
+        isTargetingActiveSession
+      ) {
         setHeader(config, "Cache-Control", "no-cache");
         setHeader(config, "Pragma", "no-cache");
       }

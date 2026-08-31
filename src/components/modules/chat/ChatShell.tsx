@@ -10,11 +10,19 @@ import {
 import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachments";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
 import { attachmentById } from "@/lib/attachments";
-import { markGlobalMutation } from "@/lib/axios";
+import {
+  markGlobalMutation,
+  registerActiveSession,
+  unregisterActiveSession,
+} from "@/lib/axios";
 import { useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { notifyServerError } from "@/lib/server-error";
-import type { MessageSchema } from "@/types";
+import type {
+  MessageSchema,
+  PaginatedResponse,
+  ChatSessionListItem,
+} from "@/types";
 import { ChatInput } from "./ChatInput";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatSidebar } from "./ChatSidebar";
@@ -141,6 +149,7 @@ export function ChatShell() {
     Record<string, { mimeType: string; filename: string }>
   >({});
   const hasSentAttachmentsRef = useRef(false);
+  const lastHydratedKeyRef = useRef<string>("");
 
   const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
 
@@ -167,7 +176,7 @@ export function ChatShell() {
     isFetchingNextPage,
   } = useGetSession(routeSessionId);
 
-  const activeGenerationId = sessionPages?.pages[0]?.active_generation_id;
+  const activeGenerationId = sessionPages?.pages[0]?.activeGenerationId;
   const { data: activeGenData } = useActiveGeneration(
     activeGenerationId,
     routeSessionId,
@@ -200,22 +209,82 @@ export function ChatShell() {
     }),
     onData: (dataPart) => {
       if (dataPart.type !== "data-session") return;
-      const data = dataPart.data as { sessionId?: string };
+      const data = dataPart.data as {
+        sessionId?: string;
+        generationId?: string;
+      };
       const nextId = data?.sessionId;
       if (!nextId) return;
 
       setStreamSessionId(nextId);
       setHydratedSessionId(nextId);
       streamedSessionRef.current = nextId;
+
+      // Immediately stamp activeGenerationId into the sessions cache so the sidebar
+      // spinner appears without waiting for the next 3s poll.
+      if (data.generationId) {
+        const genId = data.generationId;
+        registerActiveSession(nextId);
+        queryClient.setQueriesData<{
+          pages: PaginatedResponse<ChatSessionListItem>[];
+          pageParams: number[];
+        }>({ queryKey: ["chat-sessions"] }, (old) => {
+          if (!old?.pages) return old;
+
+          // Check if session already exists in any page
+          const exists = old.pages.some((page) =>
+            page.items?.some((s) => s.id === nextId),
+          );
+
+          if (exists) {
+            // Update existing session entry
+            return {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                items: page.items?.map((s) =>
+                  s.id === nextId ? { ...s, activeGenerationId: genId } : s,
+                ),
+              })),
+            };
+          }
+
+          // New session — prepend a minimal stub so the spinner shows immediately
+          const stub: ChatSessionListItem = {
+            id: nextId,
+            userId: "",
+            title: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            activeGenerationId: genId,
+          };
+
+          const [firstPage, ...rest] = old.pages;
+          return {
+            ...old,
+            pages: [
+              {
+                ...firstPage,
+                items: [stub, ...(firstPage?.items ?? [])],
+              },
+              ...rest,
+            ],
+          };
+        });
+      }
     },
     onFinish: () => {
       // Mark the global mutation in Axios so the subsequent profile fetch gets no-cache headers
       markGlobalMutation();
 
+      const sid = streamedSessionRef.current;
+      if (sid) {
+        unregisterActiveSession(sid);
+      }
+
       // Reflect the freshly streamed session in the URL now that the response
       // is committed to the DOM — we use history API to bypass Next.js
       // navigation completely, ensuring zero layout shifts or loading UI flashes.
-      const sid = streamedSessionRef.current;
       if (sid && !pathname.startsWith(`/chat/${sid}`)) {
         window.history.replaceState(null, "", `/chat/${sid}`);
       }
@@ -254,6 +323,7 @@ export function ChatShell() {
     if (isStreaming) return;
 
     if (!routeSessionId) {
+      lastHydratedKeyRef.current = "";
       queueMicrotask(() => {
         setPendingSessionId(null);
       });
@@ -267,27 +337,25 @@ export function ChatShell() {
       return;
     }
 
-    if (
-      sessionData &&
-      sessionData.id === routeSessionId &&
-      sessionAttachments !== undefined
-    ) {
-      if (hydratedSessionId !== routeSessionId) {
-        // If this session was generated by the active stream, keep live aiMessages intact
-        if (streamSessionId === routeSessionId) {
-          queueMicrotask(() => {
-            setHydratedSessionId(routeSessionId);
-            setPendingSessionId(null);
-          });
-          return;
-        }
+    if (sessionData && sessionData.id === routeSessionId) {
+      // If this session was generated by the active stream in the current tab, keep live aiMessages intact
+      if (streamSessionId === routeSessionId) {
+        lastHydratedKeyRef.current = `${routeSessionId}:stream`;
+        queueMicrotask(() => {
+          setHydratedSessionId(routeSessionId);
+          setPendingSessionId(null);
+        });
+        return;
+      }
+
+      const hydrationKey = `${routeSessionId}:${allMessages.length}:${allMessages[allMessages.length - 1]?.id ?? ""}`;
+      if (lastHydratedKeyRef.current !== hydrationKey) {
+        lastHydratedKeyRef.current = hydrationKey;
 
         const formatted: UIMessage[] = allMessages.map(
           (m: MessageSchema, idx: number) => {
             const experimental_attachments: any[] = [];
 
-            // Historical attachments render as metadata-only chips (the backend
-            // stores metadata, not content, for past messages).
             for (const attachmentId of m.attachmentIds ?? []) {
               const attachment = attachmentById(
                 sessionAttachments,
@@ -338,9 +406,11 @@ export function ChatShell() {
               content: m.content,
               parts,
               experimental_attachments,
-            };
+              ...(m.error ? { error: m.error } : {}),
+            } as any;
           },
         );
+
         queueMicrotask(() => {
           setAiMessages(formatted);
           setHydratedSessionId(routeSessionId);
@@ -353,7 +423,6 @@ export function ChatShell() {
     sessionData,
     allMessages,
     setAiMessages,
-    hydratedSessionId,
     isStreaming,
     isNewChatRoute,
     streamSessionId,
@@ -485,29 +554,48 @@ export function ChatShell() {
 
   const displayMessages = useMemo(() => {
     const list = [...aiMessages];
-    if (
+    const hasAlreadyCommitted =
       activeGenData &&
-      (activeGenData.status === "queued" ||
-        activeGenData.status === "running_live" ||
-        activeGenData.status === "running_worker") &&
-      (activeGenData.buffered_text || activeGenData.buffered_thoughts)
+      list.some(
+        (m) =>
+          m.role === "assistant" &&
+          (m.id === activeGenData.id ||
+            (activeGenData.bufferedText &&
+              (m as any).content === activeGenData.bufferedText)),
+      );
+
+    // Keep displaying the active/buffered generation until the persisted database message is committed to aiMessages
+    if (
+      !hasAlreadyCommitted &&
+      activeGenData &&
+      (activeGenData.bufferedText ||
+        activeGenData.buffered_text ||
+        activeGenData.bufferedThoughts ||
+        activeGenData.buffered_thoughts ||
+        activeGenData.error)
     ) {
       const parts: any[] = [];
-      if (activeGenData.buffered_thoughts) {
+      const thoughts =
+        activeGenData.bufferedThoughts || activeGenData.buffered_thoughts;
+      const text = activeGenData.bufferedText || activeGenData.buffered_text;
+      const created = activeGenData.createdAt || activeGenData.created_at;
+
+      if (thoughts) {
         parts.push({
           type: "reasoning",
-          text: activeGenData.buffered_thoughts,
+          text: thoughts,
         });
       }
-      if (activeGenData.buffered_text) {
-        parts.push({ type: "text", text: activeGenData.buffered_text });
+      if (text) {
+        parts.push({ type: "text", text });
       }
 
       list.push({
         id: activeGenData.id,
         role: "assistant",
         parts,
-        createdAt: new Date(activeGenData.created_at),
+        ...(activeGenData.error ? { error: activeGenData.error } : {}),
+        createdAt: created ? new Date(created) : new Date(),
       } as any);
     }
     return list;

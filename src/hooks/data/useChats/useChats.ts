@@ -4,7 +4,11 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { api } from "@/lib/axios";
+import {
+  api,
+  registerActiveSession,
+  unregisterActiveSession,
+} from "@/lib/axios";
 import type {
   ChatSessionListItem,
   PaginatedResponse,
@@ -50,9 +54,14 @@ export function useGetSessions(searchQuery?: string, limit: number = 15) {
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.offset + lastPage.limit : undefined,
     initialPageParam: 0,
-    staleTime: 60 * 1000,
+    // Short stale time so invalidateQueries triggers an immediate re-fetch
+    staleTime: 10 * 1000,
     gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    // Always poll every 3s — this powers the sidebar spinner and the background engine toast.
+    // We can't wait for active_generation_id to appear first because fast gens complete before
+    // the first conditional poll would even fire.
+    refetchInterval: 3000,
   });
 }
 
@@ -130,7 +139,7 @@ export function useMarkSessionRead() {
 
   return useMutation({
     mutationFn: async (sessionId: string) => {
-      const { data } = await api.post(`/agent/sessions/${sessionId}/read`);
+      const { data } = await api.patch(`/agent/sessions/${sessionId}/read`);
       return data;
     },
     onMutate: async (sessionId) => {
@@ -166,11 +175,52 @@ export function useMarkSessionRead() {
 
 import { useEffect } from "react";
 
+/**
+ * Calculates polling interval for active generation status:
+ * - Terminal states (completed, failed, cancelled): returns false to stop polling.
+ * - Initial 7 polls (approx 14-22s): fixed 2000ms interval.
+ * - After 7 polls: exponential backoff (3s -> 4.5s -> 6.75s -> 10s max).
+ */
+export function getGenerationPollInterval(query: {
+  state?: {
+    data?: any;
+    dataUpdateCount?: number;
+  };
+}): number | false {
+  const data = query.state?.data;
+  if (
+    data &&
+    (data.status === "completed" ||
+      data.status === "failed" ||
+      data.status === "cancelled")
+  ) {
+    return false;
+  }
+
+  const pollCount = query.state?.dataUpdateCount ?? 0;
+  if (pollCount <= 7) {
+    return 2000;
+  }
+
+  const backoff = Math.pow(1.5, pollCount - 7);
+  return Math.min(Math.round(2000 * backoff), 10000);
+}
+
 export function useActiveGeneration(
   generationId: string | null | undefined,
   sessionId: string | null,
 ) {
   const queryClient = useQueryClient();
+
+  // Keep session registered as active for cache busting while generating
+  useEffect(() => {
+    if (sessionId && generationId) {
+      registerActiveSession(sessionId);
+    }
+    return () => {
+      if (sessionId) unregisterActiveSession(sessionId);
+    };
+  }, [sessionId, generationId]);
 
   const query = useQuery({
     queryKey: ["generation", generationId],
@@ -180,18 +230,7 @@ export function useActiveGeneration(
       return data;
     },
     enabled: Boolean(generationId),
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (
-        data &&
-        (data.status === "completed" ||
-          data.status === "failed" ||
-          data.status === "cancelled")
-      ) {
-        return false;
-      }
-      return 2000;
-    },
+    refetchInterval: (q) => getGenerationPollInterval(q),
   });
 
   useEffect(() => {
@@ -202,6 +241,7 @@ export function useActiveGeneration(
         query.data.status === "cancelled")
     ) {
       if (sessionId) {
+        unregisterActiveSession(sessionId);
         queryClient.invalidateQueries({
           queryKey: ["chat-session", sessionId],
         });
