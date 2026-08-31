@@ -58,10 +58,16 @@ export function useGetSessions(searchQuery?: string, limit: number = 15) {
     staleTime: 10 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
-    // Always poll every 3s — this powers the sidebar spinner and the background engine toast.
-    // We can't wait for active_generation_id to appear first because fast gens complete before
-    // the first conditional poll would even fire.
-    refetchInterval: 3000,
+    // Poll ONLY when there is at least one active background generation in progress.
+    // If no session has activeGenerationId, polling is completely disabled (false).
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data?.pages) return false;
+      const hasActive = data.pages.some((page) =>
+        page.items?.some((s) => Boolean(s.activeGenerationId)),
+      );
+      return hasActive ? 3000 : false;
+    },
   });
 }
 

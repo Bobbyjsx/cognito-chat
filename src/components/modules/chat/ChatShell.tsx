@@ -310,6 +310,15 @@ export function ChatShell() {
   const isSessionSwitchPending =
     pendingSessionId !== null && pendingSessionId !== routeSessionId;
 
+  // Invalidate sessions list on unmount if streaming was aborted by navigation
+  useEffect(() => {
+    return () => {
+      if (isStreaming) {
+        queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
+      }
+    };
+  }, [isStreaming, queryClient]);
+
   const handleSelectModel = useCallback((model: string) => {
     setUserSelectedModel(model);
   }, []);
