@@ -185,13 +185,21 @@ export function ChatShell() {
   const sessionData =
     sessionPages?.pages[0]?.session ||
     (sessionPages?.pages[0] as any)?.items?.[0];
-  const allMessages = useMemo(
-    () =>
-      sessionPages?.pages.flatMap(
+  const allMessages = useMemo(() => {
+    if (!sessionPages?.pages) return [];
+    const raw = sessionPages.pages
+      .slice()
+      .reverse()
+      .flatMap(
         (p) => p?.messages?.items || (p as any)?.items?.[0]?.messages || [],
-      ) || [],
-    [sessionPages],
-  );
+      );
+
+    return raw.sort((a: any, b: any) => {
+      const tA = new Date(a.createdAt || 0).getTime();
+      const tB = new Date(b.createdAt || 0).getTime();
+      return tA - tB;
+    });
+  }, [sessionPages]);
 
   const { data: sessionAttachments } = useGetSessionAttachments(
     config?.enableAttachments ? routeSessionId : null,
