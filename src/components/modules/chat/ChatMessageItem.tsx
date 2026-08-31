@@ -268,13 +268,32 @@ export function ChatMessageItem({
   const showCopy = Boolean(plainText) && !isStreaming;
 
   if (from === "user") {
+    const msgObj = message as unknown as Record<string, unknown>;
+    const errorDetail =
+      typeof msgObj.error === "string"
+        ? msgObj.error
+        : (msgObj.error as Error)?.message;
+
     return (
-      <Message from="user" className="items-end">
-        <MessageContent>
-          <MessageParts message={message} />
-        </MessageContent>
-        {showCopy ? <CopyMessageButton text={plainText} /> : null}
-      </Message>
+      <div className="flex w-full flex-col items-end">
+        <Message from="user" className="items-end">
+          <MessageContent>
+            <MessageParts message={message} />
+          </MessageContent>
+          {showCopy ? <CopyMessageButton text={plainText} /> : null}
+        </Message>
+        {errorDetail ? (
+          <div className="my-2 w-full max-w-full space-y-1 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-left">
+            <div className="flex items-center gap-2 text-sm font-medium text-red-900 dark:text-red-200">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+              <span>There was a problem responding to your message.</span>
+            </div>
+            <p className="pl-6 font-mono text-xs text-red-700/80 dark:text-red-300/70">
+              {errorDetail}
+            </p>
+          </div>
+        ) : null}
+      </div>
     );
   }
 
