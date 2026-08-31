@@ -31,6 +31,7 @@ const ReactQueryDevtools =
 import { useEffect, useRef, useState } from "react";
 import { SessionExpiredDialog } from "@/components/modules/auth/SessionExpiredDialog";
 import { AppBootstrap } from "@/components/modules/pwa/AppBootstrap";
+import { BackgroundEngine } from "@/components/modules/chat/BackgroundEngine";
 
 let isRedirecting = false;
 let setGlobalSessionExpired: ((expired: boolean) => void) | null = null;
@@ -164,6 +165,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AppBootstrap />
+      <BackgroundEngine />
       <ArtifactProvider>
         <TooltipProvider delay={200}>
           {children}

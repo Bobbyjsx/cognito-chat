@@ -429,14 +429,23 @@ export function ChatSidebar({
                     )}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <History
-                        className={cn(
-                          "h-3.5 w-3.5 shrink-0 transition-colors",
-                          isActive || isUnread
-                            ? "text-foreground"
-                            : "text-muted-foreground/60 group-hover:text-muted-foreground",
-                        )}
-                      />
+                      {session.activeGenerationId ? (
+                        <Loader2
+                          className={cn(
+                            "h-3.5 w-3.5 shrink-0 animate-spin transition-colors",
+                            "text-primary",
+                          )}
+                        />
+                      ) : (
+                        <History
+                          className={cn(
+                            "h-3.5 w-3.5 shrink-0 transition-colors",
+                            isActive || isUnread
+                              ? "text-foreground"
+                              : "text-muted-foreground/60 group-hover:text-muted-foreground",
+                          )}
+                        />
+                      )}
                       <span className="truncate text-[13px]">
                         {sessionTitle}
                       </span>
