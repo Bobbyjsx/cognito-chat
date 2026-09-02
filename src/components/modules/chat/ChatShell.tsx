@@ -164,10 +164,25 @@ export function ChatShell() {
   const currentModelRef = useRef(userSelectedModel);
   const currentReasoningRef = useRef(userSelectedReasoning);
 
+  // Track whether the page is currently unloading/reloading to silently suppress all stream disconnect errors
+  const isUnloadingRef = useRef(false);
+
   useEffect(() => {
     currentModelRef.current = userSelectedModel;
     currentReasoningRef.current = userSelectedReasoning;
   }, [userSelectedModel, userSelectedReasoning]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      isUnloadingRef.current = true;
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
+    };
+  }, []);
 
   const {
     data: sessionPages,
@@ -180,8 +195,8 @@ export function ChatShell() {
   const { data: sessionsData } = useGetSessions();
   const sidebarSession = useMemo(() => {
     return sessionsData?.pages
-      ?.flatMap((p) => p.items)
-      ?.find((s) => s.id === (routeSessionId ?? streamSessionId));
+      ?.flatMap((p) => p?.items || [])
+      ?.find((s) => s && s.id === (routeSessionId ?? streamSessionId));
   }, [sessionsData, routeSessionId, streamSessionId]);
 
   const activeGenerationId =
@@ -191,6 +206,34 @@ export function ChatShell() {
     activeGenerationId,
     routeSessionId,
   );
+
+  // Preserve the last terminal (failed/cancelled) generation data so the
+  // user prompt + error survive after activeGenerationId is cleared from the
+  // session by the backend.  This handles the reload-during-generation race
+  // where the session re-fetch clears activeGenerationId before the session
+  // messages include the failed turn.
+  const [lastTerminalGen, setLastTerminalGen] = useState<any>(null);
+  useEffect(() => {
+    if (
+      activeGenData &&
+      (activeGenData.status === "failed" ||
+        activeGenData.status === "cancelled")
+    ) {
+      queueMicrotask(() => {
+        setLastTerminalGen(activeGenData);
+      });
+    }
+    // Clear when switching to a different session
+    if (!routeSessionId) {
+      queueMicrotask(() => {
+        setLastTerminalGen(null);
+      });
+    }
+  }, [activeGenData, routeSessionId]);
+
+  // Use activeGenData when available, otherwise fall back to the preserved
+  // terminal data for this session (only if the session still matches).
+  const effectiveGenData = activeGenData ?? lastTerminalGen;
 
   const sessionData =
     sessionPages?.pages[0]?.session ||
@@ -320,6 +363,34 @@ export function ChatShell() {
       pendingAttachmentMetaRef.current = {};
     },
     onError: (err) => {
+      // If the page is reloading or unloading, suppress all errors silently
+      if (isUnloadingRef.current) {
+        return;
+      }
+
+      // Suppress abort/cancel/network/disconnect errors — these fire when
+      // the user navigates away or reloads during an active stream, or when
+      // the generation is sent to the background worker.
+      const msg = (err as Error)?.message?.toLowerCase?.() ?? "";
+      const name = (err as Error)?.name ?? "";
+
+      if (
+        (err instanceof DOMException && err.name === "AbortError") ||
+        name === "AbortError" ||
+        msg.includes("abort") ||
+        msg.includes("cancel") ||
+        msg.includes("network") ||
+        msg.includes("fetch") ||
+        msg.includes("failed to fetch") ||
+        msg.includes("load failed") ||
+        msg.includes("stream") ||
+        msg.includes("connection") ||
+        msg.includes("closed") ||
+        msg.includes("premature") ||
+        msg.includes("client disconnected")
+      ) {
+        return;
+      }
       notifyServerError(err, "Streaming error occurred");
     },
   });
@@ -346,7 +417,7 @@ export function ChatShell() {
   }, []);
 
   const formattedAllMessages = useMemo<UIMessage[]>(() => {
-    return allMessages.map((m: MessageSchema, idx: number) => {
+    const rawList = allMessages.map((m: MessageSchema, idx: number) => {
       const experimental_attachments: any[] = [];
 
       for (const attachmentId of m.attachmentIds ?? []) {
@@ -396,6 +467,29 @@ export function ChatShell() {
         ...(m.error ? { error: m.error } : {}),
       } as any;
     });
+
+    // Suppress historical errors on user messages if an assistant message with content follows
+    for (let i = 0; i < rawList.length - 1; i++) {
+      const msg = rawList[i];
+      const next = rawList[i + 1];
+      if (
+        msg.role === "user" &&
+        (msg as any).error &&
+        next.role === "assistant" &&
+        ((Array.isArray(next.parts) &&
+          next.parts.some(
+            (p: any) =>
+              (p.type === "text" && p.text?.trim()) ||
+              (p.type === "reasoning" && p.text?.trim()),
+          )) ||
+          (typeof (next as any).content === "string" &&
+            (next as any).content.trim().length > 0))
+      ) {
+        delete (msg as any).error;
+      }
+    }
+
+    return rawList;
   }, [allMessages, sessionAttachments]);
 
   // Hydrate from session history when navigating between existing sessions
@@ -542,6 +636,7 @@ export function ChatShell() {
     setHydratedSessionId(null);
     setPendingSessionId(null);
     streamedSessionRef.current = null;
+    setLastTerminalGen(null);
     setUserSelectedModel(null);
     setUserSelectedReasoning(null);
     setAiMessages([]);
@@ -584,15 +679,43 @@ export function ChatShell() {
     const list = [...baseList];
 
     const isGenActive =
-      activeGenData &&
-      activeGenData.status !== "completed" &&
-      activeGenData.status !== "failed" &&
-      activeGenData.status !== "cancelled";
+      effectiveGenData &&
+      effectiveGenData.status !== "completed" &&
+      effectiveGenData.status !== "failed" &&
+      effectiveGenData.status !== "cancelled";
 
-    if (isGenActive) {
-      const promptText = activeGenData.prompt;
+    const isGenCompleted =
+      effectiveGenData && effectiveGenData.status === "completed";
+
+    // For failed generations with an explicit backend error (e.g. timeout),
+    // inject the user prompt + error message so the user sees what happened.
+    // Cancelled generations (SSE disconnect on reload) are treated as silent —
+    // we only ensure the user prompt is visible, no error banner.
+    const isGenFailed =
+      effectiveGenData &&
+      effectiveGenData.status === "failed" &&
+      Boolean(effectiveGenData.error);
+
+    const isGenCancelled =
+      effectiveGenData && effectiveGenData.status === "cancelled";
+
+    // Silent failure = backend marked as "failed" but provided no error detail,
+    // likely because the SSE client disconnected. Treat like cancelled.
+    const isGenSilentFailure =
+      effectiveGenData &&
+      effectiveGenData.status === "failed" &&
+      !effectiveGenData.error;
+
+    if (
+      isGenActive ||
+      isGenCompleted ||
+      isGenFailed ||
+      isGenCancelled ||
+      isGenSilentFailure
+    ) {
+      const promptText = effectiveGenData.prompt;
       const userMsgId =
-        activeGenData.userMessageId || activeGenData.user_message_id;
+        effectiveGenData.userMessageId || effectiveGenData.user_message_id;
 
       // 1. Ensure the user prompt that triggered this generation is in the message list
       if (
@@ -605,55 +728,94 @@ export function ChatShell() {
         )
       ) {
         list.push({
-          id: (userMsgId as string) || `prompt-${activeGenData.id}`,
+          id: (userMsgId as string) || `prompt-${effectiveGenData.id}`,
           role: "user",
           content: promptText,
           parts: [{ type: "text", text: promptText }],
           createdAt:
-            activeGenData.createdAt || activeGenData.created_at
-              ? new Date(activeGenData.createdAt || activeGenData.created_at)
+            effectiveGenData.createdAt || effectiveGenData.created_at
+              ? new Date(
+                  effectiveGenData.createdAt || effectiveGenData.created_at,
+                )
               : new Date(),
         } as any);
       }
 
-      // 2. Ensure the active assistant response or waiting placeholder is in the message list
-      const hasAlreadyCommitted = list.some(
-        (m) =>
-          m.role === "assistant" &&
-          (m.id === activeGenData.id ||
-            (activeGenData.bufferedText &&
-              (m as any).content === activeGenData.bufferedText)),
-      );
+      // 2. For active, truly failed, or newly completed generations, inject the assistant placeholder/error.
+      //    This keeps the generated text visible seamlessly until the refetched session messages arrive from DB.
+      if (isGenActive || isGenFailed || isGenCompleted) {
+        const hasAlreadyCommitted = list.some(
+          (m) =>
+            m.role === "assistant" &&
+            (m.id === effectiveGenData.id ||
+              m.id === effectiveGenData.messageId ||
+              m.id === effectiveGenData.message_id ||
+              (effectiveGenData.bufferedText &&
+                (m as any).content === effectiveGenData.bufferedText)),
+        );
 
-      if (!hasAlreadyCommitted) {
-        const parts: any[] = [];
-        const thoughts =
-          activeGenData.bufferedThoughts || activeGenData.buffered_thoughts;
-        const text = activeGenData.bufferedText || activeGenData.buffered_text;
-        const created = activeGenData.createdAt || activeGenData.created_at;
+        if (!hasAlreadyCommitted) {
+          const parts: any[] = [];
+          const thoughts =
+            effectiveGenData.bufferedThoughts ||
+            effectiveGenData.buffered_thoughts;
+          const text =
+            effectiveGenData.bufferedText || effectiveGenData.buffered_text;
+          const created =
+            effectiveGenData.createdAt || effectiveGenData.created_at;
 
-        if (thoughts) {
-          parts.push({
-            type: "reasoning",
-            text: thoughts,
-          });
+          if (thoughts) {
+            parts.push({
+              type: "reasoning",
+              text: thoughts,
+            });
+          }
+          if (text) {
+            parts.push({ type: "text", text });
+          }
+
+          list.push({
+            id: effectiveGenData.id,
+            role: "assistant",
+            parts,
+            isGenerating: isGenActive,
+            ...(effectiveGenData.error
+              ? { error: effectiveGenData.error }
+              : {}),
+            createdAt: created ? new Date(created) : new Date(),
+          } as any);
         }
-        if (text) {
-          parts.push({ type: "text", text });
-        }
+      }
+    }
 
-        list.push({
-          id: activeGenData.id,
-          role: "assistant",
-          parts,
-          ...(activeGenData.error ? { error: activeGenData.error } : {}),
-          createdAt: created ? new Date(created) : new Date(),
-        } as any);
+    // Post-process: suppress user message errors when the next message is a
+    // successful assistant response with content.  This handles the case where
+    // the backend streams a complete response but also emits a timeout/error
+    // event — the error banner is misleading since the user got a valid answer.
+    for (let i = 0; i < list.length - 1; i++) {
+      const msg = list[i];
+      const next = list[i + 1];
+      if (
+        msg.role === "user" &&
+        (msg as any).error &&
+        next.role === "assistant" &&
+        ((Array.isArray(next.parts) &&
+          next.parts.some(
+            (p: any) =>
+              (p.type === "text" && p.text?.trim()) ||
+              (p.type === "reasoning" && p.text?.trim()),
+          )) ||
+          (typeof (next as any).content === "string" &&
+            (next as any).content.trim().length > 0))
+      ) {
+        // Clone the message without the error property
+        const { error: _stripped, ...rest } = msg as any;
+        list[i] = rest as any;
       }
     }
 
     return list;
-  }, [isStreaming, aiMessages, formattedAllMessages, activeGenData]);
+  }, [isStreaming, aiMessages, formattedAllMessages, effectiveGenData]);
 
   const { artifact, isOpen: isArtifactOpen } = useArtifactStore();
   const showArtifact = Boolean(isArtifactOpen && artifact);

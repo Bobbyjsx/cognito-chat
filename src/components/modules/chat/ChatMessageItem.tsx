@@ -160,11 +160,13 @@ function MessageParts({
     return <MessageResponse>{legacyContent}</MessageResponse>;
   }
 
+  const msgObj = message as unknown as Record<string, unknown>;
+  const isGenerating = Boolean(isStreaming) || Boolean(msgObj.isGenerating);
   const waitingForFirstToken =
-    Boolean(isStreaming) && !messageHasVisibleContent(message);
+    isGenerating && !messageHasVisibleContent(message);
 
   if (waitingForFirstToken || parts.length === 0) {
-    if (isStreaming) {
+    if (isGenerating) {
       return <AgentResponseBodySkeleton />;
     }
     return null;
@@ -177,7 +179,7 @@ function MessageParts({
 
         if (part.type === "text") {
           // Skip empty text shells that AI SDK may open before content arrives
-          if (!part.text.trim() && isStreaming) {
+          if (!part.text.trim() && isGenerating) {
             return null;
           }
           const animating =
@@ -191,7 +193,7 @@ function MessageParts({
         }
 
         if (part.type === "reasoning") {
-          if (!part.text.trim() && isStreaming) {
+          if (!part.text.trim() && isGenerating) {
             return null;
           }
           const reasoningStreaming =
@@ -250,6 +252,17 @@ function MessageParts({
 
         return null;
       })}
+      {isGenerating ? (
+        <div className="text-muted-foreground/80 animate-in fade-in mt-2.5 flex items-center gap-2 py-0.5 text-xs duration-300">
+          <span className="relative flex h-2 w-2">
+            <span className="bg-primary/60 absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+            <span className="bg-primary relative inline-flex h-2 w-2 rounded-full" />
+          </span>
+          <span className="font-mono text-[11px] font-medium tracking-wide">
+            Generating...
+          </span>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -269,10 +282,19 @@ export function ChatMessageItem({
 
   if (from === "user") {
     const msgObj = message as unknown as Record<string, unknown>;
-    const errorDetail =
+    const rawError =
       typeof msgObj.error === "string"
         ? msgObj.error
         : (msgObj.error as Error)?.message;
+
+    // Suppress FE-triggered abort/cancel/network errors (e.g. page reload
+    // during an active stream). Only show genuine backend errors.
+    const isAbortLike =
+      rawError &&
+      (/abort|cancel|network/i.test(rawError) ||
+        (msgObj.error instanceof DOMException &&
+          (msgObj.error as DOMException).name === "AbortError"));
+    const errorDetail = isAbortLike ? undefined : rawError;
 
     const userText = getMessagePlainText(message);
     const userFiles = (message.parts ?? []).filter((p) => p.type === "file");
@@ -322,8 +344,8 @@ export function ChatMessageItem({
   }
 
   const msgObj = message as unknown as Record<string, unknown>;
+  const isGenerating = Boolean(isStreaming) || Boolean(msgObj.isGenerating);
   const hasExplicitError = Boolean(msgObj.error);
-  const isContentEmpty = !messageHasVisibleContent(message);
   const errorDetail =
     typeof msgObj.error === "string"
       ? msgObj.error
@@ -334,18 +356,18 @@ export function ChatMessageItem({
     errorDetail.toLowerCase().includes("abort") ||
     errorDetail.toLowerCase().includes("cancel");
 
-  const hasFailed =
-    !isStreaming && (hasExplicitError || isContentEmpty) && !isCancelled;
+  // A message has failed ONLY if it has an explicit error, is not generating, and is not cancelled/aborted
+  const hasFailed = !isGenerating && hasExplicitError && !isCancelled;
 
   const waitingForFirstToken =
-    Boolean(isStreaming) && !messageHasVisibleContent(message);
+    isGenerating && !messageHasVisibleContent(message);
   const resolvedModel = (msgObj.model as string) || undefined;
   const resolvedReasoning = (msgObj.reasoning as string) || undefined;
 
   return (
     <Message from="assistant" className="max-w-full">
       <AssistantHeader
-        isWaiting={waitingForFirstToken}
+        isWaiting={isGenerating}
         model={resolvedModel}
         reasoning={resolvedReasoning}
       />
@@ -361,7 +383,7 @@ export function ChatMessageItem({
             </p>
           </div>
         ) : (
-          <MessageParts message={message} isStreaming={isStreaming} />
+          <MessageParts message={message} isStreaming={isGenerating} />
         )}
       </MessageContent>
       {showCopy && !hasFailed ? <CopyMessageButton text={plainText} /> : null}

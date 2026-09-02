@@ -78,7 +78,7 @@ export function useBackgroundGenerationsEngine() {
             onClick: () => router.push(`/chat/${sessionId}`),
           },
         });
-      } else if (status === "failed" || status === "cancelled") {
+      } else if (status === "failed") {
         toast.error("Generation failed", {
           description: errorDetail || `Agent failed to respond for "${title}"`,
           action: {
@@ -87,6 +87,8 @@ export function useBackgroundGenerationsEngine() {
           },
         });
       }
+      // "cancelled" is silently ignored — it typically means the SSE client
+      // disconnected (e.g. page reload/navigation), not a real failure.
     }
 
     queryClient.invalidateQueries({
