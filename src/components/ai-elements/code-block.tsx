@@ -144,11 +144,6 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
-const highlighterCache = new Map<
-  string,
-  Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
->();
-
 const tokensCache = new Map<string, TokenizedCode>();
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
 
@@ -158,23 +153,38 @@ const getTokensCacheKey = (code: string, language: BundledLanguage) => {
   return `${language}:${code.length}:${start}:${end}`;
 };
 
+let globalHighlighterPromise: Promise<
+  HighlighterGeneric<BundledLanguage, BundledTheme>
+> | null = null;
+const loadedLanguages = new Set<string>();
+
 const getHighlighter = async (
   language: BundledLanguage,
 ): Promise<HighlighterGeneric<BundledLanguage, BundledTheme>> => {
-  const cached = highlighterCache.get(language);
-  if (cached) {
-    return cached;
+  if (!globalHighlighterPromise) {
+    const { createHighlighter } = await import("shiki");
+    globalHighlighterPromise = createHighlighter({
+      langs: [language],
+      themes: ["catppuccin-mocha", "github-light"],
+    });
+    loadedLanguages.add(language);
+    return globalHighlighterPromise;
   }
 
-  const { createHighlighter } = await import("shiki");
+  const highlighter = await globalHighlighterPromise;
+  if (!loadedLanguages.has(language)) {
+    try {
+      await highlighter.loadLanguage(language);
+      loadedLanguages.add(language);
+    } catch (e) {
+      console.warn(
+        `[Shiki] Could not load language "${language}", falling back to plain text`,
+        e,
+      );
+    }
+  }
 
-  const highlighterPromise = createHighlighter({
-    langs: [language],
-    themes: ["catppuccin-mocha", "github-light"],
-  });
-
-  highlighterCache.set(language, highlighterPromise);
-  return highlighterPromise;
+  return highlighter;
 };
 
 const createRawTokens = (code: string): TokenizedCode => ({
