@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import type { UIMessage } from "ai";
@@ -34,12 +35,25 @@ export function VirtualMessageList({
   const { scrollRef } = useStickToBottomContext();
   const lastMessage = messages[messages.length - 1];
 
+  const count = messages.length + (showAgentSkeleton ? 1 : 0);
+
   const virtualizer = useVirtualizer({
-    count: messages.length + (showAgentSkeleton ? 1 : 0),
+    count,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 150,
     overscan: 5,
+    initialOffset: count * 150,
   });
+
+  const measureElement = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node) return;
+      queueMicrotask(() => {
+        virtualizer.measureElement(node);
+      });
+    },
+    [virtualizer],
+  );
 
   return (
     <div className="relative flex w-full flex-col items-center">
@@ -55,7 +69,9 @@ export function VirtualMessageList({
           />
         ) : (
           <span className="py-4 text-center text-xs text-gray-400 italic">
-            {hasMultiplePages && messages.length > 0 ? "You're all caught up" : ""}
+            {hasMultiplePages && messages.length > 0
+              ? "You're all caught up"
+              : ""}
           </span>
         )}
       </div>
@@ -73,7 +89,7 @@ export function VirtualMessageList({
               <div
                 key="agent-skeleton"
                 data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
+                ref={measureElement}
                 style={{
                   position: "absolute",
                   top: 0,
@@ -103,7 +119,7 @@ export function VirtualMessageList({
             <div
               key={msg.id || virtualItem.index}
               data-index={virtualItem.index}
-              ref={virtualizer.measureElement}
+              ref={measureElement}
               style={{
                 position: "absolute",
                 top: 0,
