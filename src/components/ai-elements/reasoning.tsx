@@ -187,27 +187,13 @@ export type ReasoningContentProps = ComponentProps<
   children: string;
 };
 
-// Dynamic import for CodeBlock components to avoid shiki in Edge Worker
-const CodeBlock = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlock),
-  { ssr: false },
-);
-const CodeBlockActions = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockActions),
-  { ssr: false },
-);
-const CodeBlockCopyButton = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockCopyButton),
-  { ssr: false },
-);
-const CodeBlockHeader = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockHeader),
-  { ssr: false },
-);
-const CodeBlockTitle = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockTitle),
-  { ssr: false },
-);
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockCopyButton,
+  CodeBlockHeader,
+  CodeBlockTitle,
+} from "./code-block";
 
 const streamdownComponents = {
   code({ className, children, ...props }: ComponentProps<"code">) {

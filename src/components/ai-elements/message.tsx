@@ -30,10 +30,7 @@ import {
 import dynamic from "next/dynamic";
 import type { Streamdown } from "streamdown";
 import type { BundledLanguage } from "shiki";
-
-const StreamdownWrapper = dynamic(() => import("./streamdown-wrapper"), {
-  ssr: false,
-});
+import StreamdownWrapper from "./streamdown-wrapper";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -326,34 +323,17 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
-// Dynamic import for CodeBlock components to avoid shiki in Edge Worker
-const CodeBlock = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlock),
-  { ssr: false },
-);
-const CodeBlockActions = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockActions),
-  { ssr: false },
-);
-const CodeBlockCopyButton = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockCopyButton),
-  { ssr: false },
-);
-const CodeBlockHeader = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockHeader),
-  { ssr: false },
-);
-const CodeBlockTitle = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockTitle),
-  { ssr: false },
-);
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockCopyButton,
+  CodeBlockHeader,
+  CodeBlockTitle,
+  CodeBlockContent,
+} from "./code-block";
+
 const MermaidDiagram = dynamic(
   () => import("./mermaid-diagram").then((m) => m.MermaidDiagram),
-  { ssr: false },
-);
-
-const CodeBlockContent = dynamic(
-  () => import("./code-block").then((m) => m.CodeBlockContent),
   { ssr: false },
 );
 

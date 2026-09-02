@@ -27,10 +27,7 @@ import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
-const StreamdownWrapper = dynamic(
-  () => import("@/components/ai-elements/streamdown-wrapper"),
-  { ssr: false },
-);
+import StreamdownWrapper from "@/components/ai-elements/streamdown-wrapper";
 
 const MermaidDiagram = dynamic(
   () =>
