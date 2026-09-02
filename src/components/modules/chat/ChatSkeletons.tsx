@@ -18,7 +18,6 @@ function Bone({ className }: { className?: string }) {
 import { formatModelDisplayName } from "@/lib/models";
 
 export function AssistantHeader({
-  isWaiting: _isWaiting,
   model,
   reasoning,
 }: { isWaiting?: boolean; model?: string; reasoning?: string } = {}) {
