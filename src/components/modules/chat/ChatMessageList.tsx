@@ -152,6 +152,7 @@ export function ChatMessageList({
           </div>
         ) : (
           <VirtualMessageList
+            key={messages[0]?.id ?? "empty-list"}
             messages={messages}
             isStreaming={isStreaming}
             streamingMessageId={streamingMessageId}
