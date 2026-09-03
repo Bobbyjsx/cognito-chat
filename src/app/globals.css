@@ -161,21 +161,21 @@
     background-image: linear-gradient(
       115deg,
       transparent 0%,
-      transparent 25%,
+      transparent 38%,
       rgba(255, 255, 255, 0.95) 50%,
-      transparent 75%,
+      transparent 62%,
       transparent 100%
     );
-    animation: skeleton-shine 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    animation: skeleton-shine 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
   :is(.dark .skeleton-shimmer)::after {
     background-image: linear-gradient(
       115deg,
       transparent 0%,
-      transparent 25%,
+      transparent 38%,
       rgba(255, 255, 255, 0.25) 50%,
-      transparent 75%,
+      transparent 62%,
       transparent 100%
     );
   }
