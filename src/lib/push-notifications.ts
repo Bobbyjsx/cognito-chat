@@ -57,20 +57,21 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /**
- * Checks if user is currently away from the window (tab hidden, window minimized, or lost focus).
+ * Checks if user is currently away from the window (tab hidden, backgrounded, or lost focus).
  */
 export function isWindowAway(): boolean {
   if (typeof document === "undefined") return false;
   return (
+    document.visibilityState !== "visible" ||
     document.hidden ||
     (typeof document.hasFocus === "function" && !document.hasFocus())
   );
 }
 
 /**
- * Dispatches a native browser push / desktop notification.
- * Uses Service Worker showNotification when available & controlling,
- * or falls back immediately to new Notification constructor.
+ * Dispatches a native browser notification.
+ * Uses the direct Notification constructor first (standard for desktop Chrome/Safari/Firefox),
+ * and falls back to ServiceWorkerRegistration.showNotification if the browser requires it (e.g. mobile Android).
  */
 export async function showBrowserPushNotification({
   title,
@@ -80,7 +81,7 @@ export async function showBrowserPushNotification({
   tag,
   url = "/chat",
   data,
-  renotify = true,
+  renotify = false,
   silent = false,
 }: PushNotificationPayload): Promise<boolean> {
   if (!isNotificationSupported()) return false;
@@ -91,41 +92,7 @@ export async function showBrowserPushNotification({
     ...data,
   };
 
-  // Try Service Worker registration only if one is active and controlling the page
-  if (
-    typeof navigator !== "undefined" &&
-    "serviceWorker" in navigator &&
-    navigator.serviceWorker.controller
-  ) {
-    try {
-      const registration = await Promise.race<
-        ServiceWorkerRegistration | undefined
-      >([
-        navigator.serviceWorker.ready,
-        new Promise<undefined>((resolve) =>
-          setTimeout(() => resolve(undefined), 300),
-        ),
-      ]);
-
-      if (registration && "showNotification" in registration) {
-        const swOptions: NotificationOptions & { renotify?: boolean } = {
-          body,
-          icon,
-          badge,
-          tag,
-          data: notificationData,
-          renotify,
-          silent,
-        };
-        await registration.showNotification(title, swOptions);
-        return true;
-      }
-    } catch {
-      // Fall through to standard Notification
-    }
-  }
-
-  // Fallback to standard DOM Notification constructor
+  // 1. Primary: Direct standard Notification constructor
   try {
     const notif = new Notification(title, {
       body,
@@ -134,6 +101,7 @@ export async function showBrowserPushNotification({
       tag,
       data: notificationData,
       silent,
+      requireInteraction: false,
     });
 
     notif.onclick = () => {
@@ -143,9 +111,30 @@ export async function showBrowserPushNotification({
       }
       notif.close();
     };
+
     return true;
-  } catch (err) {
-    console.error("Browser notification failed to display:", err);
+  } catch {
+    // 2. Fallback: Service Worker showNotification (for environments where new Notification() throws)
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration && "showNotification" in registration) {
+          const swOptions: NotificationOptions & { renotify?: boolean } = {
+            body,
+            icon,
+            badge,
+            tag,
+            data: notificationData,
+            renotify,
+            silent,
+          };
+          await registration.showNotification(title, swOptions);
+          return true;
+        }
+      } catch (swErr) {
+        console.error("ServiceWorker showNotification failed:", swErr);
+      }
+    }
     return false;
   }
 }
