@@ -74,6 +74,30 @@ export function isWindowAway(): boolean {
 }
 
 /**
+ * Truncates and cleans AI response text for push notification body display.
+ * Strips markdown codeblocks/symbols, collapses newlines, and trims to maxLength.
+ */
+export function truncateNotificationBody(
+  text: string | null | undefined,
+  maxLength = 140,
+): string {
+  if (!text || typeof text !== "string") return "Response ready";
+  const cleaned = text
+    .replace(/```[\s\S]*?```/g, "[Code]")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/[#*_~>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return "Response ready";
+
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+  return cleaned.slice(0, maxLength).trimEnd() + "...";
+}
+
+/**
  * Dispatches a native browser notification.
  * Uses the direct Notification constructor first (standard for desktop Chrome/Safari/Firefox),
  * and falls back to ServiceWorkerRegistration.showNotification if the browser requires it (e.g. mobile Android).
