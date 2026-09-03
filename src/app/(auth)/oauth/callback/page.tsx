@@ -7,7 +7,10 @@ import { authManager } from "@/lib/auth-manager";
 import { Loader } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+
+// Module-level guard to prevent duplicate executions across React 18/19 StrictMode remounts & Suspense boundary re-evaluations
+const inFlightClientCodes = new Set<string>();
 
 function OAuthCallbackContent() {
   const router = useRouter();
@@ -26,12 +29,11 @@ function OAuthCallbackContent() {
   const error = syncError || asyncError;
 
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-  const processed = useRef(false);
 
-  const exchangeToken = async (state: string, code: string) => {
+  const exchangeToken = async (stateStr: string, codeStr: string) => {
     try {
       authManager.clearBrowserSessionCache();
-      const resultData = await completeOAuthLogin(code, state);
+      const resultData = await completeOAuthLogin(codeStr, stateStr);
 
       if (resultData.error || !resultData.tokens || !resultData.user) {
         const errorMsg = resultData.error || "Failed to complete login";
@@ -54,6 +56,13 @@ function OAuthCallbackContent() {
       router.replace("/chat");
     } catch (err: unknown) {
       console.error("OAuth callback error:", err);
+      // Clean up locks on failure so retry is possible
+      inFlightClientCodes.delete(codeStr);
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem(`oauth_code_exchanged_${codeStr}`);
+        } catch {}
+      }
       const digest =
         typeof err === "object" && err && "digest" in err
           ? String((err as { digest?: unknown }).digest)
@@ -66,11 +75,25 @@ function OAuthCallbackContent() {
   };
 
   useEffect(() => {
-    if (processed.current || syncError) return;
-    processed.current = true;
+    if (!code || !state || syncError) return;
 
-    exchangeToken(state as string, code as string);
-  }, [searchParams, syncError, state, code]);
+    // Check module-level memory guard
+    if (inFlightClientCodes.has(code)) return;
+
+    // Check sessionStorage guard across tab reloads/remounts
+    const storageKey = `oauth_code_exchanged_${code}`;
+    if (typeof window !== "undefined") {
+      try {
+        if (sessionStorage.getItem(storageKey)) return;
+        sessionStorage.setItem(storageKey, "1");
+      } catch {}
+    }
+
+    inFlightClientCodes.add(code);
+    queueMicrotask(() => {
+      void exchangeToken(state, code);
+    });
+  }, [code, state, syncError]);
 
   const handleReturnToLogin = () => {
     setIsNavigatingBack(true);

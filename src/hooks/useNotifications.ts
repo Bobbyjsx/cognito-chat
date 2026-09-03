@@ -76,7 +76,7 @@ export function useNotifications() {
     return showBrowserPushNotification(payload);
   }, []);
 
-  const sendTestNotification = useCallback(async (delayMs: number = 0) => {
+  const sendTestNotification = useCallback(async () => {
     let perm = getNotificationPermission();
     if (perm === "default") {
       perm = await requestNotificationPermission();
@@ -84,13 +84,6 @@ export function useNotifications() {
     }
 
     if (perm === "granted") {
-      if (delayMs > 0) {
-        toast.info("Notification scheduled", {
-          description: `Switch to another window/app in the next ${Math.round(delayMs / 1000)} seconds to see the push alert.`,
-        });
-        await new Promise((r) => setTimeout(r, delayMs));
-      }
-
       const dispatched = await showBrowserPushNotification({
         title: "Cognito Test Notification",
         body: "Push notifications are working properly!",
@@ -98,11 +91,9 @@ export function useNotifications() {
       });
 
       if (dispatched) {
-        if (delayMs === 0) {
-          toast.success("Test notification sent", {
-            description: "A desktop notification has been dispatched.",
-          });
-        }
+        toast.success("Test notification sent", {
+          description: "A desktop notification has been dispatched.",
+        });
       } else {
         toast.error("Notification could not be displayed", {
           description:
