@@ -32,9 +32,11 @@ function OAuthCallbackContent() {
     try {
       authManager.clearBrowserSessionCache();
       const resultData = await completeOAuthLogin(code, state);
-      
+
       if (resultData.error || !resultData.tokens || !resultData.user) {
-        throw new Error(resultData.error || "Failed to complete login");
+        const errorMsg = resultData.error || "Failed to complete login";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
       }
 
       const { tokens, user } = resultData;

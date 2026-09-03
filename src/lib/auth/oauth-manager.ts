@@ -3,6 +3,44 @@ import axios from "axios";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+export interface OAuthStateEntry {
+  s: string; // state
+  v: string; // code_verifier
+  exp: number; // expiration timestamp (ms)
+}
+
+export function parseInFlightOAuth(raw: string | undefined): OAuthStateEntry[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now();
+    return parsed.filter(
+      (item) =>
+        item &&
+        typeof item.s === "string" &&
+        typeof item.v === "string" &&
+        typeof item.exp === "number" &&
+        item.exp > now,
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function appendInFlightOAuth(
+  existing: OAuthStateEntry[],
+  state: string,
+  codeVerifier: string,
+  ttlMs = 10 * 60 * 1000,
+): OAuthStateEntry[] {
+  const now = Date.now();
+  const valid = existing.filter((item) => item.exp > now && item.s !== state);
+  const updated = [...valid, { s: state, v: codeVerifier, exp: now + ttlMs }];
+  // Keep maximum 5 most recent in-flight flows to prevent cookie bloat
+  return updated.slice(-5);
+}
+
 export class OAuthTransitionManager {
   private generateRandomString(length: number): string {
     const array = new Uint32Array(length / 2);
@@ -57,17 +95,21 @@ export class OAuthTransitionManager {
       await this.generateAuthorizeUrl(redirectUri);
 
     const cookieStore = await cookies();
-    cookieStore.set("oauth_state", state, {
+    const existingInFlight = parseInFlightOAuth(
+      cookieStore.get("oauth_in_flight")?.value,
+    );
+    const updatedInFlight = appendInFlightOAuth(
+      existingInFlight,
+      state,
+      codeVerifier,
+    );
+
+    cookieStore.set("oauth_in_flight", JSON.stringify(updatedInFlight), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 10,
-    });
-    cookieStore.set("oauth_code_verifier", codeVerifier, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 10,
+      sameSite: "lax",
     });
 
     redirect(url);

@@ -7,6 +7,10 @@ import {
   registerActiveSession,
   unregisterActiveSession,
 } from "@/lib/axios";
+import {
+  isWindowAway,
+  showBrowserPushNotification,
+} from "@/lib/push-notifications";
 import { useGetSessions, getGenerationPollInterval } from "./useChats";
 
 export function useBackgroundGenerationsEngine() {
@@ -63,7 +67,25 @@ export function useBackgroundGenerationsEngine() {
     // Generation is done — resume standard caching for this session
     unregisterActiveSession(sessionId);
 
-    // Suppress notification if user is currently inside this chat
+    // Trigger desktop/push notification if user is away from window
+    const isAway = isWindowAway();
+    if (isAway && sessionId) {
+      const notifTitle =
+        status === "completed" ? "Response ready" : "Generation failed";
+      const notifBody =
+        status === "completed"
+          ? `Agent has finished generating for "${title}"`
+          : errorDetail || `Agent failed to respond for "${title}"`;
+
+      void showBrowserPushNotification({
+        title: notifTitle,
+        body: notifBody,
+        url: `/chat/${sessionId}`,
+        tag: `cognito-gen-${generationId}`,
+      });
+    }
+
+    // Suppress in-app toast notification if user is currently inside this chat
     const isCurrentChat =
       Boolean(sessionId) &&
       (pathname === `/chat/${sessionId}` ||

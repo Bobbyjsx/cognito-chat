@@ -94,3 +94,62 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Notification click handler: focus existing window and deep-link to session URL
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.url || "/chat";
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        for (const client of windowClients) {
+          if ("focus" in client) {
+            if (client.url && client.url.includes(urlToOpen)) {
+              return client.focus();
+            }
+            return client.focus().then((focusedClient) => {
+              if (focusedClient && "navigate" in focusedClient) {
+                return focusedClient.navigate(urlToOpen);
+              }
+            });
+          }
+        }
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(urlToOpen);
+        }
+      }),
+  );
+});
+
+// Push event handler for backend-initiated web push alerts
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  try {
+    const payload = event.data.json();
+    const title = payload.title || "Cognito AI";
+    const options = {
+      body: payload.body || "New notification",
+      icon: payload.icon || "/favicon/android-chrome-192x192.png",
+      badge: payload.badge || "/favicon/favicon-32x32.png",
+      tag: payload.tag || "cognito-push",
+      data: {
+        url: payload.url || "/chat",
+        ...payload.data,
+      },
+      renotify: true,
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch {
+    const text = event.data.text();
+    event.waitUntil(
+      self.registration.showNotification("Cognito AI", {
+        body: text,
+        icon: "/favicon/android-chrome-192x192.png",
+        data: { url: "/chat" },
+      }),
+    );
+  }
+});
