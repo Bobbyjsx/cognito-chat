@@ -9,8 +9,7 @@ import {
 import dynamic from "next/dynamic";
 import { signOut, useSession } from "next-auth/react";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
-import type React from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ArtifactProvider } from "@/hooks/useArtifactStore";
 import { Analytics } from "@/lib/analytics";

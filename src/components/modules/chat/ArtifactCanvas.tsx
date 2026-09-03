@@ -23,7 +23,7 @@ import { IconTooltipButton } from "@/components/ui/icon-tooltip-button";
 import { CodeBlockContent } from "@/components/ai-elements/code-block";
 import type { BundledLanguage } from "shiki";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import dynamic from "next/dynamic";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 

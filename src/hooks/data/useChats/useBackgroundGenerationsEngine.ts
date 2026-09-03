@@ -1,6 +1,6 @@
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { useRouter, usePathname } from "next/navigation";
 import {
   api,

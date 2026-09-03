@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster as SonnerToaster } from "sonner";
+import { Toaster } from "@/components/ui/toast";
 
 import "./globals.css";
 import { Providers } from "./providers";
@@ -191,7 +191,7 @@ html.skip-startup .startup-screen{display:none!important}
         <SessionProvider refetchInterval={0}>
           <Providers>
             {children}
-            <SonnerToaster richColors theme="light" />
+            <Toaster />
             <ServiceWorkerRegister />
             <PwaInstallPrompt />
             <PwaUpdatePrompt />
