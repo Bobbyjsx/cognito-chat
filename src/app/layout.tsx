@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/toast";
 
 import "./globals.css";
+import "katex/dist/katex.min.css";
 import { Providers } from "./providers";
 import { ServiceWorkerRegister } from "@/components/modules/pwa/ServiceWorkerRegister";
 import { PwaInstallPrompt } from "@/components/modules/pwa/PwaInstallPrompt";
