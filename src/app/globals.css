@@ -146,11 +146,11 @@
   .skeleton-shimmer {
     position: relative;
     overflow: hidden;
-    background-color: rgba(0, 0, 0, 0.08);
+    background-color: rgba(0, 0, 0, 0.045);
   }
 
   :is(.dark .skeleton-shimmer) {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(255, 255, 255, 0.05);
   }
 
   .skeleton-shimmer::after {
