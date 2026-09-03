@@ -317,24 +317,14 @@ export function SettingsModule() {
                         Test notification delivery and verify system
                         permissions.
                       </span>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => sendTestNotification(3000)}
-                          className="text-gray-medium hover:text-on-surface h-7 px-2 text-xs"
-                        >
-                          Test (3s Delay)
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => sendTestNotification(0)}
-                          className="text-gray-medium hover:text-on-surface h-7 px-2 text-xs font-medium"
-                        >
-                          Send Test Notification
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => sendTestNotification()}
+                        className="text-gray-medium hover:text-on-surface h-7 px-2 text-xs font-medium"
+                      >
+                        Send Test Notification
+                      </Button>
                     </div>
                   </div>
                 </Card>
