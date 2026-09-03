@@ -92,15 +92,12 @@ export async function showBrowserPushNotification({
     ...data,
   };
 
-  // 1. Primary: Direct standard Notification constructor
+  // 1. Primary: Direct standard Notification constructor (matches proven implementation)
   try {
     const notif = new Notification(title, {
       body,
-      icon,
-      badge,
+      icon: icon || DEFAULT_ICON,
       tag,
-      data: notificationData,
-      silent,
       requireInteraction: false,
     });
 
@@ -114,7 +111,7 @@ export async function showBrowserPushNotification({
 
     return true;
   } catch {
-    // 2. Fallback: Service Worker showNotification (for environments where new Notification() throws)
+    // 2. Fallback: Service Worker showNotification (for mobile browsers that forbid new Notification)
     if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
       try {
         const registration = await navigator.serviceWorker.getRegistration();

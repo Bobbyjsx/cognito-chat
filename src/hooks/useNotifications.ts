@@ -31,6 +31,20 @@ export function useNotifications() {
         })
         .catch(() => {});
     }
+
+    // Auto-prompt on user's first interactive gesture if permission is still default
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        const handleFirstClick = async () => {
+          try {
+            const nextPerm = await Notification.requestPermission();
+            setPermission(nextPerm);
+          } catch {}
+        };
+        window.addEventListener("click", handleFirstClick, { once: true });
+        return () => window.removeEventListener("click", handleFirstClick);
+      }
+    }
   }, []);
 
   const requestPermission = useCallback(async () => {
