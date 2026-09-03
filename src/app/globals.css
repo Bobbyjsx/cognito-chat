@@ -142,18 +142,18 @@
     display: none;
   }
 
-  /* Slower Smooth Shimmer Animation (Left to Right) */
-  @keyframes shimmer-slow {
+  /* Diagonal Bright Shimmer Shine (Top-Left to Bottom-Right) */
+  @keyframes shimmer-shine {
     0% {
-      transform: translateX(-100%);
+      transform: translateX(-150%) skewX(-20deg);
     }
     100% {
-      transform: translateX(100%);
+      transform: translateX(150%) skewX(-20deg);
     }
   }
 
-  .animate-shimmer-slow {
-    animation: shimmer-slow 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  .animate-shimmer-shine {
+    animation: shimmer-shine 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
   /* KaTeX MathJax & LaTeX Display Enhancements */
