@@ -16,7 +16,7 @@ import {
   registerActiveSession,
   unregisterActiveSession,
 } from "@/lib/axios";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { notifyServerError } from "@/lib/server-error";
 import type {
@@ -116,13 +116,15 @@ function ResizableCanvasPanel() {
 function sessionIdFromParams(
   params: ReturnType<typeof useParams>,
 ): string | null {
-  const raw = params?.sessionId;
+  const raw = (params as Record<string, string | string[] | undefined>)
+    ?.sessionId;
   if (typeof raw === "string" && raw.length > 0) return raw;
   if (Array.isArray(raw) && raw[0]) return raw[0];
   return null;
 }
 
 export function ChatShell() {
+  const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
   const queryClient = useQueryClient();
@@ -194,14 +196,16 @@ export function ChatShell() {
 
   const { data: sessionsData } = useGetSessions();
   const sidebarSession = useMemo(() => {
+    if (!routeSessionId) return null;
     return sessionsData?.pages
       ?.flatMap((p) => p?.items || [])
-      ?.find((s) => s && s.id === (routeSessionId ?? streamSessionId));
-  }, [sessionsData, routeSessionId, streamSessionId]);
+      ?.find((s) => s && s.id === routeSessionId);
+  }, [sessionsData, routeSessionId]);
 
-  const activeGenerationId =
-    sessionPages?.pages[0]?.activeGenerationId ||
-    sidebarSession?.activeGenerationId;
+  const activeGenerationId = routeSessionId
+    ? sessionPages?.pages[0]?.activeGenerationId ||
+      sidebarSession?.activeGenerationId
+    : null;
   const { data: activeGenData } = useActiveGeneration(
     activeGenerationId,
     routeSessionId,
@@ -223,7 +227,7 @@ export function ChatShell() {
         setLastTerminalGen(activeGenData);
       });
     }
-    // Clear when switching to a different session
+    // Clear when switching to a different session or new chat
     if (!routeSessionId) {
       queueMicrotask(() => {
         setLastTerminalGen(null);
@@ -232,8 +236,10 @@ export function ChatShell() {
   }, [activeGenData, routeSessionId]);
 
   // Use activeGenData when available, otherwise fall back to the preserved
-  // terminal data for this session (only if the session still matches).
-  const effectiveGenData = activeGenData ?? lastTerminalGen;
+  // terminal data for this session (only if on a routed session).
+  const effectiveGenData = routeSessionId
+    ? (activeGenData ?? lastTerminalGen)
+    : null;
 
   const sessionData =
     sessionPages?.pages[0]?.session ||
@@ -500,14 +506,10 @@ export function ChatShell() {
       lastHydratedKeyRef.current = "";
       queueMicrotask(() => {
         setPendingSessionId(null);
+        setStreamSessionId(null);
+        setHydratedSessionId(null);
+        setAiMessages([]);
       });
-
-      if (isNewChatRoute && !streamSessionId) {
-        queueMicrotask(() => {
-          setHydratedSessionId(null);
-          setAiMessages([]);
-        });
-      }
       return;
     }
 
@@ -631,7 +633,9 @@ export function ChatShell() {
   );
 
   const handleNewChat = useCallback(() => {
-    if (isStreaming) return;
+    if (isStreaming) {
+      stop();
+    }
     setStreamSessionId(null);
     setHydratedSessionId(null);
     setPendingSessionId(null);
@@ -640,15 +644,26 @@ export function ChatShell() {
     setUserSelectedModel(null);
     setUserSelectedReasoning(null);
     setAiMessages([]);
-  }, [setAiMessages, isStreaming]);
+    lastHydratedKeyRef.current = "";
+    if (pathname !== "/chat" && pathname !== "/chat/") {
+      router.push("/chat");
+    }
+  }, [setAiMessages, isStreaming, stop, pathname, router]);
 
   const handleSelectSession = useCallback(
     (id: string) => {
       if (id === routeSessionId) return;
-      if (isStreaming) return;
+      if (isStreaming) {
+        stop();
+      }
+      setStreamSessionId(null);
+      setHydratedSessionId(null);
       setPendingSessionId(id);
+      streamedSessionRef.current = null;
+      setLastTerminalGen(null);
+      router.push(`/chat/${id}`);
     },
-    [routeSessionId, isStreaming],
+    [routeSessionId, isStreaming, stop, router],
   );
 
   const streamingMessageId =
