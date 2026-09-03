@@ -241,101 +241,104 @@ export function SettingsModule() {
                 </div>
               </Card>
 
-              {/* Push & In-App Notifications Card */}
-              <Card className="space-y-6 border-[rgba(0,0,0,0.06)] bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between border-b border-[rgba(0,0,0,0.06)] pb-3">
-                  <div>
-                    <h3 className="text-on-surface text-sm font-semibold">
-                      Push Notifications
-                    </h3>
-                    <p className="text-gray-medium text-xs">
-                      Get notified when models complete generations while away
-                      from the window.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {isGranted ? (
-                      <Badge
-                        variant="outline"
-                        className="border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700"
-                      >
-                        <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-emerald-600" />
-                        Enabled
-                      </Badge>
-                    ) : permission === "denied" ? (
-                      <Badge
-                        variant="outline"
-                        className="border-red-200 bg-red-50 text-[11px] font-semibold text-red-700"
-                      >
-                        Blocked by browser
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="text-gray-medium border-[rgba(0,0,0,0.08)] bg-slate-50 text-[11px] font-semibold"
-                      >
-                        Not enabled
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-4 text-xs">
-                  <div className="flex flex-col gap-3 rounded-lg border border-[rgba(0,0,0,0.04)] bg-neutral-50/50 p-3.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-0.5">
-                      <p className="text-on-surface flex items-center gap-1.5 font-medium">
-                        <BellRing className="text-primary h-3.5 w-3.5" />
-                        Background Generation Alerts
-                      </p>
-                      <p className="text-gray-medium text-[11px] leading-relaxed">
-                        Receive subtle toasts when browsing other chats, and
-                        native push notifications when away from the window.
+              {/* Push & In-App Notifications Card (hidden if device/browser doesn't support notifications, e.g. iOS Safari) */}
+              {isSupported && (
+                <Card className="space-y-6 border-[rgba(0,0,0,0.06)] bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[rgba(0,0,0,0.06)] pb-3">
+                    <div>
+                      <h3 className="text-on-surface text-sm font-semibold">
+                        Push Notifications
+                      </h3>
+                      <p className="text-gray-medium text-xs">
+                        Get notified when models complete generations while away
+                        from the window.
                       </p>
                     </div>
-
-                    {!isGranted && isSupported && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleRequestPermission}
-                        disabled={isRequestingPerm || permission === "denied"}
-                        className="h-8 shrink-0 text-xs font-medium"
-                      >
-                        {isRequestingPerm ? (
-                          <Spinner className="mr-1.5 h-3.5 w-3.5" />
-                        ) : (
-                          <Bell className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        Enable Push
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-gray-medium text-[11px]">
-                      Test notification delivery and verify system permissions.
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => sendTestNotification(3000)}
-                        className="text-gray-medium hover:text-on-surface h-7 px-2 text-xs"
-                      >
-                        Test (3s Delay)
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => sendTestNotification(0)}
-                        className="text-gray-medium hover:text-on-surface h-7 px-2 text-xs font-medium"
-                      >
-                        Send Test Notification
-                      </Button>
+                    <div className="flex items-center gap-1.5">
+                      {isGranted ? (
+                        <Badge
+                          variant="outline"
+                          className="border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700"
+                        >
+                          <CheckCircle2 className="mr-1 h-3.5 w-3.5 text-emerald-600" />
+                          Enabled
+                        </Badge>
+                      ) : permission === "denied" ? (
+                        <Badge
+                          variant="outline"
+                          className="border-red-200 bg-red-50 text-[11px] font-semibold text-red-700"
+                        >
+                          Blocked by browser
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-gray-medium border-[rgba(0,0,0,0.08)] bg-slate-50 text-[11px] font-semibold"
+                        >
+                          Not enabled
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                </div>
-              </Card>
+
+                  <div className="space-y-4 text-xs">
+                    <div className="flex flex-col gap-3 rounded-lg border border-[rgba(0,0,0,0.04)] bg-neutral-50/50 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-on-surface flex items-center gap-1.5 font-medium">
+                          <BellRing className="text-primary h-3.5 w-3.5" />
+                          Background Generation Alerts
+                        </p>
+                        <p className="text-gray-medium text-[11px] leading-relaxed">
+                          Receive subtle toasts when browsing other chats, and
+                          native push notifications when away from the window.
+                        </p>
+                      </div>
+
+                      {!isGranted && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleRequestPermission}
+                          disabled={isRequestingPerm || permission === "denied"}
+                          className="h-8 shrink-0 text-xs font-medium"
+                        >
+                          {isRequestingPerm ? (
+                            <Spinner className="mr-1.5 h-3.5 w-3.5" />
+                          ) : (
+                            <Bell className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Enable Push
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-gray-medium text-[11px]">
+                        Test notification delivery and verify system
+                        permissions.
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => sendTestNotification(3000)}
+                          className="text-gray-medium hover:text-on-surface h-7 px-2 text-xs"
+                        >
+                          Test (3s Delay)
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => sendTestNotification(0)}
+                          className="text-gray-medium hover:text-on-surface h-7 px-2 text-xs font-medium"
+                        >
+                          Send Test Notification
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
             </motion.div>
           </motion.div>
         </div>
