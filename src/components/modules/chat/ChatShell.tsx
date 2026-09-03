@@ -285,7 +285,6 @@ export function ChatShell() {
           window.location.pathname === "/chat/")
       ) {
         window.history.replaceState(null, "", `/chat/${nextId}`);
-        router.replace(`/chat/${nextId}`, { scroll: false });
       }
 
       // Immediately stamp activeGenerationId into the sessions cache so the sidebar
@@ -355,7 +354,6 @@ export function ChatShell() {
       // navigation completely, ensuring zero layout shifts or loading UI flashes.
       if (sid && !pathname.startsWith(`/chat/${sid}`)) {
         window.history.replaceState(null, "", `/chat/${sid}`);
-        router.replace(`/chat/${sid}`, { scroll: false });
       }
       queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
