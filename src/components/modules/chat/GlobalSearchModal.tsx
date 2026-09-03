@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type PaletteTab = "all" | "chats" | "models" | "actions";
 
@@ -610,8 +611,8 @@ export function GlobalSearchModal({
 
               {isSessionsLoading ? (
                 <div className="space-y-2 p-2">
-                  <div className="bg-muted/60 h-9 w-3/4 animate-pulse rounded-xl" />
-                  <div className="bg-muted/40 h-9 w-1/2 animate-pulse rounded-xl" />
+                  <Skeleton className="h-9 w-3/4 rounded-xl" />
+                  <Skeleton className="h-9 w-1/2 rounded-xl" />
                 </div>
               ) : sessions.length === 0 ? (
                 <div className="text-muted-foreground/70 border-border/40 my-2 rounded-xl border border-dashed p-6 text-center text-xs">

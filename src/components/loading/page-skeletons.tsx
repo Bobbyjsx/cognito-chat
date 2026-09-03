@@ -1,16 +1,11 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 /**
  * Server-safe route loading skeletons (no client hooks).
  * Used by Next.js route loading files for instant navigation feedback.
  */
 
-function Bone({ className }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-md bg-[rgba(0,0,0,0.06)] ${className ?? ""}`}
-      aria-hidden
-    />
-  );
-}
+const Bone = Skeleton;
 
 /** Full chat shell skeleton — sidebar + message canvas + composer. */
 export function ChatShellLoading() {
