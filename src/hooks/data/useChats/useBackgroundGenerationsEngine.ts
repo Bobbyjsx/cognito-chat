@@ -10,7 +10,9 @@ import {
 import {
   isWindowAway,
   showBrowserPushNotification,
+  truncateNotificationBody,
 } from "@/lib/push-notifications";
+import type { ChatSessionListItem, PaginatedResponse } from "@/types";
 import { useGetSessions, getGenerationPollInterval } from "./useChats";
 
 export function useBackgroundGenerationsEngine() {
@@ -53,13 +55,38 @@ export function useBackgroundGenerationsEngine() {
     [activeGens],
   );
 
-  // Helper to trigger success/failure toast with action button
+  // Helper to resolve the latest generated response content from generation data or cached session
+  const getSessionResponseContent = (
+    sid: string,
+    dataResponse?: string,
+  ): string => {
+    if (
+      dataResponse &&
+      typeof dataResponse === "string" &&
+      dataResponse.trim()
+    ) {
+      return dataResponse;
+    }
+    const cached = queryClient.getQueryData<{
+      pages?: PaginatedResponse<ChatSessionListItem>[];
+    }>(["chat-sessions"]);
+    if (cached?.pages) {
+      for (const page of cached.pages) {
+        const item = page.items?.find((s) => s.id === sid);
+        if (item?.lastMessageContent) return item.lastMessageContent;
+      }
+    }
+    return "";
+  };
+
+  // Helper to trigger success/failure toast and push notification
   const notifyGenerationResult = (
     status: string,
     generationId: string,
     sessionId: string,
     title: string,
     errorDetail?: string,
+    rawResponse?: string,
   ) => {
     if (toastedRef.current.has(generationId)) return;
     toastedRef.current.add(generationId);
@@ -67,14 +94,17 @@ export function useBackgroundGenerationsEngine() {
     // Generation is done — resume standard caching for this session
     unregisterActiveSession(sessionId);
 
+    const fullResponse = getSessionResponseContent(sessionId, rawResponse);
+    const sessionTitle = title || "Cognito Chat";
+
     // Trigger desktop/push notification if user is away from window
     const isAway = isWindowAway();
     if (isAway && sessionId) {
       const notifTitle =
-        status === "completed" ? "Response ready" : "Generation failed";
+        status === "completed" ? sessionTitle : "Generation failed";
       const notifBody =
         status === "completed"
-          ? `Agent has finished generating for "${title}"`
+          ? truncateNotificationBody(fullResponse)
           : errorDetail || `Agent failed to respond for "${title}"`;
 
       void showBrowserPushNotification({
@@ -93,8 +123,8 @@ export function useBackgroundGenerationsEngine() {
 
     if (!isCurrentChat) {
       if (status === "completed") {
-        toast.success("Response ready", {
-          description: `Agent has finished generating for "${title}"`,
+        toast.success(sessionTitle, {
+          description: truncateNotificationBody(fullResponse),
           action: {
             label: "View response",
             onClick: () => router.push(`/chat/${sessionId}`),
@@ -141,12 +171,18 @@ export function useBackgroundGenerationsEngine() {
               `/agent/generations/${generationId}`,
             );
             if (data?.status) {
+              const resp =
+                data.bufferedText ||
+                data.buffered_text ||
+                data.response ||
+                data.content;
               notifyGenerationResult(
                 data.status,
                 generationId,
                 sessionId,
                 title,
                 data.error,
+                resp,
               );
             }
           } catch {
@@ -203,12 +239,18 @@ export function useBackgroundGenerationsEngine() {
           current === "failed" ||
           current === "cancelled"
         ) {
+          const resp =
+            data.bufferedText ||
+            data.buffered_text ||
+            data.response ||
+            data.content;
           notifyGenerationResult(
             current,
             data.id,
             sessionId,
             title,
             data.error,
+            resp,
           );
         }
       }

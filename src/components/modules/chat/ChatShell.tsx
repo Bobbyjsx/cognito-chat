@@ -22,6 +22,7 @@ import { notifyServerError } from "@/lib/server-error";
 import {
   isWindowAway,
   showBrowserPushNotification,
+  truncateNotificationBody,
 } from "@/lib/push-notifications";
 import type {
   MessageSchema,
@@ -40,6 +41,21 @@ import { cn } from "@/lib/utils";
 function toAssistantRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
   return "assistant";
+}
+
+function extractUIMessageText(msg?: UIMessage): string {
+  if (!msg) return "";
+  const legacy = (msg as unknown as Record<string, unknown>).content;
+  if (typeof legacy === "string" && legacy.trim()) return legacy.trim();
+
+  return (msg.parts ?? [])
+    .filter(
+      (p) =>
+        p.type === "text" && typeof (p as { text?: string }).text === "string",
+    )
+    .map((p) => (p as { text: string }).text)
+    .join("\n")
+    .trim();
 }
 
 function ResizableCanvasPanel() {
@@ -344,7 +360,7 @@ export function ChatShell() {
         });
       }
     },
-    onFinish: () => {
+    onFinish: ({ message, messages: finishMessages }) => {
       // Mark the global mutation in Axios so the subsequent profile fetch gets no-cache headers
       markGlobalMutation();
 
@@ -375,9 +391,32 @@ export function ChatShell() {
       // If user switched away from window/tab while waiting, notify them
       if (isWindowAway()) {
         const targetSid = sid || routeSessionId || "";
+
+        // Extract assistant response text
+        const responseText =
+          extractUIMessageText(message) ||
+          extractUIMessageText(
+            (finishMessages ?? [])
+              .filter((m) => m.role === "assistant")
+              .slice(-1)[0],
+          ) ||
+          extractUIMessageText(
+            aiMessages.filter((m) => m.role === "assistant").slice(-1)[0],
+          );
+
+        const firstUserQuery =
+          extractUIMessageText(
+            (finishMessages ?? []).find((m) => m.role === "user"),
+          ) || extractUIMessageText(aiMessages.find((m) => m.role === "user"));
+
+        const sessionTitle =
+          sessionData?.title ||
+          (firstUserQuery ? firstUserQuery.slice(0, 40) : null) ||
+          "Cognito Chat";
+
         void showBrowserPushNotification({
-          title: "Response ready",
-          body: "Agent has finished responding",
+          title: sessionTitle,
+          body: truncateNotificationBody(responseText),
           url: targetSid ? `/chat/${targetSid}` : "/chat",
           tag: `cognito-chat-${targetSid || "active"}`,
         });
