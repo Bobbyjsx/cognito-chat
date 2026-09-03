@@ -19,6 +19,10 @@ import {
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { notifyServerError } from "@/lib/server-error";
+import {
+  isWindowAway,
+  showBrowserPushNotification,
+} from "@/lib/push-notifications";
 import type {
   MessageSchema,
   PaginatedResponse,
@@ -367,6 +371,17 @@ export function ChatShell() {
       // Reset so the hydration effect re-runs with fresh attachment data
       setHydratedSessionId(null);
       pendingAttachmentMetaRef.current = {};
+
+      // If user switched away from window/tab while waiting, notify them
+      if (isWindowAway()) {
+        const targetSid = sid || routeSessionId || "";
+        void showBrowserPushNotification({
+          title: "Response ready",
+          body: "Agent has finished responding",
+          url: targetSid ? `/chat/${targetSid}` : "/chat",
+          tag: `cognito-chat-${targetSid || "active"}`,
+        });
+      }
     },
     onError: (err) => {
       // If the page is reloading or unloading, suppress all errors silently

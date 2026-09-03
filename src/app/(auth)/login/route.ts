@@ -1,4 +1,8 @@
-import { OAuthTransitionManager } from "@/lib/auth/oauth-manager";
+import {
+  OAuthTransitionManager,
+  appendInFlightOAuth,
+  parseInFlightOAuth,
+} from "@/lib/auth/oauth-manager";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -33,18 +37,22 @@ export async function GET(request: NextRequest) {
     ? url
     : new URL(url, request.url).toString();
 
+  const existingInFlight = parseInFlightOAuth(
+    request.cookies.get("oauth_in_flight")?.value,
+  );
+  const updatedInFlight = appendInFlightOAuth(
+    existingInFlight,
+    state,
+    codeVerifier,
+  );
+
   const response = NextResponse.redirect(redirectTarget);
-  response.cookies.set("oauth_state", state, {
+  response.cookies.set("oauth_in_flight", JSON.stringify(updatedInFlight), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 10,
-  });
-  response.cookies.set("oauth_code_verifier", codeVerifier, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 10,
+    sameSite: "lax",
   });
 
   return response;
