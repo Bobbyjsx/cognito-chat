@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   getNotificationPermission,
   isNotificationSupported,
@@ -11,45 +11,64 @@ import {
 } from "@/lib/push-notifications";
 import { toast } from "@/components/ui/toast";
 
+const emptySubscribe = () => () => {};
+
+function subscribePermission(onStoreChange: () => void) {
+  if (typeof navigator !== "undefined" && "permissions" in navigator) {
+    let statusRef: PermissionStatus | null = null;
+    navigator.permissions
+      .query({ name: "notifications" as PermissionName })
+      .then((status) => {
+        statusRef = status;
+        status.addEventListener("change", onStoreChange);
+      })
+      .catch(() => {});
+
+    return () => {
+      if (statusRef) {
+        statusRef.removeEventListener("change", onStoreChange);
+      }
+    };
+  }
+  return () => {};
+}
+
 export function useNotifications() {
-  const [permission, setPermission] = useState<NotificationPermissionState>(
-    () =>
-      typeof window !== "undefined" ? getNotificationPermission() : "default",
+  const isSupported = useSyncExternalStore(
+    emptySubscribe,
+    () => isNotificationSupported(),
+    () => false,
   );
-  const [isSupported] = useState<boolean>(() =>
-    typeof window !== "undefined" ? isNotificationSupported() : false,
+
+  const [overridePermission, setOverridePermission] =
+    useState<NotificationPermissionState | null>(null);
+
+  const permissionFromStore = useSyncExternalStore(
+    subscribePermission,
+    () => (isSupported ? getNotificationPermission() : "unsupported"),
+    () => "default",
   );
+
+  const permission = overridePermission ?? permissionFromStore;
 
   useEffect(() => {
-    if (typeof navigator !== "undefined" && "permissions" in navigator) {
-      navigator.permissions
-        .query({ name: "notifications" as PermissionName })
-        .then((status) => {
-          const update = () => setPermission(getNotificationPermission());
-          status.addEventListener("change", update);
-          return () => status.removeEventListener("change", update);
-        })
-        .catch(() => {});
-    }
+    if (!isSupported) return;
 
-    // Auto-prompt on user's first interactive gesture if permission is still default
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission === "default") {
-        const handleFirstClick = async () => {
-          try {
-            const nextPerm = await Notification.requestPermission();
-            setPermission(nextPerm);
-          } catch {}
-        };
-        window.addEventListener("click", handleFirstClick, { once: true });
-        return () => window.removeEventListener("click", handleFirstClick);
-      }
+    if (Notification.permission === "default") {
+      const handleFirstClick = async () => {
+        try {
+          const nextPerm = await Notification.requestPermission();
+          setOverridePermission(nextPerm);
+        } catch {}
+      };
+      window.addEventListener("click", handleFirstClick, { once: true });
+      return () => window.removeEventListener("click", handleFirstClick);
     }
-  }, []);
+  }, [isSupported]);
 
   const requestPermission = useCallback(async () => {
     const nextPerm = await requestNotificationPermission();
-    setPermission(nextPerm);
+    setOverridePermission(nextPerm);
     return nextPerm;
   }, []);
 
@@ -61,7 +80,7 @@ export function useNotifications() {
     let perm = getNotificationPermission();
     if (perm === "default") {
       perm = await requestNotificationPermission();
-      setPermission(perm);
+      setOverridePermission(perm);
     }
 
     if (perm === "granted") {
