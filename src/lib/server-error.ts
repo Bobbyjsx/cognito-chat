@@ -1,5 +1,5 @@
 import axios from "axios";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { capitalizeFirstLetter } from "./utils";
 
 const FALLBACK_ERROR_MESSAGE = "An error occurred";

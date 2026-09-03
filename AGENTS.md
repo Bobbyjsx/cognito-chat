@@ -13,7 +13,7 @@ All data fetching and mutations strictly follow the **KeySentry DAL Pattern**:
 1. **UI Components (`components/modules` & `components/ui`):**
    - Never call server actions or fetch directly.
    - Consume custom TanStack React Query hooks.
-   - Use Sonner toasts (`toast.success` / `notifyServerError`) for feedback.
+   - Use Base UI / shadcn toasts (`toast.success` / `notifyServerError`) for feedback.
 
 2. **Custom Hooks (`hooks/data/use[Domain]/[resource].ts`):**
    - Use TanStack React Query (`useQuery`, `useMutation`) for caching, refetching, and state management.
@@ -63,7 +63,7 @@ All data fetching and mutations strictly follow the **KeySentry DAL Pattern**:
   │   ├── actions/          # Next.js Server Actions (auth.ts, chats.ts)
   │   ├── axios.ts          # Global Axios instance with interceptors
   │   ├── case-transform.ts # Utility for snake_case <-> camelCase conversions
-  │   ├── server-error.ts   # Server action error parser and Sonner toast notifier
+  │   ├── server-error.ts   # Server action error parser and toast notifier
   │   └── utils.ts          # Tailwind class merger (cn)
   ├── types/                # TypeScript interface definitions (camelCase)
   ├── auth.ts               # NextAuth setup with CredentialsProvider

@@ -16,11 +16,12 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { Logo } from "@/components/ui/logo";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { IconTooltipButton } from "@/components/ui/icon-tooltip-button";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useDeleteSession,
@@ -73,15 +74,10 @@ function RecentConversationsSkeleton() {
           className="flex items-center justify-between gap-2.5 rounded-lg px-3 py-2.5"
         >
           <div className="flex flex-1 items-center gap-2.5">
-            <div className="bg-surface-container-high/70 h-4 w-4 shrink-0 animate-pulse rounded" />
-            <div
-              className={cn(
-                "bg-surface-container-high/80 h-3.5 animate-pulse rounded",
-                wClass,
-              )}
-            />
+            <Skeleton className="h-4 w-4 shrink-0 rounded" />
+            <Skeleton className={cn("h-3.5 rounded", wClass)} />
           </div>
-          <div className="bg-surface-container-high/50 h-3 w-8 shrink-0 animate-pulse rounded" />
+          <Skeleton className="h-3 w-8 shrink-0 rounded" />
         </div>
       ))}
     </div>

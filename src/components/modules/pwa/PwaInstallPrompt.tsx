@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 

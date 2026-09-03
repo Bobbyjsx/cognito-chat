@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import {
   PromptInput,
   PromptInputBody,
@@ -28,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Monitor,
   Image as ImageIcon,
@@ -390,10 +391,10 @@ export function ChatInput({
       <div className="bg-background/60 pointer-events-none absolute inset-x-0 bottom-0 z-10 shrink-0 [mask-image:linear-gradient(to_bottom,transparent,black_20%)] px-3 pt-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-6 sm:pb-4 md:px-6 md:pt-6 md:pb-6">
         <div className="pointer-events-auto relative mx-auto w-full max-w-[800px]">
           <div className="ambient-shadow flex w-full flex-col overflow-hidden rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-3">
-            <div className="bg-muted h-14 w-full animate-pulse rounded-md" />
+            <Skeleton className="h-14 w-full rounded-md" />
             <div className="mt-3 flex items-center justify-between">
-              <div className="bg-muted h-8 w-10 animate-pulse rounded-md" />
-              <div className="bg-muted h-8 w-[240px] animate-pulse rounded-md" />
+              <Skeleton className="h-8 w-10 rounded-md" />
+              <Skeleton className="h-8 w-[240px] rounded-md" />
             </div>
           </div>
         </div>

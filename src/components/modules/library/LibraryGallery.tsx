@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -253,10 +254,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
         {status === "pending" ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 12 }).map((_, idx) => (
-              <div
-                key={idx}
-                className="bg-surface-container-high aspect-square w-full animate-pulse rounded-xl"
-              />
+              <Skeleton key={idx} className="aspect-square w-full rounded-xl" />
             ))}
           </div>
         ) : uniqueItems.length === 0 ? (

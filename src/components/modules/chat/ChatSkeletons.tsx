@@ -3,17 +3,11 @@
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Logo } from "@/components/ui/logo";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { History, Loader2 } from "lucide-react";
 
-function Bone({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn("bg-muted animate-pulse rounded-md", className)}
-      aria-hidden
-    />
-  );
-}
+const Bone = Skeleton;
 
 import { formatModelDisplayName } from "@/lib/models";
 

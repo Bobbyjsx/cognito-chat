@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { RefreshCw, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 import { usePathname } from "next/navigation";
 
 function isStandaloneMode() {

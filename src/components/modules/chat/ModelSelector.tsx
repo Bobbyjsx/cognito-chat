@@ -5,10 +5,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
+import { formatModelDisplayName } from "@/lib/models";
 import { cn } from "@/lib/utils";
-import { BrainCircuit, Check, ChevronDown, Cpu, Sparkles } from "lucide-react";
+import {
+  BrainCircuit,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Cpu,
+} from "lucide-react";
 import { useState } from "react";
+
+export { formatModelDisplayName };
 
 interface ModelSelectorProps {
   selectedModel: string;
@@ -19,7 +29,7 @@ interface ModelSelectorProps {
 }
 
 export interface EffortMode {
-  id: "fast" | "balanced" | "extended";
+  id: "fast" | "balanced" | "extended" | string;
   label: string;
   desc: string;
 }
@@ -42,9 +52,6 @@ export const EFFORT_MODES: EffortMode[] = [
   },
 ];
 
-import { formatModelDisplayName } from "@/lib/models";
-export { formatModelDisplayName };
-
 export function ModelSelector({
   selectedModel,
   onSelectModel,
@@ -54,10 +61,8 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const { data: config } = useGetConfig();
 
-  const [isModelOpen, setIsModelOpen] = useState(false);
-  const [subReasoningModel, setSubReasoningModel] = useState<string | null>(
-    null,
-  );
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEffortSubOpen, setIsEffortSubOpen] = useState(false);
 
   const modelsList = config?.modelsList ?? {};
   const globalAllowedReasoning = (
@@ -71,38 +76,73 @@ export function ModelSelector({
 
   const isAuto = !selectedModel || selectedModel.toLowerCase() === "auto";
 
-  // Intersect a model's own reasoning_modes with the global list
+  // Intersect a model's own reasoning_modes with the global allowed list
   const getModesForModel = (modelName: string) => {
-    if (modelName.toLowerCase() === "auto") {
-      return EFFORT_MODES.map((p) => p.id);
+    if (!modelName || modelName.toLowerCase() === "auto") {
+      return globalAllowedReasoning.length > 0
+        ? globalAllowedReasoning
+        : EFFORT_MODES.map((p) => p.id);
     }
     const modelCfg = modelsList[modelName];
-    if (!modelCfg) return globalAllowedReasoning;
-    return modelCfg.reasoningModes
+    if (
+      !modelCfg ||
+      !modelCfg.reasoningModes ||
+      modelCfg.reasoningModes.length === 0
+    ) {
+      return globalAllowedReasoning;
+    }
+    const filtered = modelCfg.reasoningModes
       .map((m) => m.toLowerCase())
       .filter((m) => globalAllowedReasoning.includes(m));
+    return filtered.length > 0 ? filtered : globalAllowedReasoning;
   };
 
   const handleSelectModel = (model: string) => {
     onSelectModel(model);
     const validModes = getModesForModel(model);
-    if (!validModes.includes(selectedReasoning.toLowerCase())) {
+    if (!validModes.includes((selectedReasoning || "").toLowerCase())) {
       onSelectReasoning(validModes[0] || "balanced");
     }
-    setIsModelOpen(false);
-    setSubReasoningModel(null);
   };
 
-  const handleSelectModelAndReasoning = (model: string, level: string) => {
-    onSelectModel(model);
-    onSelectReasoning(level);
-    setIsModelOpen(false);
-    setSubReasoningModel(null);
+  const handleSelectReasoning = (effortId: string) => {
+    onSelectReasoning(effortId);
+    setIsEffortSubOpen(false);
   };
+
+  const currentModes = getModesForModel(selectedModel);
+  const availableEfforts = EFFORT_MODES.filter((eff) =>
+    currentModes.includes(eff.id.toLowerCase()),
+  );
+  const extraEfforts = currentModes
+    .filter(
+      (mode) => !EFFORT_MODES.some((eff) => eff.id.toLowerCase() === mode),
+    )
+    .map((mode) => ({
+      id: mode,
+      label: mode.charAt(0).toUpperCase() + mode.slice(1),
+      desc: "Reasoning effort level",
+    }));
+  const dynamicEfforts = [...availableEfforts, ...extraEfforts];
+
+  const getEffortLabel = (effortId: string) => {
+    const mode = dynamicEfforts.find(
+      (m) => m.id.toLowerCase() === effortId.toLowerCase(),
+    );
+    if (mode) return mode.label;
+    return effortId.charAt(0).toUpperCase() + effortId.slice(1);
+  };
+
+  const activeEffortId = (
+    selectedReasoning ||
+    dynamicEfforts[0]?.id ||
+    "balanced"
+  ).toLowerCase();
+  const currentEffortLabel = getEffortLabel(activeEffortId);
 
   const autoDescription =
     modelsList["auto"]?.description ||
-    "Automatically selects the optimal model based on prompt complexity and requirements";
+    "Automatically selects the optimal model based on prompt complexity";
 
   return (
     <div
@@ -111,22 +151,21 @@ export function ModelSelector({
         className,
       )}
     >
-      {/* Primary Model Popover (with Nested Reasoning Sub-Popover) */}
       <Popover
-        open={isModelOpen}
+        open={isOpen}
         onOpenChange={(open) => {
-          setIsModelOpen(open);
-          if (!open) setSubReasoningModel(null);
+          setIsOpen(open);
+          if (!open) setIsEffortSubOpen(false);
         }}
       >
-        <PopoverTrigger className="group text-on-surface hover:bg-surface-container-low inline-flex max-w-[min(100%,14rem)] items-center gap-1 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2 py-1.5 text-xs font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-200 hover:border-[rgba(0,0,0,0.12)] active:scale-[0.98] sm:max-w-none sm:gap-1.5 sm:px-3">
-          <Sparkles className="text-on-surface/80 h-3.5 w-3.5 shrink-0" />
+        <PopoverTrigger className="group text-on-surface hover:bg-surface-container-low inline-flex max-w-[min(100%,16rem)] cursor-pointer items-center gap-1 rounded-full border border-[rgba(0,0,0,0.06)] bg-white px-2 py-1.5 text-xs font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-200 hover:border-[rgba(0,0,0,0.12)] active:scale-[0.98] sm:max-w-none sm:gap-1.5 sm:px-3">
+          <Cpu className="text-on-surface/80 h-3.5 w-3.5 shrink-0" />
           <span className="font-headline-md text-label-md tracking-tight-editorial truncate">
             {formatModelDisplayName(selectedModel)}
           </span>
-          {selectedReasoning && (
-            <span className="text-gray-medium/70 shrink-0 text-[11px] font-normal capitalize">
-              · {selectedReasoning}
+          {currentEffortLabel && (
+            <span className="text-gray-medium/80 shrink-0 text-[11px] font-normal capitalize">
+              · {currentEffortLabel}
             </span>
           )}
           <ChevronDown className="text-gray-medium h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -138,200 +177,139 @@ export function ModelSelector({
           sideOffset={6}
           className="ambient-shadow w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
         >
-          <div className="text-gray-medium flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium tracking-wider uppercase">
-            <span>Select AI Model</span>
-            <span className="text-gray-medium/80 text-[10px]">
-              Effort Options ➔
-            </span>
+          {/* Header */}
+          <div className="text-gray-medium px-2.5 pt-1.5 pb-1 text-[11px] font-medium tracking-wider uppercase">
+            Select AI Model
           </div>
 
-          <div className="space-y-0.5">
+          {/* Model List */}
+          <div className="max-h-64 space-y-0.5 overflow-y-auto pr-0.5">
             {/* Auto (Smart Router) Option - Always Pinned First */}
-            <div className="relative">
-              <div
-                className={cn(
-                  "group/row flex w-full items-center justify-between rounded-lg px-2.5 py-2 transition-colors duration-150",
-                  isAuto
-                    ? "bg-surface-container-low text-on-surface font-semibold"
-                    : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSelectModel("auto")}
-                  className="flex flex-1 items-start gap-2.5 text-left"
-                >
-                  <Sparkles className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="space-y-0.5">
-                    <div className="font-code-sm text-on-surface flex items-center gap-1.5 text-xs font-medium">
-                      Auto
-                      {isAuto && (
-                        <Check className="text-on-surface h-3.5 w-3.5" />
-                      )}
-                    </div>
-                    <p className="text-gray-medium text-[11px] leading-tight font-normal">
-                      {autoDescription}
-                    </p>
+            <button
+              type="button"
+              onClick={() => handleSelectModel("auto")}
+              className={cn(
+                "group flex w-full cursor-pointer items-start justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors duration-150",
+                isAuto
+                  ? "bg-surface-container-low text-on-surface font-semibold"
+                  : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
+              )}
+            >
+              <div className="flex items-start gap-2.5">
+                <Cpu className="text-primary mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="space-y-0.5">
+                  <div className="font-code-sm text-on-surface flex items-center gap-1.5 text-xs font-medium">
+                    Auto
                   </div>
-                </button>
-
-                <Popover
-                  open={subReasoningModel === "auto"}
-                  onOpenChange={(open) =>
-                    setSubReasoningModel(open ? "auto" : null)
-                  }
-                >
-                  <PopoverTrigger className="text-gray-medium hover:bg-surface-container-high hover:text-on-surface ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(0,0,0,0.06)] bg-white transition-colors hover:border-[rgba(0,0,0,0.15)]">
-                    <BrainCircuit className="h-3.5 w-3.5" />
-                  </PopoverTrigger>
-
-                  <PopoverContent
-                    align="start"
-                    side="right"
-                    sideOffset={8}
-                    className="ambient-shadow w-56 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
-                  >
-                    <div className="text-gray-medium px-2 py-1 text-[10px] font-semibold tracking-wider uppercase">
-                      Effort & Routing Policy
-                    </div>
-                    <div className="space-y-0.5">
-                      {EFFORT_MODES.map((effort) => {
-                        const isCurrent =
-                          isAuto &&
-                          (selectedReasoning.toLowerCase() === effort.id ||
-                            (!selectedReasoning && effort.id === "balanced"));
-                        return (
-                          <button
-                            key={effort.id}
-                            type="button"
-                            onClick={() =>
-                              handleSelectModelAndReasoning("auto", effort.id)
-                            }
-                            className={cn(
-                              "flex w-full flex-col items-start rounded-md px-2.5 py-1.5 text-xs transition-colors",
-                              isCurrent
-                                ? "bg-surface-container-high text-on-surface font-semibold"
-                                : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
-                            )}
-                          >
-                            <div className="flex w-full items-center justify-between">
-                              <span className="capitalize">{effort.label}</span>
-                              {isCurrent && (
-                                <Check className="text-on-surface h-3.5 w-3.5" />
-                              )}
-                            </div>
-                            <span className="text-gray-medium/80 text-[10px] leading-tight font-normal">
-                              {effort.desc}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                  <p className="text-gray-medium text-[11px] leading-tight font-normal">
+                    {autoDescription}
+                  </p>
+                </div>
               </div>
-            </div>
+              {isAuto && (
+                <Check className="text-on-surface mt-0.5 h-3.5 w-3.5 shrink-0" />
+              )}
+            </button>
 
             {/* Specific Models */}
             {otherModels.map((m) => {
               const isSelected = !isAuto && selectedModel === m;
               const desc = modelsList[m]?.description ?? "Powered by Gemini AI";
-              const modes = getModesForModel(m);
-              const isSubOpen = subReasoningModel === m;
 
               return (
-                <div key={m} className="relative">
-                  <div
-                    className={cn(
-                      "group/row flex w-full items-center justify-between rounded-lg px-2.5 py-2 transition-colors duration-150",
-                      isSelected
-                        ? "bg-surface-container-low text-on-surface font-semibold"
-                        : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
-                    )}
-                  >
-                    {/* Left main area: Click to select model */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectModel(m)}
-                      className="flex flex-1 items-start gap-2.5 text-left"
-                    >
-                      <Cpu className="text-gray-medium mt-0.5 h-4 w-4 shrink-0" />
-                      <div className="space-y-0.5">
-                        <div className="font-code-sm text-on-surface flex items-center gap-1.5 text-xs font-medium">
-                          {formatModelDisplayName(m)}
-                          {isSelected && (
-                            <Check className="text-on-surface h-3.5 w-3.5" />
-                          )}
-                        </div>
-                        <p className="text-gray-medium text-[11px] leading-tight font-normal">
-                          {desc}
-                        </p>
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => handleSelectModel(m)}
+                  className={cn(
+                    "group flex w-full cursor-pointer items-start justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors duration-150",
+                    isSelected
+                      ? "bg-surface-container-low text-on-surface font-semibold"
+                      : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
+                  )}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Cpu className="text-gray-medium mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <div className="space-y-0.5">
+                      <div className="font-code-sm text-on-surface flex items-center gap-1.5 text-xs font-medium">
+                        {formatModelDisplayName(m)}
                       </div>
-                    </button>
-
-                    {/* Right side icon button: Trigger reasoning sub-popover for this model */}
-                    <Popover
-                      open={isSubOpen}
-                      onOpenChange={(open) =>
-                        setSubReasoningModel(open ? m : null)
-                      }
-                    >
-                      <PopoverTrigger className="text-gray-medium hover:bg-surface-container-high hover:text-on-surface ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(0,0,0,0.06)] bg-white transition-colors hover:border-[rgba(0,0,0,0.15)]">
-                        <BrainCircuit className="h-3.5 w-3.5" />
-                      </PopoverTrigger>
-
-                      <PopoverContent
-                        align="start"
-                        side="right"
-                        sideOffset={8}
-                        className="ambient-shadow w-56 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
-                      >
-                        <div className="text-gray-medium px-2 py-1 text-[10px] font-semibold tracking-wider uppercase">
-                          Thinking Effort
-                        </div>
-                        <div className="space-y-0.5">
-                          {EFFORT_MODES.filter((eff) =>
-                            modes.includes(eff.id),
-                          ).map((eff) => {
-                            const isCurrent =
-                              isSelected &&
-                              selectedReasoning.toLowerCase() === eff.id;
-                            return (
-                              <button
-                                key={eff.id}
-                                type="button"
-                                onClick={() =>
-                                  handleSelectModelAndReasoning(m, eff.id)
-                                }
-                                className={cn(
-                                  "flex w-full flex-col items-start rounded-md px-2.5 py-1.5 text-xs transition-colors",
-                                  isCurrent
-                                    ? "bg-surface-container-high text-on-surface font-semibold"
-                                    : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
-                                )}
-                              >
-                                <div className="flex w-full items-center justify-between">
-                                  <span className="capitalize">
-                                    {eff.label}
-                                  </span>
-                                  {isCurrent && (
-                                    <Check className="text-on-surface h-3.5 w-3.5" />
-                                  )}
-                                </div>
-                                <span className="text-gray-medium/80 text-[10px] leading-tight font-normal">
-                                  {eff.desc}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                      <p className="text-gray-medium text-[11px] leading-tight font-normal">
+                        {desc}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                  {isSelected && (
+                    <Check className="text-on-surface mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  )}
+                </button>
               );
             })}
           </div>
+
+          {/* Sticky Bottom Reasoning Effort Option with Sub-Popover */}
+          {dynamicEfforts.length > 0 && (
+            <>
+              <Separator className="my-1.5 bg-[rgba(0,0,0,0.06)]" />
+
+              <Popover open={isEffortSubOpen} onOpenChange={setIsEffortSubOpen}>
+                <PopoverTrigger className="group/effort hover:bg-surface-container-low flex w-full cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-left transition-colors duration-150">
+                  <div className="flex items-center gap-2">
+                    <BrainCircuit className="text-primary h-3.5 w-3.5 shrink-0" />
+                    <span className="text-on-surface text-xs font-medium">
+                      Reasoning Effort
+                    </span>
+                  </div>
+                  <div className="text-gray-medium flex items-center gap-1">
+                    <span className="text-xs font-normal capitalize">
+                      {currentEffortLabel}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 transition-transform duration-150 group-hover/effort:translate-x-0.5" />
+                  </div>
+                </PopoverTrigger>
+
+                <PopoverContent
+                  side="right"
+                  align="end"
+                  sideOffset={8}
+                  className="ambient-shadow w-56 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-1.5"
+                >
+                  <div className="text-gray-medium px-2 py-1 text-[10px] font-semibold tracking-wider uppercase">
+                    Thinking Effort
+                  </div>
+                  <div className="space-y-0.5">
+                    {dynamicEfforts.map((effort) => {
+                      const isCurrent =
+                        activeEffortId === effort.id.toLowerCase();
+                      return (
+                        <button
+                          key={effort.id}
+                          type="button"
+                          onClick={() => handleSelectReasoning(effort.id)}
+                          className={cn(
+                            "flex w-full cursor-pointer flex-col items-start rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                            isCurrent
+                              ? "bg-surface-container-high text-on-surface font-semibold"
+                              : "text-gray-medium hover:bg-surface-container-low hover:text-on-surface",
+                          )}
+                        >
+                          <div className="flex w-full items-center justify-between">
+                            <span className="capitalize">{effort.label}</span>
+                            {isCurrent && (
+                              <Check className="text-on-surface h-3.5 w-3.5" />
+                            )}
+                          </div>
+                          <span className="text-gray-medium/80 text-left text-[10px] leading-tight font-normal">
+                            {effort.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
         </PopoverContent>
       </Popover>
     </div>

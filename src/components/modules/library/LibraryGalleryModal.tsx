@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { AttachmentSchema } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -73,10 +74,7 @@ export function LibraryGalleryModal({
             /* Skeleton */
             <div className="grid grid-cols-3 gap-3">
               {Array.from({ length: 18 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-muted aspect-square w-full animate-pulse rounded-xl"
-                />
+                <Skeleton key={i} className="aspect-square w-full rounded-xl" />
               ))}
             </div>
           ) : uniqueItems.length === 0 ? (
