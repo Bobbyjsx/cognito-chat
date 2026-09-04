@@ -6,13 +6,23 @@ import { useRouter } from "next/navigation";
 import { LogOut, Menu, SquarePen } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Spinner } from "@/components/ui/spinner";
+import { ChatSessionActionsMenu } from "./ChatSessionActionsMenu";
 
 interface NavbarProps {
   onMenuClick?: () => void;
   onNewChat?: () => void;
+  onShareClick?: () => void;
+  onDeleteClick?: () => void;
+  isDeleting?: boolean;
 }
 
-export function Navbar({ onMenuClick, onNewChat }: NavbarProps) {
+export function Navbar({
+  onMenuClick,
+  onNewChat,
+  onShareClick,
+  onDeleteClick,
+  isDeleting = false,
+}: NavbarProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const router = useRouter();
 
@@ -48,6 +58,15 @@ export function Navbar({ onMenuClick, onNewChat }: NavbarProps) {
         <Logo />
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        {onShareClick && onDeleteClick && (
+          <ChatSessionActionsMenu
+            variant="header"
+            isDeleting={isDeleting}
+            onShare={onShareClick}
+            onDelete={onDeleteClick}
+            triggerClassName="text-gray-medium hover:text-on-surface hover:bg-surface-container size-9"
+          />
+        )}
         {onNewChat && (
           <button
             type="button"

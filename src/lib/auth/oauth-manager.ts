@@ -7,6 +7,7 @@ export interface OAuthStateEntry {
   s: string; // state
   v: string; // code_verifier
   exp: number; // expiration timestamp (ms)
+  r?: string; // returnTo callback URL
 }
 
 export function parseInFlightOAuth(raw: string | undefined): OAuthStateEntry[] {
@@ -33,10 +34,19 @@ export function appendInFlightOAuth(
   state: string,
   codeVerifier: string,
   ttlMs = 10 * 60 * 1000,
+  returnTo?: string,
 ): OAuthStateEntry[] {
   const now = Date.now();
   const valid = existing.filter((item) => item.exp > now && item.s !== state);
-  const updated = [...valid, { s: state, v: codeVerifier, exp: now + ttlMs }];
+  const entry: OAuthStateEntry = {
+    s: state,
+    v: codeVerifier,
+    exp: now + ttlMs,
+  };
+  if (returnTo) {
+    entry.r = returnTo;
+  }
+  const updated = [...valid, entry];
   // Keep maximum 5 most recent in-flight flows to prevent cookie bloat
   return updated.slice(-5);
 }
@@ -90,7 +100,7 @@ export class OAuthTransitionManager {
     };
   }
 
-  async authorize(redirectUri: string) {
+  async authorize(redirectUri: string, returnTo?: string) {
     const { url, state, codeVerifier } =
       await this.generateAuthorizeUrl(redirectUri);
 
@@ -102,6 +112,8 @@ export class OAuthTransitionManager {
       existingInFlight,
       state,
       codeVerifier,
+      10 * 60 * 1000,
+      returnTo,
     );
 
     cookieStore.set("oauth_in_flight", JSON.stringify(updatedInFlight), {

@@ -96,6 +96,9 @@ export interface ChatSessionListItem {
   lastMessageRole?: string | null;
   readStatus?: "read" | "not read" | string;
   activeGenerationId?: string | null;
+  excludeFromMemory?: boolean;
+  /** Present when this session has an active public share link. */
+  shareId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -183,4 +186,46 @@ export interface AppConfig {
 export interface ServerActionErrorResponse {
   error: string;
   isServerActionError: true;
+}
+
+export interface SharedChatMessage {
+  id: string;
+  role: "user" | "agent" | "assistant" | "system" | string;
+  content: string;
+  attachmentIds?: string[];
+  parts?: ChatMessagePart[];
+  createdAt: string;
+}
+
+export interface CreateSharedChatRequest {
+  title?: string | null;
+  showName?: boolean;
+}
+
+export interface SharedChat {
+  id: string;
+  sessionId: string;
+  title?: string | null;
+  authorName?: string | null;
+  isOwner?: boolean;
+  revokedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  messages: SharedChatMessage[];
+}
+
+export interface CreateSharedChatResponse {
+  shareId: string;
+  sessionId: string;
+  title?: string | null;
+  authorName?: string | null;
+  createdAt: string;
+  messageCount: number;
+}
+
+export interface ContinueChatResponse {
+  sessionId: string;
+  title?: string | null;
+  excludeFromMemory?: boolean;
 }

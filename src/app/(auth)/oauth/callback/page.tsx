@@ -53,7 +53,8 @@ function OAuthCallbackContent() {
         throw new Error(result.error);
       }
       authManager.clearBrowserSessionCache();
-      router.replace("/chat");
+      const targetDestination = resultData.returnTo || "/chat";
+      router.replace(targetDestination);
     } catch (err: unknown) {
       console.error("OAuth callback error:", err);
       // Clean up locks on failure so retry is possible

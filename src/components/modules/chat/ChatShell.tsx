@@ -7,6 +7,7 @@ import {
   useGetSession,
   useGetSessions,
   useActiveGeneration,
+  useDeleteSession,
   registerPendingGeneration,
   clearPendingGeneration,
 } from "@/hooks/data/useChats/useChats";
@@ -37,7 +38,10 @@ import { ChatSidebar } from "./ChatSidebar";
 import { Navbar } from "./Navbar";
 import { ArtifactCanvas } from "./ArtifactCanvas";
 import { useArtifactStore } from "@/hooks/useArtifactStore";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Info } from "lucide-react";
+import { ShareChatModal } from "./ShareChatModal";
+import { ChatSessionActionsMenu } from "./ChatSessionActionsMenu";
+import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { isSearchTool, extractSearchData } from "@/components/ai-elements/tool";
 
@@ -168,6 +172,8 @@ export function ChatShell() {
     null,
   );
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const deleteSessionMutation = useDeleteSession();
   const streamedSessionRef = useRef<string | null>(null);
   // Holds metadata for attachments sent in the current message so the
   // optimistic chip renders with the correct contentType immediately.
@@ -274,6 +280,46 @@ export function ChatShell() {
       ) || [],
     [sessionPages],
   );
+
+  // Ensure the active session is populated in the sidebar sessions cache if not yet present (e.g. freshly imported shared chat)
+  useEffect(() => {
+    if (!sessionData?.id || !routeSessionId) return;
+    queryClient.setQueriesData<{
+      pages: PaginatedResponse<ChatSessionListItem>[];
+      pageParams: number[];
+    }>({ queryKey: ["chat-sessions"] }, (old) => {
+      if (!old?.pages) return old;
+      const alreadyPresent = old.pages.some((page) =>
+        page.items?.some((s) => s.id === sessionData.id),
+      );
+      if (alreadyPresent) return old;
+
+      const item: ChatSessionListItem = {
+        id: sessionData.id,
+        userId: sessionData.userId || "",
+        title: sessionData.title,
+        lastMessageContent: sessionData.lastMessageContent,
+        lastMessageRole: sessionData.lastMessageRole,
+        readStatus: sessionData.readStatus,
+        excludeFromMemory: sessionData.excludeFromMemory,
+        shareId: sessionData.shareId,
+        createdAt: sessionData.createdAt || new Date().toISOString(),
+        updatedAt: sessionData.updatedAt || new Date().toISOString(),
+      };
+
+      const [firstPage, ...rest] = old.pages;
+      return {
+        ...old,
+        pages: [
+          {
+            ...firstPage,
+            items: [item, ...(firstPage?.items ?? [])],
+          },
+          ...rest,
+        ],
+      };
+    });
+  }, [sessionData, routeSessionId, queryClient]);
 
   const { data: sessionAttachments } = useGetSessionAttachments(
     config?.enableAttachments ? routeSessionId : null,
@@ -724,6 +770,19 @@ export function ChatShell() {
     queryClient,
   ]);
 
+  const handleDeleteSession = useCallback(() => {
+    if (!activeSessionId || deleteSessionMutation.isPending) return;
+    deleteSessionMutation.mutate(activeSessionId, {
+      onSuccess: () => {
+        toast.success("Conversation deleted");
+        handleNewChat();
+      },
+      onError: () => {
+        toast.error("Failed to delete conversation");
+      },
+    });
+  }, [activeSessionId, deleteSessionMutation, handleNewChat]);
+
   const handleSelectSession = useCallback(
     (id: string) => {
       if (id === routeSessionId) return;
@@ -929,7 +988,37 @@ export function ChatShell() {
         <Navbar
           onMenuClick={() => setSidebarOpen(true)}
           onNewChat={activeSessionId ? handleNewChat : undefined}
+          onShareClick={
+            activeSessionId ? () => setIsShareModalOpen(true) : undefined
+          }
+          onDeleteClick={activeSessionId ? handleDeleteSession : undefined}
+          isDeleting={deleteSessionMutation.isPending}
         />
+
+        {activeSessionId && (
+          <header className="border-border/40 bg-background/50 hidden h-11 w-full shrink-0 items-center justify-between border-b px-5 backdrop-blur-xs md:flex">
+            <span className="text-muted-foreground max-w-[400px] truncate text-xs font-medium">
+              {sessionData?.title || "Conversation"}
+            </span>
+            <ChatSessionActionsMenu
+              variant="header"
+              isDeleting={deleteSessionMutation.isPending}
+              onShare={() => setIsShareModalOpen(true)}
+              onDelete={handleDeleteSession}
+            />
+          </header>
+        )}
+
+        {(sessionData?.excludeFromMemory ||
+          (sessionData as any)?.exclude_from_memory) && (
+          <div className="border-border/40 bg-muted/40 text-muted-foreground flex shrink-0 items-center gap-2 border-b px-4 py-2 text-xs">
+            <Info className="text-muted-foreground/80 h-3.5 w-3.5 shrink-0" />
+            <span>
+              This is a copy of a chat that was shared with you. It won&apos;t
+              be added to memory.
+            </span>
+          </div>
+        )}
 
         <ChatMessageList
           messages={displayMessages}
@@ -960,6 +1049,14 @@ export function ChatShell() {
       </main>
 
       {showArtifact && <ResizableCanvasPanel />}
+
+      <ShareChatModal
+        sessionId={activeSessionId}
+        sessionTitle={sessionData?.title}
+        shareId={sessionData?.shareId}
+        open={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
+      />
     </div>
   );
 }

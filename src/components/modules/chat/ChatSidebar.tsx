@@ -6,13 +6,14 @@ import {
   Loader2,
   Search,
   Settings,
-  Trash2,
   X,
   Image as ImageIcon,
   PanelLeftClose,
   PanelLeft,
   SquarePen,
 } from "lucide-react";
+import { ShareChatModal } from "./ShareChatModal";
+import { ChatSessionActionsMenu } from "./ChatSessionActionsMenu";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -102,6 +103,14 @@ export function ChatSidebar({
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchDefaultTab, setSearchDefaultTab] = useState<PaletteTab>("all");
   const [isDesktopOpen, setIsDesktopOpen] = useState(true);
+  const [shareModalSession, setShareModalSession] = useState<{
+    id: string;
+    title?: string | null;
+    shareId?: string | null;
+  } | null>(null);
+  const [actionsMenuSessionId, setActionsMenuSessionId] = useState<
+    string | null
+  >(null);
 
   // Global shortcut for Cmd+K / Ctrl+K (opens in 'all' tab)
   useEffect(() => {
@@ -187,10 +196,7 @@ export function ChatSidebar({
     getItemKey: (index) => sessions[index]?.id ?? index,
   });
 
-  const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+  const handleDeleteSession = (sessionId: string) => {
     deleteSessionMutation.mutate(sessionId, {
       onSuccess: () => {
         toast.success("Conversation deleted");
@@ -405,6 +411,7 @@ export function ChatSidebar({
               const isDeleting =
                 deleteSessionMutation.isPending &&
                 deleteSessionMutation.variables === session.id;
+              const isActionsMenuOpen = actionsMenuSessionId === session.id;
 
               return (
                 <div
@@ -421,7 +428,7 @@ export function ChatSidebar({
                     data-session-id={session.id}
                     prefetch={idx <= 5}
                     onClick={(e) => {
-                      if (isDeleting) {
+                      if (isDeleting || isActionsMenuOpen) {
                         e.preventDefault();
                         return;
                       }
@@ -464,38 +471,46 @@ export function ChatSidebar({
                     <div
                       className="flex shrink-0 items-center gap-1"
                       onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
                     >
-                      {relativeTime && !isDeleting && (
+                      {relativeTime && !isDeleting && !isActionsMenuOpen && (
                         <span className="text-muted-foreground/50 text-[10px] md:group-hover:hidden">
                           {relativeTime}
                         </span>
                       )}
-                      {isUnread && !isDeleting && (
+                      {isUnread && !isDeleting && !isActionsMenuOpen && (
                         <span
                           title="Unread message"
                           className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full md:group-hover:hidden"
                         />
                       )}
 
-                      <button
-                        type="button"
-                        disabled={deleteSessionMutation.isPending}
-                        onClick={(e) => handleDeleteSession(e, session.id)}
-                        title="Delete conversation"
-                        aria-label="Delete conversation"
+                      <div
                         className={cn(
-                          "text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors",
-                          isDeleting
-                            ? "text-destructive block"
+                          isDeleting || isActionsMenuOpen
+                            ? "block"
                             : "block md:hidden md:group-hover:block [@media(hover:none)]:block",
                         )}
                       >
-                        {isDeleting ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3 w-3" />
-                        )}
-                      </button>
+                        <ChatSessionActionsMenu
+                          open={isActionsMenuOpen}
+                          onOpenChange={(open) =>
+                            setActionsMenuSessionId(open ? session.id : null)
+                          }
+                          isDeleting={isDeleting}
+                          disabled={
+                            deleteSessionMutation.isPending && !isDeleting
+                          }
+                          onShare={() =>
+                            setShareModalSession({
+                              id: session.id,
+                              title: sessionTitle,
+                              shareId: session.shareId,
+                            })
+                          }
+                          onDelete={() => handleDeleteSession(session.id)}
+                        />
+                      </div>
                     </div>
                   </Link>
                 </div>
@@ -603,6 +618,19 @@ export function ChatSidebar({
           </>
         )}
       </AnimatePresence>
+
+      <ShareChatModal
+        sessionId={shareModalSession?.id ?? null}
+        sessionTitle={shareModalSession?.title}
+        shareId={
+          shareModalSession
+            ? (sessions.find((s) => s.id === shareModalSession.id)?.shareId ??
+              shareModalSession.shareId)
+            : undefined
+        }
+        open={Boolean(shareModalSession)}
+        onOpenChange={(open) => !open && setShareModalSession(null)}
+      />
     </>
   );
 }
