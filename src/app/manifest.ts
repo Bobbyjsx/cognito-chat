@@ -6,11 +6,13 @@ export default function manifest(): MetadataRoute.Manifest {
     name: APP_TITLE,
     short_name: APP_NAME,
     description: APP_DESCRIPTION,
+    id: "/",
+    scope: "/",
     start_url: "/chat",
     display: "standalone",
     orientation: "any",
-    background_color: "#FBFBFA",
-    theme_color: "#FBFBFA",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     categories: ["productivity", "utilities", "developer"],
     icons: [
       {
