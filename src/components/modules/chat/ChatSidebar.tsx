@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ChatSessionListItem } from "@/types";
 import { toast } from "@/components/ui/toast";
 import { Logo } from "@/components/ui/logo";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -117,10 +118,21 @@ export function ChatSidebar({
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useGetSessions("");
-  const sessions =
-    data?.pages
-      .flatMap((page) => page?.items || [])
-      .filter((session) => Boolean(session)) || [];
+  const sessions = useMemo(() => {
+    if (!data?.pages) return [];
+    const seen = new Set<string>();
+    const unique: ChatSessionListItem[] = [];
+    for (const page of data.pages) {
+      if (!page?.items) continue;
+      for (const session of page.items) {
+        if (session?.id && !seen.has(session.id)) {
+          seen.add(session.id);
+          unique.push(session);
+        }
+      }
+    }
+    return unique;
+  }, [data]);
   const deleteSessionMutation = useDeleteSession();
   const { mutate: markSessionRead } = useMarkSessionRead();
 
@@ -172,6 +184,7 @@ export function ChatSidebar({
     getScrollElement: () => listRef.current,
     estimateSize: () => 42,
     overscan: 10,
+    getItemKey: (index) => sessions[index]?.id ?? index,
   });
 
   const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
@@ -378,6 +391,7 @@ export function ChatSidebar({
           >
             {rowVirtualizer.getVirtualItems().map((virtualItem) => {
               const session = sessions[virtualItem.index];
+              if (!session) return null;
               const idx = virtualItem.index;
               const sessionTitle =
                 session.title?.trim() ||
@@ -394,7 +408,7 @@ export function ChatSidebar({
 
               return (
                 <div
-                  key={session.id}
+                  key={virtualItem.key}
                   className="absolute top-0 left-0 w-full px-0.5 py-0.5"
                   style={{
                     height: `${virtualItem.size}px`,

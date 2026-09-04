@@ -46,6 +46,24 @@ export type ChatMessagePart =
       state: string;
       input?: unknown;
       output?: unknown;
+    }
+  | {
+      type: "sources";
+      sources: Array<{
+        title?: string;
+        url?: string;
+        uri?: string;
+        domain?: string;
+        faviconUrl?: string;
+      }>;
+    }
+  | {
+      type: "source";
+      url?: string;
+      uri?: string;
+      title?: string;
+      domain?: string;
+      faviconUrl?: string;
     };
 
 export interface MessageSchema {

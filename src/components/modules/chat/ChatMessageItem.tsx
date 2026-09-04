@@ -13,15 +13,22 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import {
+  CodeExecutionToolView,
+  extractSearchData,
+  isCodeTool,
+  isSearchTool,
+  SourceBubbles,
+  type SourceItem,
   Tool,
   ToolContent,
   ToolHeader,
   ToolInput,
   ToolOutput,
+  WebSearchToolView,
 } from "@/components/ai-elements/tool";
 import { isToolUIPart, type UIMessage } from "ai";
 import { AlertCircle, Check, Copy, FileTextIcon } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { isPreviewableType } from "@/lib/attachments";
@@ -138,6 +145,74 @@ function MessageParts({
   message: UIMessage;
   isStreaming?: boolean;
 }) {
+  const allSources = useMemo(() => {
+    const rawParts = message.parts ?? [];
+    const collected: SourceItem[] = [];
+    const seenUrls = new Set<string>();
+    for (const part of rawParts) {
+      if (
+        (part as any).type === "sources" &&
+        Array.isArray((part as any).sources)
+      ) {
+        for (const s of (part as any).sources) {
+          const url = s.url || s.uri || "";
+          if (!url || seenUrls.has(url)) continue;
+          seenUrls.add(url);
+
+          let domain = s.domain || "";
+          try {
+            const parsed = new URL(url);
+            if (
+              !parsed.hostname.includes("grounding-api-redirect") &&
+              !parsed.hostname.includes("vertexaisearch")
+            ) {
+              domain = parsed.hostname.replace(/^www\./, "");
+            }
+          } catch {
+            // ignore
+          }
+          if (
+            !domain &&
+            s.title &&
+            s.title.includes(".") &&
+            !s.title.includes(" ")
+          ) {
+            domain = s.title.replace(/^https?:\/\//, "").replace(/^www\./, "");
+          }
+          const title = s.title || domain || "Web Source";
+          const finalDomain = domain || title;
+          const faviconHost =
+            domain || (title.includes(".") ? title : "google.com");
+          const faviconUrl =
+            s.faviconUrl ||
+            `https://www.google.com/s2/favicons?domain=${encodeURIComponent(faviconHost)}&sz=32`;
+
+          collected.push({
+            title,
+            url,
+            domain: finalDomain,
+            faviconUrl,
+          });
+        }
+      } else if (isToolUIPart(part)) {
+        const isDynamic = part.type === "dynamic-tool";
+        const toolName = isDynamic
+          ? part.toolName
+          : part.type.slice("tool-".length);
+        if (isSearchTool(toolName)) {
+          const { sources } = extractSearchData(part);
+          for (const s of sources) {
+            if (!seenUrls.has(s.url)) {
+              seenUrls.add(s.url);
+              collected.push(s);
+            }
+          }
+        }
+      }
+    }
+    return collected;
+  }, [message.parts]);
+
   const parts = message.parts ? [...message.parts] : [];
 
   // Extract optimistic attachments sent by useChat (ai SDK)
@@ -221,6 +296,19 @@ function MessageParts({
           const toolName = isDynamic
             ? part.toolName
             : part.type.slice("tool-".length);
+
+          if (isSearchTool(toolName)) {
+            return (
+              <WebSearchToolView key={part.toolCallId || key} part={part} />
+            );
+          }
+
+          if (isCodeTool(toolName)) {
+            return (
+              <CodeExecutionToolView key={part.toolCallId || key} part={part} />
+            );
+          }
+
           const openByDefault =
             part.state === "input-streaming" ||
             part.state === "input-available" ||
@@ -252,6 +340,9 @@ function MessageParts({
 
         return null;
       })}
+      {allSources.length > 0 && !isGenerating ? (
+        <SourceBubbles sources={allSources} />
+      ) : null}
       {isGenerating ? (
         <div className="text-muted-foreground/80 animate-in fade-in mt-2.5 flex items-center gap-2 py-0.5 text-xs duration-300">
           <span className="relative flex h-2 w-2">

@@ -153,13 +153,19 @@ export function GlobalSearchModal({
     useGetSessions(debouncedQuery);
 
   const sessions = React.useMemo(() => {
-    return (
-      sessionsData?.pages
-        .flatMap((page) => page?.items || [])
-        .filter((session): session is ChatSessionListItem =>
-          Boolean(session),
-        ) || []
-    );
+    if (!sessionsData?.pages) return [];
+    const seen = new Set<string>();
+    const unique: ChatSessionListItem[] = [];
+    for (const page of sessionsData.pages) {
+      if (!page?.items) continue;
+      for (const session of page.items) {
+        if (session?.id && !seen.has(session.id)) {
+          seen.add(session.id);
+          unique.push(session);
+        }
+      }
+    }
+    return unique;
   }, [sessionsData]);
 
   // Available models derived from AppConfig

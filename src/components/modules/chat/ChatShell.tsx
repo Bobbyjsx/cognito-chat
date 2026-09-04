@@ -37,6 +37,7 @@ import { ArtifactCanvas } from "./ArtifactCanvas";
 import { useArtifactStore } from "@/hooks/useArtifactStore";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isSearchTool, extractSearchData } from "@/components/ai-elements/tool";
 
 function toAssistantRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
@@ -496,21 +497,20 @@ export function ChatShell() {
         for (const p of m.parts) {
           if (p.type === "text" && typeof (p as any).text === "string") {
             parts.push({ type: "text", text: (p as any).text });
-          } else if (
-            p.type === "reasoning" &&
-            typeof (p as any).text === "string"
-          ) {
-            parts.push({ type: "reasoning", text: (p as any).text });
+          } else if (p.type === "sources" || p.type === "source") {
+            parts.push(p as any);
           } else if (p.type === "tool" || (p as any).type === "dynamic-tool") {
-            parts.push({
-              type: "dynamic-tool",
-              toolName: (p as any).toolName || "tool",
-              toolCallId: (p as any).toolCallId || `tool-${idx}`,
-              state: (p as any).state || "output-available",
-              input: (p as any).input,
-              output: (p as any).output,
-            } as any);
+            // Do not persist/display tool calls across reloads.
+            // If historical search tool output had sources, preserve only the sources.
+            const toolName = (p as any).toolName || (p as any).tool_name || "";
+            if (isSearchTool(toolName)) {
+              const { sources } = extractSearchData(p as any);
+              if (sources.length > 0) {
+                parts.push({ type: "sources", sources } as any);
+              }
+            }
           }
+          // Do NOT add thoughts / reasoning to parts across reloads
         }
       }
 
