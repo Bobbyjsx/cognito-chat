@@ -1,11 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { LogOut, Menu, SquarePen } from "lucide-react";
+import { Menu, SquarePen } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
-import { Spinner } from "@/components/ui/spinner";
 import { ChatSessionActionsMenu } from "./ChatSessionActionsMenu";
 
 interface NavbarProps {
@@ -23,17 +20,7 @@ export function Navbar({
   onDeleteClick,
   isDeleting = false,
 }: NavbarProps) {
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const router = useRouter();
-
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-    try {
-      await signOut({ callbackUrl: "/login" });
-    } catch {
-      setIsSigningOut(false);
-    }
-  };
 
   const handleNewChatClick = () => {
     if (onNewChat) {
@@ -58,15 +45,6 @@ export function Navbar({
         <Logo />
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        {onShareClick && onDeleteClick && (
-          <ChatSessionActionsMenu
-            variant="header"
-            isDeleting={isDeleting}
-            onShare={onShareClick}
-            onDelete={onDeleteClick}
-            triggerClassName="text-gray-medium hover:text-on-surface hover:bg-surface-container size-9"
-          />
-        )}
         {onNewChat && (
           <button
             type="button"
@@ -78,19 +56,15 @@ export function Navbar({
             <SquarePen className="h-4 w-4" />
           </button>
         )}
-        <button
-          type="button"
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-          title="Sign Out"
-          className="text-gray-medium hover:text-error hover:bg-surface-container rounded-lg p-2 transition-colors duration-200 disabled:opacity-60"
-        >
-          {isSigningOut ? (
-            <Spinner className="h-4 w-4" />
-          ) : (
-            <LogOut className="h-4 w-4" />
-          )}
-        </button>
+        {onShareClick && onDeleteClick && (
+          <ChatSessionActionsMenu
+            variant="header"
+            isDeleting={isDeleting}
+            onShare={onShareClick}
+            onDelete={onDeleteClick}
+            triggerClassName="text-gray-medium hover:text-on-surface hover:bg-surface-container size-9"
+          />
+        )}
       </div>
     </header>
   );

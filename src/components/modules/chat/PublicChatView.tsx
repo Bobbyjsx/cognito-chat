@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { UIMessage } from "ai";
@@ -40,16 +40,24 @@ export function PublicChatView({ shareId }: PublicChatViewProps) {
   const { data: sharedChat, isLoading, isError } = useGetSharedChat(shareId);
   const continueChat = useContinueSharedChat();
   const hasAutoContinuedRef = useRef(false);
+  const [isRedirectingToLogin, setIsRedirectingToLogin] = useState(false);
 
   const isContinueAction = searchParams.get("action") === "continue";
 
   const handleContinueChat = useCallback(() => {
-    if (status === "loading" || continueChat.isPending) return;
+    if (
+      status === "loading" ||
+      continueChat.isPending ||
+      isRedirectingToLogin
+    ) {
+      return;
+    }
 
     if (status === "unauthenticated" || !session) {
+      setIsRedirectingToLogin(true);
       // Store callback in state/query param and redirect to auth
       const callbackPath = `/share/${shareId}?action=continue`;
-      router.push(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`);
+      window.location.href = `/login?callbackUrl=${encodeURIComponent(callbackPath)}`;
       return;
     }
 
@@ -63,7 +71,7 @@ export function PublicChatView({ shareId }: PublicChatViewProps) {
         toast.error("Failed to continue chat. Please try again.");
       },
     });
-  }, [status, session, shareId, router, continueChat]);
+  }, [status, session, shareId, router, continueChat, isRedirectingToLogin]);
 
   // Auto-redirect owner to their original session
   useEffect(() => {
@@ -242,15 +250,21 @@ export function PublicChatView({ shareId }: PublicChatViewProps) {
           type="button"
           size="default"
           onClick={handleContinueChat}
-          disabled={continueChat.isPending}
+          disabled={continueChat.isPending || isRedirectingToLogin}
           className="group shadow-primary/20 hover:shadow-primary/30 border-primary/20 h-11 gap-2.5 rounded-full border px-5 text-xs font-medium shadow-xl transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
         >
-          {continueChat.isPending ? (
+          {continueChat.isPending || isRedirectingToLogin ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <MessageSquarePlus className="h-4 w-4 transition-transform group-hover:scale-110" />
           )}
-          <span>Continue in chat</span>
+          <span>
+            {isRedirectingToLogin
+              ? "Connecting..."
+              : continueChat.isPending
+                ? "Continuing..."
+                : "Continue in chat"}
+          </span>
           <ArrowRight className="text-primary-foreground/70 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </Button>
       </div>

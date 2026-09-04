@@ -125,7 +125,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#FBFBFA",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -136,14 +136,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className="scroll-smooth bg-[#FBFBFA]"
+      className="bg-background scroll-smooth"
       suppressHydrationWarning
     >
       <head>
         <style
           dangerouslySetInnerHTML={{
-            __html: `html,body{background-color:#FBFBFA;color:#111111;}
-.startup-screen{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#FBFBFA;color:#111;padding:0 16px;user-select:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:opacity .45s ease,transform .45s ease}
+            __html: `html,body{background-color:#ffffff;color:#111111;}
+.startup-screen{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;color:#111;padding:0 16px;user-select:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:opacity .45s ease,transform .45s ease}
 .startup-screen.is-exiting{opacity:0;transform:scale(1.02);pointer-events:none}
 html.skip-startup .startup-screen{display:none!important}
 .startup-logo{animation:startup-pulse 1s ease-in-out infinite}
@@ -185,7 +185,7 @@ html.skip-startup .startup-screen{display:none!important}
         className={cn(
           geist.variable,
           geistMono.variable,
-          "min-h-dvh bg-[#FBFBFA]",
+          "bg-background min-h-dvh",
         )}
       >
         <AppStartupScreen />

@@ -422,21 +422,9 @@ export function ChatSidebar({
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
                 >
-                  <Link
-                    href={`/chat/${session.id}`}
-                    scroll={false}
-                    data-session-id={session.id}
-                    prefetch={idx <= 5}
-                    onClick={(e) => {
-                      if (isDeleting || isActionsMenuOpen) {
-                        e.preventDefault();
-                        return;
-                      }
-                      closeSidebar();
-                      setTimeout(() => onSelectSession?.(session.id), 0);
-                    }}
+                  <div
                     className={cn(
-                      "group relative flex h-full w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-150",
+                      "group relative flex h-full w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-150",
                       isActive
                         ? "bg-muted text-foreground font-medium"
                         : isUnread
@@ -445,7 +433,21 @@ export function ChatSidebar({
                       isDeleting && "pointer-events-none opacity-60",
                     )}
                   >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Link
+                      href={`/chat/${session.id}`}
+                      scroll={false}
+                      data-session-id={session.id}
+                      prefetch={idx <= 5}
+                      onClick={(e) => {
+                        if (isDeleting) {
+                          e.preventDefault();
+                          return;
+                        }
+                        closeSidebar();
+                        setTimeout(() => onSelectSession?.(session.id), 0);
+                      }}
+                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 outline-none"
+                    >
                       {session.activeGenerationId ? (
                         <Loader2
                           className={cn(
@@ -466,12 +468,16 @@ export function ChatSidebar({
                       <span className="truncate text-[13px]">
                         {sessionTitle}
                       </span>
-                    </div>
+                    </Link>
 
                     <div
                       className="flex shrink-0 items-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                      }}
                     >
                       {relativeTime && !isDeleting && !isActionsMenuOpen && (
                         <span className="text-muted-foreground/50 text-[10px] md:group-hover:hidden">
@@ -512,7 +518,7 @@ export function ChatSidebar({
                         />
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 </div>
               );
             })}
