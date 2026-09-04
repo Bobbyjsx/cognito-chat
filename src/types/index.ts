@@ -110,6 +110,7 @@ export interface TextModelConfig {
   description: string;
   enabled: boolean;
   reasoningModes: string[];
+  provider?: string;
 }
 
 /** Categorization of an uploaded attachment (mirrors backend AttachmentType). */
