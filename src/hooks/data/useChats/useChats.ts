@@ -40,6 +40,35 @@ export async function fetchChatSessions({
   return data;
 }
 
+// In-memory tracker for recently dispatched generations that may not yet be confirmed in cache
+let pendingGenerationsCount = 0;
+let pendingGenerationUntil = 0;
+
+export function registerPendingGeneration(_sessionId?: string | null) {
+  pendingGenerationsCount++;
+  // Keep polling active for up to 30 seconds after a message was sent,
+  // guaranteeing that the client discovers the queued background generation
+  // even if the user navigates away or switches tabs immediately.
+  pendingGenerationUntil = Math.max(
+    pendingGenerationUntil,
+    Date.now() + 30_000,
+  );
+}
+
+export function clearPendingGeneration() {
+  if (pendingGenerationsCount > 0) {
+    pendingGenerationsCount--;
+  }
+  if (pendingGenerationsCount === 0) {
+    pendingGenerationUntil = 0;
+  }
+}
+
+export function isPendingGenerationActive(): boolean {
+  if (Date.now() < pendingGenerationUntil) return true;
+  return pendingGenerationsCount > 0;
+}
+
 export function useGetSessions(searchQuery?: string, limit: number = 15) {
   const normalizedQuery = searchQuery || "";
 
@@ -58,15 +87,21 @@ export function useGetSessions(searchQuery?: string, limit: number = 15) {
     staleTime: 10 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
-    // Poll ONLY when there is at least one active background generation in progress.
-    // If no session has activeGenerationId, polling is completely disabled (false).
+    // Continue polling when window/tab is in the background so push notifications can trigger
+    refetchIntervalInBackground: true,
+    // Poll when there is at least one active background generation in progress
+    // OR when a generation was recently dispatched (< 30s ago).
     refetchInterval: (query) => {
       const data = query.state.data;
-      if (!data?.pages) return false;
-      const hasActive = data.pages.some((page) =>
-        page.items?.some((s) => Boolean(s.activeGenerationId)),
+      const hasActive = Boolean(
+        data?.pages?.some((page) =>
+          page.items?.some((s) => Boolean(s.activeGenerationId)),
+        ),
       );
-      return hasActive ? 3000 : false;
+      if (hasActive || isPendingGenerationActive()) {
+        return 2500;
+      }
+      return false;
     },
   });
 }

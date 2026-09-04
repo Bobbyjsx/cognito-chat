@@ -208,6 +208,8 @@ export function useBackgroundGenerationsEngine() {
       },
       // Poll with exponential backoff after 7 polls (2s -> 3s -> 4.5s -> 6.75s -> 10s max)
       refetchInterval: (q: any) => getGenerationPollInterval(q),
+      // Crucial: continue polling in background tabs so completion notification triggers while away
+      refetchIntervalInBackground: true,
     })),
   });
 

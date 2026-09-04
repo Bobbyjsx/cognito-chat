@@ -7,6 +7,8 @@ import {
   useGetSession,
   useGetSessions,
   useActiveGeneration,
+  registerPendingGeneration,
+  clearPendingGeneration,
 } from "@/hooks/data/useChats/useChats";
 import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachments";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
@@ -309,8 +311,9 @@ export function ChatShell() {
       }
 
       // Immediately stamp activeGenerationId into the sessions cache so the sidebar
-      // spinner appears without waiting for the next 3s poll.
+      // spinner appears without waiting for the next poll.
       if (data.generationId) {
+        clearPendingGeneration();
         const genId = data.generationId;
         registerActiveSession(nextId);
         queryClient.setQueriesData<{
@@ -667,16 +670,20 @@ export function ChatShell() {
         },
       );
 
-      if (!activeSessionId) {
-        // Mark global mutation BEFORE the setTimeout so Axios knows to bypass cache
-        markGlobalMutation();
-        // Optimistically invalidate the sidebar list so it refreshes immediately.
-        // It might take a couple hundreds ms for the DB to populate the session,
-        // so we delay the invalidation slightly.
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
-        }, 500);
-      }
+      registerPendingGeneration(activeSessionId);
+      markGlobalMutation();
+
+      // Invalidate the sessions list on a staggered timeline so the background
+      // worker / queued generation is discovered even if the user leaves immediately.
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
+      }, 800);
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
+      }, 2000);
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
+      }, 4000);
     },
     [
       sendMessage,
@@ -690,7 +697,9 @@ export function ChatShell() {
 
   const handleNewChat = useCallback(() => {
     if (isStreaming) {
+      registerPendingGeneration(streamSessionId || routeSessionId);
       stop();
+      queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
     }
     setStreamSessionId(null);
     setHydratedSessionId(null);
@@ -704,13 +713,24 @@ export function ChatShell() {
     if (pathname !== "/chat" && pathname !== "/chat/") {
       router.push("/chat");
     }
-  }, [setAiMessages, isStreaming, stop, pathname, router]);
+  }, [
+    setAiMessages,
+    isStreaming,
+    stop,
+    pathname,
+    router,
+    streamSessionId,
+    routeSessionId,
+    queryClient,
+  ]);
 
   const handleSelectSession = useCallback(
     (id: string) => {
       if (id === routeSessionId) return;
       if (isStreaming) {
+        registerPendingGeneration(streamSessionId || routeSessionId);
         stop();
+        queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       }
       setStreamSessionId(null);
       setHydratedSessionId(null);
@@ -719,7 +739,7 @@ export function ChatShell() {
       setLastTerminalGen(null);
       router.push(`/chat/${id}`);
     },
-    [routeSessionId, isStreaming, stop, router],
+    [routeSessionId, isStreaming, stop, router, streamSessionId, queryClient],
   );
 
   const streamingMessageId =

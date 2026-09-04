@@ -84,7 +84,6 @@ export async function POST(req: Request) {
         headers: {
           Accept: "text/event-stream",
         },
-        signal: req.signal,
       },
     );
   } catch (err: any) {

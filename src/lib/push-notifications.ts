@@ -121,12 +121,42 @@ export async function showBrowserPushNotification({
     ...data,
   };
 
-  // 1. Primary: Direct standard Notification constructor (matches proven implementation)
+  // 1. Primary: Service Worker showNotification
+  // Essential for PWAs so clicking the notification wakes up the SW and deep-links
+  // to the specific chat session even if the PWA was completely closed.
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      const registration =
+        (await navigator.serviceWorker.getRegistration()) ||
+        (await navigator.serviceWorker.ready);
+      if (registration && "showNotification" in registration) {
+        const swOptions: NotificationOptions & { renotify?: boolean } = {
+          body,
+          icon,
+          badge,
+          tag,
+          data: notificationData,
+          renotify,
+          silent,
+        };
+        await registration.showNotification(title, swOptions);
+        return true;
+      }
+    } catch (swErr) {
+      console.warn(
+        "ServiceWorker showNotification failed, using fallback:",
+        swErr,
+      );
+    }
+  }
+
+  // 2. Fallback: Direct standard Notification constructor (desktop browsers without active SW)
   try {
     const notif = new Notification(title, {
       body,
       icon: icon || DEFAULT_ICON,
       tag,
+      data: notificationData,
       requireInteraction: false,
     });
 
@@ -140,27 +170,6 @@ export async function showBrowserPushNotification({
 
     return true;
   } catch {
-    // 2. Fallback: Service Worker showNotification (for mobile browsers that forbid new Notification)
-    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration && "showNotification" in registration) {
-          const swOptions: NotificationOptions & { renotify?: boolean } = {
-            body,
-            icon,
-            badge,
-            tag,
-            data: notificationData,
-            renotify,
-            silent,
-          };
-          await registration.showNotification(title, swOptions);
-          return true;
-        }
-      } catch (swErr) {
-        console.error("ServiceWorker showNotification failed:", swErr);
-      }
-    }
     return false;
   }
 }

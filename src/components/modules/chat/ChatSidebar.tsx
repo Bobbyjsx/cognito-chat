@@ -466,14 +466,14 @@ export function ChatSidebar({
                       onClick={(e) => e.stopPropagation()}
                     >
                       {relativeTime && !isDeleting && (
-                        <span className="text-muted-foreground/50 text-[10px] group-hover:hidden">
+                        <span className="text-muted-foreground/50 text-[10px] md:group-hover:hidden">
                           {relativeTime}
                         </span>
                       )}
                       {isUnread && !isDeleting && (
                         <span
                           title="Unread message"
-                          className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full group-hover:hidden"
+                          className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full md:group-hover:hidden"
                         />
                       )}
 
@@ -482,11 +482,12 @@ export function ChatSidebar({
                         disabled={deleteSessionMutation.isPending}
                         onClick={(e) => handleDeleteSession(e, session.id)}
                         title="Delete conversation"
+                        aria-label="Delete conversation"
                         className={cn(
                           "text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors",
                           isDeleting
                             ? "text-destructive block"
-                            : "hidden md:group-hover:block",
+                            : "block md:hidden md:group-hover:block [@media(hover:none)]:block",
                         )}
                       >
                         {isDeleting ? (

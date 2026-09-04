@@ -1,5 +1,5 @@
 // Cognito PWA Service Worker
-const CACHE_NAME = "cognito-cache-v2";
+const CACHE_NAME = "cognito-cache-v3";
 const OFFLINE_URL = "/chat";
 
 const PRECACHE_ASSETS = [
@@ -98,26 +98,23 @@ self.addEventListener("fetch", (event) => {
 // Notification click handler: focus existing window and deep-link to session URL
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || "/chat";
+  const rawUrl = event.notification.data?.url || "/chat";
+  const targetUrl = new URL(rawUrl, self.location.origin).href;
 
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
-      .then((windowClients) => {
+      .then(async (windowClients) => {
         for (const client of windowClients) {
           if ("focus" in client) {
-            if (client.url && client.url.includes(urlToOpen)) {
-              return client.focus();
+            if ("navigate" in client && client.url !== targetUrl) {
+              await client.navigate(targetUrl);
             }
-            return client.focus().then((focusedClient) => {
-              if (focusedClient && "navigate" in focusedClient) {
-                return focusedClient.navigate(urlToOpen);
-              }
-            });
+            return client.focus();
           }
         }
         if (self.clients.openWindow) {
-          return self.clients.openWindow(urlToOpen);
+          return self.clients.openWindow(targetUrl);
         }
       }),
   );
