@@ -40,6 +40,8 @@ export function middleware(request: NextRequest) {
 
   if (isProtectedRoute(pathname) && !session) {
     const redirectUrl = new URL("/login", request.url);
+    const callbackUrl = pathname + request.nextUrl.search;
+    redirectUrl.searchParams.set("callbackUrl", callbackUrl);
     if (pathname !== redirectUrl.pathname) {
       return NextResponse.redirect(redirectUrl);
     }

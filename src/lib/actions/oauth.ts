@@ -16,12 +16,18 @@ export async function initiateOAuth() {
 interface ExchangeCacheEntry {
   tokens: unknown;
   user: unknown;
+  returnTo?: string;
   timestamp: number;
 }
 
 const serverInFlightExchanges = new Map<
   string,
-  Promise<{ tokens: unknown; user: unknown; error: string | null }>
+  Promise<{
+    tokens: unknown;
+    user: unknown;
+    returnTo?: string;
+    error: string | null;
+  }>
 >();
 const serverExchangeCache = new Map<string, ExchangeCacheEntry>();
 
@@ -40,7 +46,12 @@ export async function completeOAuthLogin(code: string, state: string) {
     cleanExpiredServerCache();
     const cached = serverExchangeCache.get(code);
     if (cached) {
-      return { tokens: cached.tokens, user: cached.user, error: null };
+      return {
+        tokens: cached.tokens,
+        user: cached.user,
+        returnTo: cached.returnTo,
+        error: null,
+      };
     }
 
     // 2. Check if this code is currently being exchanged concurrently
@@ -54,6 +65,7 @@ export async function completeOAuthLogin(code: string, state: string) {
     const inFlight = parseInFlightOAuth(inFlightRaw);
 
     const matched = inFlight.find((item) => item.s === state);
+    const returnTo = matched?.r;
 
     // Fallback check for legacy single-slot cookies
     const legacyState = cookieStore.get("oauth_state")?.value;
@@ -86,20 +98,31 @@ export async function completeOAuthLogin(code: string, state: string) {
         serverExchangeCache.set(code, {
           tokens: result.tokens,
           user: result.user,
+          returnTo,
           timestamp: Date.now(),
         });
 
-        return { tokens: result.tokens, user: result.user, error: null };
+        return {
+          tokens: result.tokens,
+          user: result.user,
+          returnTo,
+          error: null,
+        };
       } finally {
         serverInFlightExchanges.delete(code);
       }
     })();
 
     serverInFlightExchanges.set(code, exchangeExecution);
-    const { tokens, user, error } = await exchangeExecution;
+    const {
+      tokens,
+      user,
+      error,
+      returnTo: resolvedReturnTo,
+    } = await exchangeExecution;
 
     if (error) {
-      return { tokens: null, user: null, error };
+      return { tokens: null, user: null, returnTo: undefined, error };
     }
 
     // Remove the redeemed state from in-flight list
@@ -120,10 +143,10 @@ export async function completeOAuthLogin(code: string, state: string) {
     cookieStore.delete("oauth_state");
     cookieStore.delete("oauth_code_verifier");
 
-    return { tokens, user, error: null };
+    return { tokens, user, returnTo: resolvedReturnTo, error: null };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("completeOAuthLogin error:", message);
-    return { tokens: null, user: null, error: message };
+    return { tokens: null, user: null, returnTo: undefined, error: message };
   }
 }

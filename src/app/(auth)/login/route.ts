@@ -37,6 +37,12 @@ export async function GET(request: NextRequest) {
     ? url
     : new URL(url, request.url).toString();
 
+  const returnTo =
+    request.nextUrl.searchParams.get("callbackUrl") ||
+    request.nextUrl.searchParams.get("callback") ||
+    request.nextUrl.searchParams.get("returnTo") ||
+    undefined;
+
   const existingInFlight = parseInFlightOAuth(
     request.cookies.get("oauth_in_flight")?.value,
   );
@@ -44,6 +50,8 @@ export async function GET(request: NextRequest) {
     existingInFlight,
     state,
     codeVerifier,
+    10 * 60 * 1000,
+    returnTo,
   );
 
   const response = NextResponse.redirect(redirectTarget);
