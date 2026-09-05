@@ -111,6 +111,7 @@ export interface ChatSessionListItem {
   excludeFromMemory?: boolean;
   /** Present when this session has an active public share link. */
   shareId?: string | null;
+  animateTitle?: boolean;
   createdAt: string;
   updatedAt: string;
 }

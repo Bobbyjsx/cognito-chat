@@ -635,6 +635,50 @@ function SidebarExpandedContent({
   );
 }
 
+function TypewriterTitle({
+  text,
+  animate = false,
+  speed = 28,
+  className,
+}: {
+  text: string;
+  animate?: boolean;
+  speed?: number;
+  className?: string;
+}) {
+  const [charCount, setCharCount] = useState(animate ? 0 : text.length);
+
+  useEffect(() => {
+    if (!animate) return;
+
+    const interval = setInterval(() => {
+      setCharCount((prev) => {
+        if (prev < text.length) {
+          return prev + 1;
+        }
+        clearInterval(interval);
+        return prev;
+      });
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, animate, speed]);
+
+  const displayedText = animate ? text.slice(0, charCount) : text;
+  const isTyping = animate && charCount < text.length;
+
+  return (
+    <span className={className}>
+      {displayedText}
+      {isTyping && (
+        <span className="text-primary/70 ml-0.5 inline-block animate-pulse font-mono text-[10px] leading-none">
+          ▌
+        </span>
+      )}
+    </span>
+  );
+}
+
 function SidebarSessionItem({
   session,
   idx,
@@ -697,7 +741,7 @@ function SidebarSessionItem({
           data-session-id={session.id}
           prefetch={idx <= 5}
           onClick={(e) => {
-            if (isDeleting) {
+            if (isDeleting || session.id.startsWith("optimistic-")) {
               e.preventDefault();
               return;
             }
@@ -706,7 +750,8 @@ function SidebarSessionItem({
           }}
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 outline-none"
         >
-          {session.activeGenerationId ? (
+          {session.activeGenerationId ||
+          session.id.startsWith("optimistic-") ? (
             <Loader2
               className={cn(
                 "h-3.5 w-3.5 shrink-0 animate-spin transition-colors",
@@ -723,7 +768,11 @@ function SidebarSessionItem({
               )}
             />
           )}
-          <span className="truncate text-[13px]">{sessionTitle}</span>
+          <TypewriterTitle
+            text={sessionTitle}
+            animate={Boolean(session.animateTitle)}
+            className="truncate text-[13px]"
+          />
         </Link>
 
         <div

@@ -285,14 +285,21 @@ export function useActiveGeneration(
     };
   }, [sessionId, generationId]);
 
+  const isUuid = Boolean(
+    generationId &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      generationId,
+    ),
+  );
+
   const query = useQuery({
     queryKey: ["generation", generationId],
     queryFn: async () => {
-      if (!generationId) return null;
+      if (!generationId || !isUuid) return null;
       const { data } = await api.get(`/agent/generations/${generationId}`);
       return data;
     },
-    enabled: Boolean(generationId),
+    enabled: isUuid,
     refetchInterval: (q) => getGenerationPollInterval(q),
   });
 
