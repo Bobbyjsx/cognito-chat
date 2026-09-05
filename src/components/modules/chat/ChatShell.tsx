@@ -33,7 +33,7 @@ import type {
 } from "@/types";
 import { ChatInput } from "./ChatInput";
 import { ChatMessageList } from "./ChatMessageList";
-import { ChatSidebar } from "./ChatSidebar";
+import { ChatSidebar, TypewriterTitle } from "./ChatSidebar";
 import { Navbar } from "./Navbar";
 import { ArtifactCanvas } from "./ArtifactCanvas";
 import { useArtifactStore } from "@/hooks/useArtifactStore";
@@ -191,7 +191,14 @@ export function ChatShell() {
   const hasSentAttachmentsRef = useRef(false);
   const lastHydratedKeyRef = useRef<string>("");
 
-  const activeSessionId = routeSessionId ?? streamSessionId ?? pendingSessionId;
+  const [optimisticSessionId, setOptimisticSessionId] = useState<string | null>(
+    null,
+  );
+  const activeSessionId =
+    routeSessionId ??
+    streamSessionId ??
+    pendingSessionId ??
+    optimisticSessionId;
 
   const defaultModel = config?.defaultTextModel || "gemini-3.6-flash";
   const defaultReasoning = config?.defaultReasoningLevel || "medium";
@@ -206,6 +213,8 @@ export function ChatShell() {
   // Track whether the page is currently unloading/reloading to silently suppress all stream disconnect errors
   const isUnloadingRef = useRef(false);
   const optimisticSessionIdRef = useRef<string | null>(null);
+  const [headerTitle, setHeaderTitle] = useState<string | null>(null);
+  const [animateHeaderTitle, setAnimateHeaderTitle] = useState(false);
 
   useEffect(() => {
     currentModelRef.current = userSelectedModel;
@@ -235,11 +244,12 @@ export function ChatShell() {
 
   const { data: sessionsData } = useGetSessions();
   const sidebarSession = useMemo(() => {
-    if (!routeSessionId) return null;
+    const targetId = routeSessionId ?? streamSessionId ?? optimisticSessionId;
+    if (!targetId) return null;
     return sessionsData?.pages
       ?.flatMap((p) => p?.items || [])
-      ?.find((s) => s && s.id === routeSessionId);
-  }, [sessionsData, routeSessionId]);
+      ?.find((s) => s && s.id === targetId);
+  }, [sessionsData, routeSessionId, streamSessionId, optimisticSessionId]);
 
   const activeGenerationId = routeSessionId
     ? sessionPages?.pages[0]?.activeGenerationId ||
@@ -290,6 +300,43 @@ export function ChatShell() {
       ) || [],
     [sessionPages],
   );
+
+  const currentHeaderTitle =
+    headerTitle ||
+    sessionData?.title ||
+    sidebarSession?.title ||
+    "Conversation";
+
+  const [prevRouteId, setPrevRouteId] = useState(routeSessionId);
+  const [prevSourceTitle, setPrevSourceTitle] = useState<string | null>(null);
+
+  if (prevRouteId !== routeSessionId) {
+    setPrevRouteId(routeSessionId);
+    setHeaderTitle(null);
+    setAnimateHeaderTitle(false);
+    setPrevSourceTitle(
+      (sessionData?.title || sidebarSession?.title)?.trim() ?? null,
+    );
+  }
+
+  const currentSourceTitle =
+    (sessionData?.title || sidebarSession?.title)?.trim() ?? null;
+  if (
+    prevRouteId === routeSessionId &&
+    currentSourceTitle &&
+    prevSourceTitle !== currentSourceTitle
+  ) {
+    setPrevSourceTitle(currentSourceTitle);
+    if (
+      prevSourceTitle &&
+      currentSourceTitle !== "Conversation" &&
+      currentSourceTitle !== "New Chat" &&
+      currentSourceTitle !== headerTitle
+    ) {
+      setHeaderTitle(currentSourceTitle);
+      setAnimateHeaderTitle(true);
+    }
+  }
 
   // Ensure the active session is populated in the sidebar sessions cache if not yet present (e.g. freshly imported shared chat)
   useEffect(() => {
@@ -374,12 +421,22 @@ export function ChatShell() {
       const optimisticId = optimisticSessionIdRef.current;
       if (optimisticId) {
         optimisticSessionIdRef.current = null;
+        setOptimisticSessionId(null);
       }
 
       // Update the session details cache if available
       if (nextTitle) {
+        setHeaderTitle(nextTitle);
+        setAnimateHeaderTitle(true);
         queryClient.setQueryData<any>(["chat-session", nextId], (old: any) => {
-          if (!old) return old;
+          if (!old) {
+            return {
+              id: nextId,
+              title: nextTitle,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+          }
           return {
             ...old,
             title: nextTitle,
@@ -760,6 +817,9 @@ export function ChatShell() {
       if (!activeSessionId) {
         const optimisticId = `optimistic-${Date.now()}`;
         optimisticSessionIdRef.current = optimisticId;
+        setOptimisticSessionId(optimisticId);
+        setHeaderTitle(text);
+        setAnimateHeaderTitle(false);
 
         queryClient.setQueriesData<{
           pages: PaginatedResponse<ChatSessionListItem>[];
@@ -812,6 +872,10 @@ export function ChatShell() {
     setStreamSessionId(null);
     setHydratedSessionId(null);
     setPendingSessionId(null);
+    setOptimisticSessionId(null);
+    optimisticSessionIdRef.current = null;
+    setHeaderTitle(null);
+    setAnimateHeaderTitle(false);
     streamedSessionRef.current = null;
     setLastTerminalGen(null);
     setUserSelectedModel(null);
@@ -1060,9 +1124,13 @@ export function ChatShell() {
 
         {activeSessionId && (
           <header className="border-border/40 bg-background/50 hidden h-11 w-full shrink-0 items-center justify-between border-b px-5 backdrop-blur-xs md:flex">
-            <span className="text-muted-foreground max-w-[400px] truncate text-xs font-medium">
-              {sessionData?.title || "Conversation"}
-            </span>
+            <TypewriterTitle
+              text={currentHeaderTitle}
+              animate={animateHeaderTitle}
+              speed={28}
+              onComplete={() => setAnimateHeaderTitle(false)}
+              className="text-muted-foreground max-w-[400px] text-xs font-medium"
+            />
             <ChatSessionActionsMenu
               variant="header"
               isDeleting={deleteSessionMutation.isPending}

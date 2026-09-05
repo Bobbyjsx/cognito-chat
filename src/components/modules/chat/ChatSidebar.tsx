@@ -635,43 +635,64 @@ function SidebarExpandedContent({
   );
 }
 
-function TypewriterTitle({
+export function TypewriterTitle({
   text,
   animate = false,
   speed = 28,
   className,
+  onComplete,
 }: {
   text: string;
   animate?: boolean;
   speed?: number;
   className?: string;
+  onComplete?: () => void;
 }) {
-  const [charCount, setCharCount] = useState(animate ? 0 : text.length);
+  const safeText = text || "";
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const [prevAnimate, setPrevAnimate] = useState(animate);
+  const [prevText, setPrevText] = useState(safeText);
+  const [hasCompleted, setHasCompleted] = useState(false);
+  const [displayedCount, setDisplayedCount] = useState(
+    animate ? 0 : safeText.length,
+  );
+
+  if (prevAnimate !== animate || prevText !== safeText) {
+    setPrevAnimate(animate);
+    setPrevText(safeText);
+    setHasCompleted(false);
+    setDisplayedCount(animate ? 0 : safeText.length);
+  }
 
   useEffect(() => {
-    if (!animate) return;
+    if (!animate || hasCompleted) return;
 
+    let current = 0;
     const interval = setInterval(() => {
-      setCharCount((prev) => {
-        if (prev < text.length) {
-          return prev + 1;
-        }
+      current += 1;
+      setDisplayedCount(current);
+      if (current >= safeText.length) {
         clearInterval(interval);
-        return prev;
-      });
+        setHasCompleted(true);
+        onCompleteRef.current?.();
+      }
     }, speed);
 
     return () => clearInterval(interval);
-  }, [text, animate, speed]);
+  }, [safeText, animate, hasCompleted, speed]);
 
-  const displayedText = animate ? text.slice(0, charCount) : text;
-  const isTyping = animate && charCount < text.length;
+  const displayedText = animate ? safeText.slice(0, displayedCount) : safeText;
+  const isTyping = animate && displayedCount < safeText.length;
 
   return (
-    <span className={className}>
-      {displayedText}
+    <span className={cn("inline-flex min-w-0 items-center", className)}>
+      <span className="truncate">{displayedText}</span>
       {isTyping && (
-        <span className="text-primary/70 ml-0.5 inline-block animate-pulse font-mono text-[10px] leading-none">
+        <span className="text-primary/70 ml-0.5 inline-block shrink-0 animate-pulse font-mono text-[10px] leading-none">
           ▌
         </span>
       )}
@@ -771,6 +792,7 @@ function SidebarSessionItem({
           <TypewriterTitle
             text={sessionTitle}
             animate={Boolean(session.animateTitle)}
+            speed={28}
             className="truncate text-[13px]"
           />
         </Link>
