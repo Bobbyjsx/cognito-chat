@@ -24,8 +24,6 @@ export function formatModelDisplayName(id?: string): string {
       return "Gemini 3.1 Flash Lite";
     case "gemini-3-flash-preview":
       return "Gemini 3 Flash Preview";
-    case "gemini-2.5-pro":
-      return "Gemini 2.5 Pro";
     case "gemini-2.0-flash":
       return "Gemini 2.0 Flash";
     case "gemini-2.0-flash-lite":
