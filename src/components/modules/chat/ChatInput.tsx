@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "@/components/ui/toast";
 import {
   PromptInput,
@@ -21,6 +21,8 @@ import type { FileUIPart } from "ai";
 import type { ChatStatus } from "ai";
 import { AttachmentChips } from "./AttachmentChips";
 import { useProfile } from "@/hooks/data/useAuth/useAuth";
+import { getQuotaSnapshot, formatPreciseCountdown } from "@/lib/quota";
+import type { UserProfile } from "@/types";
 import { LibraryGalleryModal } from "../library/LibraryGalleryModal";
 import {
   DropdownMenu,
@@ -29,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   Monitor,
   Image as ImageIcon,
@@ -37,6 +40,8 @@ import {
   Loader2,
   X,
   Check,
+  Lock,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -200,6 +205,10 @@ function ChatInputForm({
     }
   }, [transcript, isListening, sttMode, controller.textInput]);
 
+  const isUploadingAttachments = controller.attachments.files.some(
+    (f) => !f.uploadedId && !f.error,
+  );
+
   return (
     <>
       <PromptInputBody>
@@ -355,7 +364,7 @@ function ChatInputForm({
                     controller.textInput.setInput(lastSentText);
                   }
                 }}
-                disabled={isBusy && !canStop}
+                disabled={(isBusy && !canStop) || isUploadingAttachments}
                 className="bg-primary text-on-primary rounded-lg transition-all duration-200 hover:bg-[#3d3f42] active:scale-[0.96]"
               />
             </>
@@ -363,6 +372,74 @@ function ChatInputForm({
         </div>
       </PromptInputFooter>
     </>
+  );
+}
+
+function QuotaLimitBanner({
+  profile,
+  onRefresh,
+}: {
+  profile: UserProfile | undefined;
+  onRefresh: () => void;
+}) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const q = getQuotaSnapshot(profile, nowMs);
+  const is6hExceeded = q.pct6h >= 100;
+
+  const raw = profile as unknown as Record<string, unknown> | undefined;
+  const targetIso = is6hExceeded
+    ? profile?.resetAt || (raw?.reset_at as string | undefined)
+    : profile?.weeklyResetAt || (raw?.weekly_reset_at as string | undefined);
+
+  const { formatted: countdownText, isExpired } = formatPreciseCountdown(
+    targetIso,
+    nowMs,
+  );
+
+  useEffect(() => {
+    if (isExpired && targetIso) {
+      onRefresh();
+    }
+  }, [isExpired, targetIso, onRefresh]);
+
+  return (
+    <div className="ambient-shadow bg-surface-container-low/95 relative w-full overflow-hidden rounded-[24px] border border-[rgba(0,0,0,0.06)] p-3.5 shadow-sm backdrop-blur-md sm:px-5 sm:py-4">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex min-w-0 items-start gap-3 sm:items-center">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 sm:h-9 sm:w-9 sm:rounded-2xl dark:bg-amber-400/10 dark:text-amber-400">
+            <Clock className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-on-surface text-sm font-semibold tracking-tight">
+              Quota limit reached
+            </h4>
+            <p className="text-gray-medium text-xs leading-relaxed sm:text-[13px]">
+              You have reached your quota limit, messaging is paused until quota
+              resets.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center self-start pl-11 sm:self-center sm:pl-0">
+          <div className="bg-surface-container-high/90 text-on-surface flex items-center gap-1.5 rounded-xl border border-[rgba(0,0,0,0.06)] px-3 py-1 font-mono text-xs font-medium">
+            <span className="text-gray-medium font-sans text-[11px]">
+              Resets in
+            </span>
+            <span className="text-on-surface font-semibold">
+              {countdownText}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -376,7 +453,11 @@ export function ChatInput({
   onSelectReasoning,
 }: ChatInputProps) {
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
-  const { isLoading: isProfileLoading } = useProfile();
+  const {
+    data: profile,
+    isLoading: isProfileLoading,
+    refetch: refetchProfile,
+  } = useProfile();
   const [lastSentText, setLastSentText] = useState("");
 
   const isBusy = status === "submitted" || status === "streaming";
@@ -385,6 +466,15 @@ export function ChatInput({
   const accept = acceptFromAllowedTypes(config?.attachmentAllowedTypes);
   const maxFiles = config?.attachmentMaxCount ?? 10;
   const maxFileSize = config?.attachmentMaxSize ?? 20_000_000;
+
+  const [nowMs] = useState(() => Date.now());
+  const quota = useMemo(
+    () => getQuotaSnapshot(profile, nowMs),
+    [profile, nowMs],
+  );
+  const is6hExceeded = quota.pct6h >= 100;
+  const isWeeklyExceeded = quota.pctWeekly >= 100;
+  const isQuotaExceeded = (is6hExceeded || isWeeklyExceeded) && !isBusy;
 
   if (isConfigLoading || isProfileLoading) {
     return (
@@ -440,16 +530,12 @@ export function ChatInput({
       }
     });
 
-    const unuploadedFiles = message.files.filter((f) => !f.uploadedId);
-
-    setLastSentText(message.text);
-
     onSend(
       text,
       selectedModel,
       selectedReasoning,
       attachmentIds,
-      unuploadedFiles,
+      message.files,
       attachmentMeta,
     );
   };
@@ -457,31 +543,35 @@ export function ChatInput({
   return (
     <div className="bg-background/60 pointer-events-none absolute inset-x-0 bottom-0 z-10 shrink-0 [mask-image:linear-gradient(to_bottom,transparent,black_20%)] px-3 pt-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-6 sm:pb-4 md:px-6 md:pt-6 md:pb-6">
       <div className="pointer-events-auto relative mx-auto w-full max-w-[800px]">
-        <PromptInputProvider>
-          <PromptInput
-            onSubmit={handleSubmit}
-            className="ambient-shadow bg-surface-container-low w-full overflow-hidden rounded-[24px] border border-[rgba(0,0,0,0.06)] transition-all duration-200 [&_[data-slot=input-group]]:!border-0 [&_[data-slot=input-group]]:!ring-0"
-            accept={attachmentsEnabled ? accept : undefined}
-            multiple
-            maxFiles={maxFiles}
-            maxFileSize={maxFileSize}
-            onError={(err) => toast.error(err.message)}
-          >
-            <ChatInputForm
-              selectedModel={selectedModel}
-              onSelectModel={onSelectModel}
-              selectedReasoning={selectedReasoning}
-              onSelectReasoning={onSelectReasoning}
-              status={status}
-              onStop={onStop}
-              isBusy={isBusy}
-              canStop={canStop}
-              attachmentsEnabled={attachmentsEnabled}
-              lastSentText={lastSentText}
-              config={config}
-            />
-          </PromptInput>
-        </PromptInputProvider>
+        {isQuotaExceeded ? (
+          <QuotaLimitBanner profile={profile} onRefresh={refetchProfile} />
+        ) : (
+          <PromptInputProvider>
+            <PromptInput
+              onSubmit={handleSubmit}
+              className="ambient-shadow bg-surface-container-low w-full overflow-hidden rounded-[24px] border border-[rgba(0,0,0,0.06)] transition-all duration-200 [&_[data-slot=input-group]]:!border-0 [&_[data-slot=input-group]]:!ring-0"
+              accept={attachmentsEnabled ? accept : undefined}
+              multiple
+              maxFiles={maxFiles}
+              maxFileSize={maxFileSize}
+              onError={(err) => toast.error(err.message)}
+            >
+              <ChatInputForm
+                selectedModel={selectedModel}
+                onSelectModel={onSelectModel}
+                selectedReasoning={selectedReasoning}
+                onSelectReasoning={onSelectReasoning}
+                status={status}
+                onStop={onStop}
+                isBusy={isBusy}
+                canStop={canStop}
+                attachmentsEnabled={attachmentsEnabled}
+                lastSentText={lastSentText}
+                config={config}
+              />
+            </PromptInput>
+          </PromptInputProvider>
+        )}
       </div>
     </div>
   );

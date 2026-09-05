@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@/lib/axios";
+import { uploadFileDirectly } from "@/hooks/data/useAttachments/useAttachments";
 import {
   Command,
   CommandEmpty,
@@ -198,6 +199,7 @@ export interface AttachmentsContext {
       filename: string;
       mimeType: string;
       size?: number;
+      url?: string | null;
     }[],
   ) => void;
   remove: (id: string) => void;
@@ -307,6 +309,7 @@ export const PromptInputProvider = ({
         filename: string;
         mimeType: string;
         size?: number;
+        url?: string | null;
       }[],
     ) => {
       if (attachments.length === 0) return;
@@ -319,7 +322,7 @@ export const PromptInputProvider = ({
           type: "file" as const,
           uploadedId: att.id,
           progress: 100,
-          url: `/agent/attachments/${att.id}/content`,
+          url: att.url || `/agent/attachments/${att.id}/content`,
         })),
       ]);
     },
@@ -633,6 +636,10 @@ export const PromptInput = ({
           const prefix = pattern.slice(0, -1);
           return f.type.startsWith(prefix);
         }
+        if (pattern.startsWith(".")) {
+          // e.g: .docx, .pdf, .xlsx -> check filename extension
+          return f.name.toLowerCase().endsWith(pattern.toLowerCase());
+        }
         return f.type === pattern;
       });
     },
@@ -698,6 +705,7 @@ export const PromptInput = ({
         filename: string;
         mimeType: string;
         size?: number;
+        url?: string | null;
       }[],
     ) => {
       if (attachments.length === 0) return;
@@ -710,7 +718,7 @@ export const PromptInput = ({
           type: "file" as const,
           uploadedId: att.id,
           progress: 100,
-          url: `/agent/attachments/${att.id}/content`,
+          url: att.url || `/agent/attachments/${att.id}/content`,
         })),
       ]);
     },
@@ -1059,30 +1067,17 @@ export const PromptInput = ({
         // Mark as uploading (progress = 0)
         update(item.id, { progress: 0 });
 
-        const formData = new FormData();
-        formData.append("file", item.file);
-
-        api
-          .post("/agent/attachments", formData, {
-            onUploadProgress: (progressEvent) => {
-              const progress = progressEvent.progress
-                ? Math.round(progressEvent.progress * 100)
-                : Math.round(
-                    (progressEvent.loaded /
-                      (progressEvent.total || item.file!.size)) *
-                      100,
-                  );
-              update(item.id, { progress: Math.min(progress, 99) }); // Keep at 99 until backend fully responds
-            },
-          })
-          .then((res) => {
-            update(item.id, { uploadedId: res.data.id, progress: 100 });
+        uploadFileDirectly(item.file, (p) => {
+          update(item.id, { progress: p });
+        })
+          .then((att) => {
+            update(item.id, { uploadedId: att.id, progress: 100 });
           })
           .catch((err) => {
             update(item.id, {
               error:
                 err.response?.data?.detail || err.message || "Failed to upload",
-              progress: undefined, // Reset progress so it could potentially be retried?
+              progress: undefined,
             });
           });
       }
@@ -1423,8 +1418,8 @@ export const PromptInputSubmit = ({
   const canStop = isGenerating && Boolean(onStop);
 
   const ctx = useOptionalPromptInputController();
-  const isUploading = ctx?.attachments.files.some(
-    (f) => f.progress !== undefined && f.progress < 100,
+  const isUploading = Boolean(
+    ctx?.attachments.files.some((f) => !f.uploadedId && !f.error),
   );
 
   let Icon = <SendIcon className="size-4" />;
@@ -1452,7 +1447,7 @@ export const PromptInputSubmit = ({
   // When the user can stop generation, the button must remain active and clickable
   const isButtonDisabled = canStop
     ? false
-    : (disabled ?? (isUploading || (isGenerating && !onStop)));
+    : Boolean(isUploading || disabled || (isGenerating && !onStop));
 
   return (
     <InputGroupButton

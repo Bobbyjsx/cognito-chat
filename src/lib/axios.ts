@@ -81,7 +81,16 @@ export function markGlobalMutation() {
 
 api.interceptors.request.use(
   async (config) => {
-    if (!config.isAuthReq) {
+    const isAbsoluteUrl =
+      typeof config.url === "string" &&
+      (config.url.startsWith("http://") || config.url.startsWith("https://"));
+    const isExternalUrl =
+      isAbsoluteUrl &&
+      !config.url?.startsWith(baseURL) &&
+      (typeof window === "undefined" ||
+        !config.url?.startsWith(window.location.origin));
+
+    if (!config.isAuthReq && !isExternalUrl) {
       await authManager.applyAuthTokenToReq(config);
     }
     transformToSnakeCase(config);

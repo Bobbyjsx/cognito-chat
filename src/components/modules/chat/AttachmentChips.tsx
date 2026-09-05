@@ -1,17 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
-import { FileTextIcon, XIcon, AlertCircleIcon } from "lucide-react";
+import { FileTextIcon, XIcon } from "lucide-react";
 import {
   usePromptInputAttachments,
   PromptInputHeader,
 } from "@/components/ai-elements/prompt-input";
 import { isPreviewableType } from "@/lib/attachments";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/axios";
 import { OptimizedImage } from "@/components/ui/optimized-image";
-import { useQueryClient } from "@tanstack/react-query";
-import type { AttachmentSchema } from "@/types";
 
 function DonutProgress({ progress }: { progress: number }) {
   const radius = 9;
@@ -52,47 +48,7 @@ function DonutProgress({ progress }: { progress: number }) {
  * input. Images show an inline thumbnail; other files show a file icon.
  */
 export function AttachmentChips({ className }: { className?: string }) {
-  const { files, remove, update } = usePromptInputAttachments();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    for (const file of files) {
-      if (
-        file.file &&
-        file.progress === undefined &&
-        !file.uploadedId &&
-        !file.error
-      ) {
-        // mark as started
-        update(file.id, { progress: 0 });
-        const formData = new FormData();
-        formData.append("file", file.file);
-
-        api
-          .post<AttachmentSchema>("/agent/attachments", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-            onUploadProgress: (progressEvent) => {
-              if (progressEvent.total) {
-                const p = Math.round(
-                  (progressEvent.loaded * 100) / progressEvent.total,
-                );
-                update(file.id, { progress: p });
-              }
-            },
-          })
-          .then(({ data }) => {
-            update(file.id, { uploadedId: data.id, progress: 100 });
-            queryClient.invalidateQueries({ queryKey: ["chat-attachments"] });
-            queryClient.invalidateQueries({
-              queryKey: ["attachments-library"],
-            });
-          })
-          .catch((err) => {
-            update(file.id, { error: err.message || "Failed to upload" });
-          });
-      }
-    }
-  }, [files, update, queryClient]);
+  const { files, remove } = usePromptInputAttachments();
 
   if (files.length === 0) return null;
 
@@ -100,11 +56,7 @@ export function AttachmentChips({ className }: { className?: string }) {
     <PromptInputHeader className={cn("pt-2", className)}>
       {files.map((file) => {
         const previewable = isPreviewableType(file.mediaType);
-        const isUploading =
-          file.progress !== undefined &&
-          file.progress < 100 &&
-          !file.error &&
-          !file.uploadedId;
+        const isUploading = !file.uploadedId && !file.error;
 
         return (
           <div
@@ -114,7 +66,7 @@ export function AttachmentChips({ className }: { className?: string }) {
               file.error && "border-red-500/50 bg-red-50",
             )}
           >
-            <div className="relative h-8 w-8 shrink-0">
+            <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md">
               {previewable ? (
                 <OptimizedImage
                   src={file.url}

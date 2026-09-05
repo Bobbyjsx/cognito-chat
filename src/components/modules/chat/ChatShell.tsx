@@ -10,10 +10,9 @@ import {
   useDeleteSession,
   registerPendingGeneration,
   clearPendingGeneration,
+  resetAllPendingGenerations,
 } from "@/hooks/data/useChats/useChats";
-import { useGetSessionAttachments } from "@/hooks/data/useAttachments/useAttachments";
 import { useGetConfig } from "@/hooks/data/useConfig/useConfig";
-import { attachmentById } from "@/lib/attachments";
 import {
   markGlobalMutation,
   registerActiveSession,
@@ -42,6 +41,15 @@ import { GripVertical, Info } from "lucide-react";
 import { ShareChatModal } from "./ShareChatModal";
 import { ChatSessionActionsMenu } from "./ChatSessionActionsMenu";
 import { toast } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isSearchTool, extractSearchData } from "@/components/ai-elements/tool";
 
@@ -218,6 +226,7 @@ export function ChatShell() {
   const {
     data: sessionPages,
     isLoading: isSessionLoading,
+    isError: isSessionError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -321,10 +330,6 @@ export function ChatShell() {
     });
   }, [sessionData, routeSessionId, queryClient]);
 
-  const { data: sessionAttachments } = useGetSessionAttachments(
-    config?.enableAttachments ? routeSessionId : null,
-  );
-
   const {
     messages: aiMessages,
     setMessages: setAiMessages,
@@ -337,6 +342,7 @@ export function ChatShell() {
     }),
     onData: (dataPart) => {
       if (dataPart.type !== "data-session") return;
+      clearPendingGeneration();
       const data = dataPart.data as {
         sessionId?: string;
         generationId?: string;
@@ -411,6 +417,7 @@ export function ChatShell() {
       }
     },
     onFinish: ({ message, messages: finishMessages }) => {
+      clearPendingGeneration();
       // Mark the global mutation in Axios so the subsequent profile fetch gets no-cache headers
       markGlobalMutation();
 
@@ -473,28 +480,34 @@ export function ChatShell() {
       }
     },
     onError: (err) => {
+      clearPendingGeneration();
+
       // If the page is reloading or unloading, suppress all errors silently
       if (isUnloadingRef.current) {
         return;
       }
 
+      const rawMsg = (err as Error)?.message ?? "";
+      const msg = rawMsg.toLowerCase();
+      const name = (err as Error)?.name ?? "";
+
+      // Invalidate profile on quota limit errors so UI immediately updates to exceeded state
+      if (msg.includes("limit reached") || msg.includes("quota")) {
+        resetAllPendingGenerations();
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+      }
+
       // Suppress abort/cancel/network/disconnect errors — these fire when
       // the user navigates away or reloads during an active stream, or when
       // the generation is sent to the background worker.
-      const msg = (err as Error)?.message?.toLowerCase?.() ?? "";
-      const name = (err as Error)?.name ?? "";
-
       if (
         (err instanceof DOMException && err.name === "AbortError") ||
         name === "AbortError" ||
         msg.includes("abort") ||
         msg.includes("cancel") ||
         msg.includes("network") ||
-        msg.includes("fetch") ||
         msg.includes("failed to fetch") ||
         msg.includes("load failed") ||
-        msg.includes("stream") ||
-        msg.includes("connection") ||
         msg.includes("closed") ||
         msg.includes("premature") ||
         msg.includes("client disconnected")
@@ -515,6 +528,7 @@ export function ChatShell() {
       if (isStreaming) {
         queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       }
+      clearPendingGeneration();
     };
   }, [isStreaming, queryClient]);
 
@@ -528,24 +542,13 @@ export function ChatShell() {
 
   const formattedAllMessages = useMemo<UIMessage[]>(() => {
     const rawList = allMessages.map((m: MessageSchema, idx: number) => {
-      const experimental_attachments: any[] = [];
-
-      for (const attachmentId of m.attachmentIds ?? []) {
-        const attachment = attachmentById(sessionAttachments, attachmentId);
-        if (!attachment) continue;
-        experimental_attachments.push({
-          contentType: attachment.mimeType,
-          name: attachment.filename,
-          url: `/agent/attachments/${attachment.id}/content`,
-          size: attachment.size,
-        });
-      }
-
       const parts: UIMessage["parts"] = [];
       if (Array.isArray(m.parts) && m.parts.length > 0) {
         for (const p of m.parts) {
           if (p.type === "text" && typeof (p as any).text === "string") {
             parts.push({ type: "text", text: (p as any).text });
+          } else if (p.type === "file") {
+            parts.push(p as any);
           } else if (p.type === "sources" || p.type === "source") {
             parts.push(p as any);
           } else if (p.type === "tool" || (p as any).type === "dynamic-tool") {
@@ -572,7 +575,6 @@ export function ChatShell() {
         role: toAssistantRole(m.role),
         content: m.content,
         parts,
-        experimental_attachments,
         ...(m.error ? { error: m.error } : {}),
       } as any;
     });
@@ -599,7 +601,7 @@ export function ChatShell() {
     }
 
     return rawList;
-  }, [allMessages, sessionAttachments]);
+  }, [allMessages]);
 
   // Hydrate from session history when navigating between existing sessions
   useEffect(() => {
@@ -667,33 +669,14 @@ export function ChatShell() {
         };
       }
 
-      // Build rich experimental_attachments for the optimistic message chip.
-      // Prefer metadata we already have in sessionAttachments or pendingAttachmentMetaRef.
-      const optimisticAttachments = (attachmentIds ?? []).map((id) => {
-        const known =
-          sessionAttachments?.find((a) => a.id === id) ??
-          (pendingAttachmentMetaRef.current[id]
-            ? {
-                mimeType: pendingAttachmentMetaRef.current[id].mimeType,
-                filename: pendingAttachmentMetaRef.current[id].filename,
-                id,
-              }
-            : null);
-        return {
-          type: "file",
-          url: `/agent/attachments/${id}/content`,
-          name: known?.filename ?? `Attachment ${id}`,
-          filename: known?.filename ?? `Attachment ${id}`,
-          contentType: known?.mimeType,
-          mediaType: known?.mimeType,
-        };
-      });
-
-      const allFiles = [...(files || [])];
-      for (const opt of optimisticAttachments) {
-        // cast because optimisticAttachments uses mediaType which matches FileUIPart
-        allFiles.push(opt as any);
-      }
+      const allFiles = (files || []).map((f) => ({
+        type: "file" as const,
+        url: f.url,
+        name: f.filename ?? "Attachment",
+        filename: f.filename ?? "Attachment",
+        contentType: f.mediaType,
+        mediaType: f.mediaType,
+      }));
 
       if (allFiles.length > 0 || (attachmentIds && attachmentIds.length > 0)) {
         hasSentAttachmentsRef.current = true;
@@ -731,14 +714,7 @@ export function ChatShell() {
         queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
       }, 4000);
     },
-    [
-      sendMessage,
-      activeModel,
-      activeReasoning,
-      activeSessionId,
-      sessionAttachments,
-      queryClient,
-    ],
+    [sendMessage, activeModel, activeReasoning, activeSessionId, queryClient],
   );
 
   const handleNewChat = useCallback(() => {
@@ -809,6 +785,7 @@ export function ChatShell() {
       : null;
 
   const showSessionLoading =
+    !isSessionError &&
     !isStreaming &&
     !Boolean(activeGenerationId) &&
     (isSessionSwitchPending ||
@@ -1057,6 +1034,32 @@ export function ChatShell() {
         open={isShareModalOpen}
         onOpenChange={setIsShareModalOpen}
       />
+
+      {/* Deleted or Not Found Session Dialog */}
+      <Dialog
+        open={Boolean(routeSessionId && isSessionError)}
+        onOpenChange={(open) => {
+          if (!open) handleNewChat();
+        }}
+      >
+        <DialogContent className="sm:max-w-sm" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Conversation not found</DialogTitle>
+            <DialogDescription>
+              This conversation may have been deleted or does not exist.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => handleNewChat()}
+              className="w-full sm:w-auto"
+            >
+              Start new chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

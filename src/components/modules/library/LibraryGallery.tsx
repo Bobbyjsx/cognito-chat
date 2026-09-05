@@ -1,41 +1,139 @@
 "use client";
 
-import { useGetLibraryAttachments } from "@/hooks/data/useAttachments/useAttachments";
+import {
+  useGetLibraryAttachments,
+  useDeleteAttachment,
+} from "@/hooks/data/useAttachments/useAttachments";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Download,
-  MessageSquare,
-  Share2,
   X,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Search,
-  Filter,
   FileText,
-  Image as ImageIcon,
   File,
 } from "lucide-react";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { PdfViewer } from "@/components/modules/library/PdfViewer";
+import { LibraryAttachmentActionsMenu } from "@/components/modules/library/LibraryAttachmentActionsMenu";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuGroup,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
 import { api } from "@/lib/axios";
 import type { AttachmentSchema } from "@/types";
 
 type FilterType =
   "all" | "image" | "document" | "json" | "spreadsheet" | "audio" | "video";
+
+interface LibraryAttachmentCardProps {
+  item: AttachmentSchema;
+  idx: number;
+  imgUrl: string;
+  isImg: boolean;
+  isPdf: boolean;
+  downloadingId: string | null;
+  isDeleting: boolean;
+  onSelect: () => void;
+  onDownload: () => void;
+  onDelete: () => void;
+  onGoToChat?: () => void;
+}
+
+function LibraryAttachmentCard({
+  item,
+  isImg,
+  isPdf,
+  imgUrl,
+  downloadingId,
+  isDeleting,
+  onSelect,
+  onDownload,
+  onDelete,
+  onGoToChat,
+}: LibraryAttachmentCardProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isDownloading = downloadingId === item.id;
+
+  return (
+    <div
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="group bg-surface-container-low focus-visible:ring-ring relative flex aspect-square w-full cursor-pointer flex-col overflow-hidden rounded-xl border text-left transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
+    >
+      {isImg ? (
+        <OptimizedImage
+          src={imgUrl}
+          attachmentId={item.id}
+          urlExpiresAt={item.urlExpiresAt}
+          alt={item.filename}
+          fill
+          containerClassName="h-full w-full"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <div className="bg-surface-container flex flex-1 flex-col items-center justify-center p-4">
+          {isPdf ? (
+            <FileText className="h-12 w-12 text-blue-500 opacity-80" />
+          ) : (
+            <File className="h-12 w-12 text-gray-500 opacity-80" />
+          )}
+        </div>
+      )}
+
+      {/* Card quick actions - Menu Ellipsis */}
+      <div
+        className={cn(
+          "absolute top-2 right-2 z-10 flex items-center transition-opacity",
+          isMenuOpen || isDownloading || isDeleting
+            ? "opacity-100"
+            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100",
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <LibraryAttachmentActionsMenu
+          open={isMenuOpen}
+          onOpenChange={setIsMenuOpen}
+          onDownload={onDownload}
+          onDelete={onDelete}
+          onGoToChat={onGoToChat}
+          isDownloading={isDownloading}
+          isDeleting={isDeleting}
+          triggerClassName="bg-background/85 hover:bg-background text-foreground size-7 rounded-lg border border-border/80 shadow-xs backdrop-blur-md"
+        />
+      </div>
+
+      <div className="bg-background/80 absolute right-0 bottom-0 left-0 border-t p-3 backdrop-blur-sm">
+        <p className="truncate text-sm font-medium">{item.filename}</p>
+        <p className="text-muted-foreground text-xs">
+          {new Intl.DateTimeFormat("en-US", {
+            month: "short",
+            day: "numeric",
+          }).format(new Date(item.uploadedAt))}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface LibraryGalleryProps {
   onMenuClick?: () => void;
@@ -58,9 +156,15 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
     useGetLibraryAttachments(mimeTypeFilter, debouncedQuery, 15);
 
+  const router = useRouter();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(
     null,
   );
+  const [itemToDelete, setItemToDelete] = useState<AttachmentSchema | null>(
+    null,
+  );
+  const deleteAttachmentMutation = useDeleteAttachment();
 
   const allItems = data?.pages.flatMap((page) => page?.items || []) || [];
 
@@ -87,7 +191,20 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const handleDownload = async (attachment: AttachmentSchema) => {
+    if (downloadingId) return;
+    setDownloadingId(attachment.id);
     try {
+      // 1. If we have a direct download_url (signed with Content-Disposition: attachment)
+      if (attachment.downloadUrl) {
+        const a = document.createElement("a");
+        a.href = attachment.downloadUrl;
+        a.download = attachment.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+      // 2. Fallback: fetch blob from backend content endpoint and download via blob URL
       const response = await api.get(
         `/agent/attachments/${attachment.id}/content`,
         { responseType: "blob" },
@@ -102,19 +219,25 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
       document.body.removeChild(a);
     } catch (error) {
       console.error("Download failed", error);
+      toast.error("Failed to download file");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
-  const handleShare = async (attachment: AttachmentSchema) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: attachment.filename,
-          url: `${window.location.origin}/agent/attachments/${attachment.id}/content`,
-        });
-      } catch (error) {
-        console.error("Share failed", error);
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete || deleteAttachmentMutation.isPending) return;
+    const targetId = itemToDelete.id;
+    try {
+      await deleteAttachmentMutation.mutateAsync(targetId);
+      toast.success("Attachment deleted");
+      if (selectedItem?.id === targetId) {
+        setSelectedItemIndex(null);
       }
+      setItemToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete attachment", error);
+      toast.error("Failed to delete attachment");
     }
   };
 
@@ -122,30 +245,35 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
     selectedItemIndex !== null ? uniqueItems[selectedItemIndex] : null;
 
   const navigatePrev = () => {
-    if (selectedItemIndex !== null && selectedItemIndex > 0) {
-      setSelectedItemIndex(selectedItemIndex - 1);
-    }
+    setSelectedItemIndex((prev) =>
+      prev !== null && prev > 0 ? prev - 1 : prev,
+    );
   };
 
   const navigateNext = () => {
-    if (
-      selectedItemIndex !== null &&
-      selectedItemIndex < uniqueItems.length - 1
-    ) {
-      setSelectedItemIndex(selectedItemIndex + 1);
-    }
+    setSelectedItemIndex((prev) =>
+      prev !== null && prev < uniqueItems.length - 1 ? prev + 1 : prev,
+    );
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedItemIndex === null) return;
       if (e.key === "Escape") setSelectedItemIndex(null);
-      if (e.key === "ArrowLeft") navigatePrev();
-      if (e.key === "ArrowRight") navigateNext();
+      if (e.key === "ArrowLeft") {
+        setSelectedItemIndex((prev) =>
+          prev !== null && prev > 0 ? prev - 1 : prev,
+        );
+      }
+      if (e.key === "ArrowRight") {
+        setSelectedItemIndex((prev) =>
+          prev !== null && prev < uniqueItems.length - 1 ? prev + 1 : prev,
+        );
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedItemIndex, navigatePrev, navigateNext]);
+  }, [selectedItemIndex, uniqueItems.length]);
 
   const isImage = (mimeType: string) => mimeType.startsWith("image/");
   const isPDF = (mimeType: string) => mimeType === "application/pdf";
@@ -267,44 +395,33 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {uniqueItems.map((item, idx) => {
-              const imgUrl = `/agent/attachments/${item.id}/content`;
+              const imgUrl =
+                item.url || `/agent/attachments/${item.id}/content`;
               const isImg = isImage(item.mimeType);
+              const isPdf = isPDF(item.mimeType);
 
               return (
-                <button
+                <LibraryAttachmentCard
                   key={item.id}
-                  onClick={() => setSelectedItemIndex(idx)}
-                  className="group bg-surface-container-low focus-visible:ring-ring relative flex aspect-square w-full flex-col overflow-hidden rounded-xl border text-left transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
-                >
-                  {isImg ? (
-                    <OptimizedImage
-                      src={imgUrl}
-                      alt={item.filename}
-                      fill
-                      containerClassName="h-full w-full"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="bg-surface-container flex flex-1 flex-col items-center justify-center p-4">
-                      {isPDF(item.mimeType) ? (
-                        <FileText className="h-12 w-12 text-blue-500 opacity-80" />
-                      ) : (
-                        <File className="h-12 w-12 text-gray-500 opacity-80" />
-                      )}
-                    </div>
-                  )}
-                  <div className="bg-background/80 absolute right-0 bottom-0 left-0 border-t p-3 backdrop-blur-sm">
-                    <p className="truncate text-sm font-medium">
-                      {item.filename}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {new Intl.DateTimeFormat("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      }).format(new Date(item.uploadedAt))}
-                    </p>
-                  </div>
-                </button>
+                  item={item}
+                  idx={idx}
+                  imgUrl={imgUrl}
+                  isImg={isImg}
+                  isPdf={isPdf}
+                  downloadingId={downloadingId}
+                  isDeleting={
+                    deleteAttachmentMutation.isPending &&
+                    itemToDelete?.id === item.id
+                  }
+                  onSelect={() => setSelectedItemIndex(idx)}
+                  onDownload={() => handleDownload(item)}
+                  onDelete={() => setItemToDelete(item)}
+                  onGoToChat={
+                    item.sessionId
+                      ? () => router.push(`/chat/${item.sessionId}`)
+                      : undefined
+                  }
+                />
               );
             })}
           </div>
@@ -322,7 +439,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
       {selectedItem &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="bg-background/95 fixed inset-0 z-[100] flex flex-col backdrop-blur-sm">
+          <div className="bg-background/95 fixed inset-0 z-40 flex flex-col backdrop-blur-sm">
             {/* Top Bar */}
             <div className="flex h-16 items-center justify-between px-4">
               <div className="flex flex-col">
@@ -339,34 +456,34 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
                   }).format(new Date(selectedItem.uploadedAt))}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleShare(selectedItem)}
-                >
-                  <Share2 className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDownload(selectedItem)}
-                >
-                  <Download className="h-5 w-5" />
-                </Button>
-                {selectedItem.sessionId && (
-                  <Link href={`/chat/${selectedItem.sessionId}`}>
-                    <Button variant="ghost" size="icon">
-                      <MessageSquare className="h-5 w-5" />
-                    </Button>
-                  </Link>
-                )}
+              <div className="flex items-center gap-1.5">
+                <LibraryAttachmentActionsMenu
+                  onDownload={() => handleDownload(selectedItem)}
+                  onDelete={() => setItemToDelete(selectedItem)}
+                  onGoToChat={
+                    selectedItem.sessionId
+                      ? () => {
+                          const sid = selectedItem.sessionId;
+                          setSelectedItemIndex(null);
+                          router.push(`/chat/${sid}`);
+                        }
+                      : undefined
+                  }
+                  isDownloading={downloadingId === selectedItem.id}
+                  isDeleting={
+                    deleteAttachmentMutation.isPending &&
+                    itemToDelete?.id === selectedItem.id
+                  }
+                />
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSelectedItemIndex(null)}
+                  title="Close"
+                  aria-label="Close"
+                  className="text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground h-8 w-8 rounded-full"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
@@ -377,34 +494,57 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="bg-background/50 hover:bg-background/80 absolute left-4 z-10 h-12 w-12 rounded-full"
+                  className="bg-background/85 hover:bg-background text-foreground border-border/80 absolute left-4 z-10 h-11 w-11 rounded-full border shadow-md shadow-black/10 backdrop-blur-md transition-all active:scale-95"
                   onClick={navigatePrev}
+                  title="Previous"
+                  aria-label="Previous file"
                 >
-                  <ChevronLeft className="h-8 w-8" />
+                  <ChevronLeft className="h-6 w-6" />
                 </Button>
               )}
 
               <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
                 {isImage(selectedItem.mimeType) ? (
                   <OptimizedImage
-                    src={`/agent/attachments/${selectedItem.id}/content`}
+                    src={
+                      selectedItem.url ||
+                      `/agent/attachments/${selectedItem.id}/content`
+                    }
+                    attachmentId={selectedItem.id}
+                    urlExpiresAt={selectedItem.urlExpiresAt}
                     alt={selectedItem.filename}
                     fill
                     containerClassName="h-full w-full border-none rounded-none"
                     className="object-contain"
                   />
                 ) : isPDF(selectedItem.mimeType) ? (
-                  <iframe
-                    src={`/agent/attachments/${selectedItem.id}/content`}
-                    title={selectedItem.filename}
-                    className="h-full w-full max-w-4xl rounded-xl bg-white shadow-lg"
+                  <PdfViewer
+                    key={selectedItem.url || selectedItem.id}
+                    url={
+                      selectedItem.url ||
+                      `/agent/attachments/${selectedItem.id}/content`
+                    }
+                    filename={selectedItem.filename}
+                    onDownload={() => handleDownload(selectedItem)}
+                    isDownloading={downloadingId === selectedItem.id}
+                    className="h-full w-full max-w-4xl"
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-4">
                     <File className="text-muted-foreground h-24 w-24 opacity-50" />
                     <p className="text-lg font-medium">Preview not available</p>
-                    <Button onClick={() => handleDownload(selectedItem)}>
-                      Download File
+                    <Button
+                      disabled={downloadingId === selectedItem.id}
+                      onClick={() => handleDownload(selectedItem)}
+                    >
+                      {downloadingId === selectedItem.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      {downloadingId === selectedItem.id
+                        ? "Downloading..."
+                        : "Download File"}
                     </Button>
                   </div>
                 )}
@@ -415,16 +555,65 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="bg-background/50 hover:bg-background/80 absolute right-4 z-10 h-12 w-12 rounded-full"
+                    className="bg-background/85 hover:bg-background text-foreground border-border/80 absolute right-4 z-10 h-11 w-11 rounded-full border shadow-md shadow-black/10 backdrop-blur-md transition-all active:scale-95"
                     onClick={navigateNext}
+                    title="Next"
+                    aria-label="Next file"
                   >
-                    <ChevronRight className="h-8 w-8" />
+                    <ChevronRight className="h-6 w-6" />
                   </Button>
                 )}
             </div>
           </div>,
           document.body,
         )}
+
+      {/* Delete from Library Confirmation Dialog */}
+      <Dialog
+        open={Boolean(itemToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deleteAttachmentMutation.isPending) {
+            setItemToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete from library?</DialogTitle>
+            <DialogDescription>
+              {itemToDelete?.filename
+                ? `"${itemToDelete.filename}" will be removed from your library. This won't affect messages that reference this attachment.`
+                : "This attachment will be removed from your library. This won't affect messages that reference this attachment."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setItemToDelete(null)}
+              disabled={deleteAttachmentMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteAttachmentMutation.isPending}
+              className="gap-1.5"
+            >
+              {deleteAttachmentMutation.isPending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <span>Delete</span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

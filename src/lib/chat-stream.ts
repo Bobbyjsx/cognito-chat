@@ -325,9 +325,10 @@ export async function pipeBackendStreamToUIMessage({
 
         if (parsed.event === "error") {
           const detail =
-            typeof payload.detail === "string"
-              ? payload.detail
-              : "Streaming error from backend";
+            (typeof payload.detail === "string" && payload.detail) ||
+            (typeof payload.error === "string" && payload.error) ||
+            (typeof payload.message === "string" && payload.message) ||
+            "Streaming error from backend";
           const code =
             typeof payload.code === "string" ? payload.code : undefined;
           writeError(code, detail);

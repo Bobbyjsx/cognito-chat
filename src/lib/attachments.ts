@@ -11,8 +11,10 @@ const ACCEPT_BY_TYPE: Record<AttachmentType, string> = {
   video: "video/*",
   audio: "audio/*",
   pdf: ".pdf,application/pdf",
-  document: ".txt,.md,.csv,.docx,.doc,.rtf,text/*",
-  spreadsheet: ".xlsx,.xls,.csv",
+  document:
+    ".docx,.doc,.txt,.md,.csv,.rtf,text/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword",
+  spreadsheet:
+    ".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel",
   json: ".json,application/json",
   text: "text/*",
 };
