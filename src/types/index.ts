@@ -64,6 +64,18 @@ export type ChatMessagePart =
       title?: string;
       domain?: string;
       faviconUrl?: string;
+    }
+  | {
+      type: "file";
+      url?: string;
+      urlExpiresAt?: string;
+      filename?: string;
+      mediaType?: string;
+      contentType?: string;
+      size?: number;
+      bucket?: string;
+      objectName?: string;
+      attachmentId?: string;
     };
 
 export interface MessageSchema {
@@ -150,11 +162,26 @@ export interface AttachmentSchema {
   id: string;
   filename: string;
   mimeType: string;
+  contentType?: string;
   size: number;
   type: AttachmentType;
   sessionId?: string | null;
+  bucket?: string | null;
+  objectName?: string | null;
   storageUri?: string | null;
+  url?: string | null;
+  urlExpiresAt?: string | null;
+  downloadUrl?: string | null;
+  deletedAt?: string | null;
   uploadedAt: string;
+}
+
+export interface PresignedUploadResponse {
+  attachmentId: string;
+  uploadUrl: string;
+  method: string;
+  headers: Record<string, string>;
+  attachment: AttachmentSchema;
 }
 
 export interface AppConfig {

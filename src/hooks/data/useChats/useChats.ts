@@ -46,27 +46,36 @@ let pendingGenerationUntil = 0;
 
 export function registerPendingGeneration(_sessionId?: string | null) {
   pendingGenerationsCount++;
-  // Keep polling active for up to 30 seconds after a message was sent,
+  // Keep polling active for up to 15 seconds after a message was sent,
   // guaranteeing that the client discovers the queued background generation
   // even if the user navigates away or switches tabs immediately.
   pendingGenerationUntil = Math.max(
     pendingGenerationUntil,
-    Date.now() + 30_000,
+    Date.now() + 15_000,
   );
 }
 
 export function clearPendingGeneration() {
-  if (pendingGenerationsCount > 0) {
-    pendingGenerationsCount--;
-  }
+  pendingGenerationsCount = Math.max(0, pendingGenerationsCount - 1);
   if (pendingGenerationsCount === 0) {
     pendingGenerationUntil = 0;
   }
 }
 
+export function resetAllPendingGenerations() {
+  pendingGenerationsCount = 0;
+  pendingGenerationUntil = 0;
+}
+
 export function isPendingGenerationActive(): boolean {
-  if (Date.now() < pendingGenerationUntil) return true;
-  return pendingGenerationsCount > 0;
+  if (pendingGenerationsCount <= 0) return false;
+  if (Date.now() >= pendingGenerationUntil) {
+    // Window expired: auto-drain stale counter
+    pendingGenerationsCount = 0;
+    pendingGenerationUntil = 0;
+    return false;
+  }
+  return true;
 }
 
 export function useGetSessions(searchQuery?: string, limit: number = 15) {
@@ -90,7 +99,7 @@ export function useGetSessions(searchQuery?: string, limit: number = 15) {
     // Continue polling when window/tab is in the background so push notifications can trigger
     refetchIntervalInBackground: true,
     // Poll when there is at least one active background generation in progress
-    // OR when a generation was recently dispatched (< 30s ago).
+    // OR when a generation was recently dispatched (< 15s ago).
     refetchInterval: (query) => {
       const data = query.state.data;
       const hasActive = Boolean(
@@ -98,8 +107,17 @@ export function useGetSessions(searchQuery?: string, limit: number = 15) {
           page.items?.some((s) => Boolean(s.activeGenerationId)),
         ),
       );
-      if (hasActive || isPendingGenerationActive()) {
+      if (isPendingGenerationActive()) {
         return 2500;
+      }
+      if (hasActive) {
+        // Backoff for active background generations: 2.5s -> 5s -> 10s max
+        const pollCount = query.state.dataUpdateCount ?? 0;
+        if (pollCount <= 6) return 2500;
+        if (pollCount <= 15) return 5000;
+        if (pollCount <= 30) return 10000;
+        // Stop polling after 30 polls (~3.5 minutes) to protect against permanently stuck generations
+        return false;
       }
       return false;
     },
@@ -143,6 +161,10 @@ export function useGetSession(sessionId: string | null, limit: number = 50) {
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      if (error?.response?.status === 404) return false;
+      return failureCount < 2;
+    },
   });
 }
 

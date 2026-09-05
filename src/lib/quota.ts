@@ -42,6 +42,34 @@ export function formatCountdown(
   return `resets in ${parts.join(", ")}`;
 }
 
+/** Precise ticking countdown with seconds (e.g. "03h 42m 15s" or "4d 02h 15m 30s"). */
+export function formatPreciseCountdown(
+  isoString: string | null | undefined,
+  nowMs: number,
+): { formatted: string; isExpired: boolean; totalSeconds: number } {
+  if (!isoString)
+    return { formatted: "Resets soon", isExpired: true, totalSeconds: 0 };
+  const target = new Date(isoString).getTime();
+  const diff = target - nowMs;
+  if (diff <= 0 || Number.isNaN(diff)) {
+    return { formatted: "Resets soon", isExpired: true, totalSeconds: 0 };
+  }
+
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${String(hours).padStart(2, "0")}h`);
+  parts.push(`${String(minutes).padStart(2, "0")}m`);
+  parts.push(`${String(seconds).padStart(2, "0")}s`);
+
+  return { formatted: parts.join(" "), isExpired: false, totalSeconds };
+}
+
 function num(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }

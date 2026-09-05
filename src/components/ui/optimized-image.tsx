@@ -2,17 +2,20 @@
 
 import React, { useState } from "react";
 import Image, { ImageProps } from "next/image";
-import { Terminal, Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { useSecureImage } from "@/hooks/data/useSecureImage";
 
 export interface OptimizedImageProps extends Omit<ImageProps, "src"> {
   src: string | null;
+  attachmentId?: string;
+  urlExpiresAt?: string | Date | null;
   sizeBytes?: number;
   containerClassName?: string;
   fallbackIcon?: React.ReactNode;
   containerProps?: React.HTMLAttributes<HTMLDivElement>;
+  onImageClick?: (url: string) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -30,11 +33,14 @@ function formatFileSize(bytes: number): string {
 export const OptimizedImage = ({
   src,
   alt,
+  attachmentId,
+  urlExpiresAt,
   containerClassName,
   className,
   fallbackIcon,
   containerProps,
   sizeBytes,
+  onImageClick,
   ...props
 }: OptimizedImageProps) => {
   const isPriority = !!props.priority;
@@ -43,7 +49,12 @@ export const OptimizedImage = ({
     objectUrl,
     loading: secureLoading,
     error: secureError,
-  } = useSecureImage(src);
+    retry,
+    handleImageError,
+  } = useSecureImage(src, {
+    attachmentId,
+    urlExpiresAt,
+  });
 
   const [imgLoading, setImgLoading] = useState(!isPriority);
   const [imgError, setImgError] = useState(false);
@@ -62,16 +73,57 @@ export const OptimizedImage = ({
 
   const isFill = !!props.fill;
   const isBlob = typeof objectUrl === "string" && objectUrl.startsWith("blob:");
+  const isExternal =
+    typeof objectUrl === "string" &&
+    (objectUrl.startsWith("http://") || objectUrl.startsWith("https://"));
+  const isSvg = Boolean(
+    (typeof objectUrl === "string" &&
+      (objectUrl.endsWith(".svg") ||
+        objectUrl.includes(".svg?") ||
+        objectUrl.includes("image/svg+xml") ||
+        objectUrl.startsWith("data:image/svg+xml"))) ||
+    (typeof src === "string" &&
+      (src.endsWith(".svg") ||
+        src.includes(".svg?") ||
+        src.includes("image/svg+xml") ||
+        src.startsWith("data:image/svg+xml"))) ||
+    (typeof alt === "string" && alt.toLowerCase().endsWith(".svg")),
+  );
 
   if (!src || error) {
     return (
       <div
         className={cn(
-          "bg-surface-container-low flex h-full min-h-[100px] w-full min-w-[200px] items-center justify-center rounded-xl border border-[rgba(0,0,0,0.06)]",
+          "bg-surface-container-low flex flex-col items-center justify-center gap-1 rounded-xl border border-[rgba(0,0,0,0.06)] text-center",
+          isFill
+            ? "h-full w-full p-1"
+            : "h-full min-h-[100px] w-full min-w-[200px] p-3",
           containerClassName,
         )}
       >
-        {fallbackIcon || <ImageIcon className="text-on-surface/30 h-8 w-8" />}
+        {fallbackIcon || (
+          <ImageIcon
+            className={cn(
+              "text-on-surface/30",
+              isFill ? "h-3.5 w-3.5" : "h-8 w-8",
+            )}
+          />
+        )}
+        {!isFill && (attachmentId || src) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setImgError(false);
+              retry();
+            }}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors hover:underline"
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>Retry</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -130,32 +182,79 @@ export const OptimizedImage = ({
         </div>
       )}
 
-      {objectUrl && (
-        <Image
-          src={objectUrl}
-          alt={alt || "Image"}
-          unoptimized={isBlob}
-          className={cn(
-            "object-cover transition-all duration-700 ease-in-out",
-            isLoading && !isPriority
-              ? "scale-105 blur-md grayscale-[50%]"
-              : "blur-0 scale-100 grayscale-0",
-            !isFill && "h-auto w-full",
-            className,
-          )}
-          onLoad={(e) => {
-            if (!isPriority) setImgLoading(false);
-            props.onLoad?.(e);
-          }}
-          onError={(e) => {
-            setImgError(true);
-            if (!isPriority) setImgLoading(false);
-            props.onError?.(e);
-          }}
-          {...(!isFill ? { width: 0, height: 0, sizes: "100vw" } : {})}
-          {...props}
-        />
-      )}
+      {objectUrl &&
+        (isSvg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={objectUrl}
+            alt={alt || "Image"}
+            className={cn(
+              "transition-all duration-300 ease-in-out",
+              isFill
+                ? "absolute inset-0 h-full w-full object-cover"
+                : "h-auto w-full",
+              onImageClick && "cursor-pointer hover:opacity-95",
+              className,
+            )}
+            onClick={(e) => {
+              if (onImageClick) {
+                e.stopPropagation();
+                onImageClick(objectUrl);
+              }
+            }}
+            onLoad={(e) => {
+              if (!isPriority) setImgLoading(false);
+              props.onLoad?.(e as any);
+            }}
+            onError={async (e) => {
+              const retrying = await handleImageError();
+              if (retrying) {
+                if (!isPriority) setImgLoading(true);
+              } else {
+                setImgError(true);
+                if (!isPriority) setImgLoading(false);
+                props.onError?.(e as any);
+              }
+            }}
+          />
+        ) : (
+          <Image
+            src={objectUrl}
+            alt={alt || "Image"}
+            unoptimized={props.unoptimized ?? (isBlob || isExternal)}
+            className={cn(
+              "object-cover transition-all duration-700 ease-in-out",
+              isLoading && !isPriority
+                ? "scale-105 blur-md grayscale-[50%]"
+                : "blur-0 scale-100 grayscale-0",
+              !isFill && "h-auto w-full",
+              onImageClick && "cursor-pointer hover:opacity-95",
+              className,
+            )}
+            onClick={(e) => {
+              if (onImageClick) {
+                e.stopPropagation();
+                onImageClick(objectUrl);
+              }
+            }}
+            onLoad={(e) => {
+              if (!isPriority) setImgLoading(false);
+              props.onLoad?.(e);
+            }}
+            onError={async (e) => {
+              const retrying = await handleImageError();
+              if (retrying) {
+                if (!isPriority) setImgLoading(true);
+              } else {
+                setImgError(true);
+                if (!isPriority) setImgLoading(false);
+                props.onError?.(e);
+              }
+            }}
+            {...(!isFill ? { width: 0, height: 0, sizes: "100vw" } : {})}
+            {...props}
+          />
+        ))}
     </div>
   );
 };

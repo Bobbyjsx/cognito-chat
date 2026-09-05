@@ -86,7 +86,8 @@ export function LibraryGalleryModal({
             <>
               <div className="grid grid-cols-3 gap-3">
                 {uniqueItems.map((item) => {
-                  const imgUrl = `/agent/attachments/${item.id}/content`;
+                  const imgUrl =
+                    item.url || `/agent/attachments/${item.id}/content`;
                   const isImg = isImage(item.mimeType);
 
                   return (
@@ -101,6 +102,8 @@ export function LibraryGalleryModal({
                       {isImg ? (
                         <OptimizedImage
                           src={imgUrl}
+                          attachmentId={item.id}
+                          urlExpiresAt={item.urlExpiresAt}
                           alt={item.filename}
                           fill
                           containerClassName="h-full w-full rounded-none border-none"

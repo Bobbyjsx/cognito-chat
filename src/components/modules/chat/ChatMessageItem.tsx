@@ -32,6 +32,7 @@ import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { isPreviewableType } from "@/lib/attachments";
+import { api } from "@/lib/axios";
 import {
   AgentResponseBodySkeleton,
   AgentResponseSkeleton,
@@ -110,30 +111,90 @@ function CopyMessageButton({ text }: { text: string }) {
 function AttachmentPart({
   part,
 }: {
-  part: { mediaType?: string; filename?: string; url?: string };
+  part: {
+    mediaType?: string;
+    filename?: string;
+    url?: string;
+    downloadUrl?: string;
+    download_url?: string;
+    urlExpiresAt?: string;
+    attachmentId?: string;
+    attachment_id?: string;
+  };
 }) {
   const { mediaType, filename, url } = part;
+  const downloadUrl = part.downloadUrl || (part as any).download_url;
+  const attachmentId = part.attachmentId || (part as any).attachment_id;
   const name = filename || "Attachment";
-  const previewable = Boolean(url) && isPreviewableType(mediaType || "");
+  const previewable =
+    Boolean(url || attachmentId) && isPreviewableType(mediaType || "");
   if (previewable) {
     return (
       <div className="relative">
         <OptimizedImage
           src={url || ""}
+          attachmentId={attachmentId}
+          urlExpiresAt={part.urlExpiresAt}
           alt={name}
           sizeBytes={(part as any).size}
           className="max-h-48"
+          onImageClick={(currentUrl) => {
+            if (currentUrl) {
+              window.open(currentUrl, "_blank", "noopener,noreferrer");
+            }
+          }}
         />
       </div>
     );
   }
 
+  const handleDownloadFile = async (e: React.MouseEvent) => {
+    if (downloadUrl) {
+      // Direct download via signed URL with Content-Disposition: attachment
+      return;
+    }
+    if (attachmentId) {
+      e.preventDefault();
+      try {
+        const response = await api.get(
+          `/agent/attachments/${attachmentId}/content`,
+          { responseType: "blob" },
+        );
+        const blobUrl = window.URL.createObjectURL(response.data);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+      } catch {
+        if (url) window.open(url, "_blank");
+      }
+    }
+  };
+
+  const content = (
+    <span className="bg-surface-container-low text-on-surface hover:bg-surface-container mt-4 inline-flex max-w-full items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.06)] px-2.5 py-1.5 transition-colors">
+      <FileTextIcon className="text-gray-medium h-4 w-4 shrink-0" />
+      <span className="font-label-md truncate text-xs">{name}</span>
+    </span>
+  );
+
   return (
     <div className="relative inline-block">
-      <span className="bg-surface-container-low text-on-surface mt-4 inline-flex max-w-full items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.06)] px-2.5 py-1.5">
-        <FileTextIcon className="text-gray-medium h-4 w-4 shrink-0" />
-        <span className="font-label-md truncate text-xs">{name}</span>
-      </span>
+      {url || downloadUrl ? (
+        <a
+          href={downloadUrl || url}
+          download={name}
+          onClick={handleDownloadFile}
+          className="block"
+        >
+          {content}
+        </a>
+      ) : (
+        content
+      )}
     </div>
   );
 }

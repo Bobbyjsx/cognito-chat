@@ -88,11 +88,43 @@ export function useBackgroundGenerationsEngine() {
     errorDetail?: string,
     rawResponse?: string,
   ) => {
+    // Generation is done — resume standard caching for this session
+    if (sessionId) {
+      unregisterActiveSession(sessionId);
+    }
+
+    // Optimistically clear activeGenerationId from sessions cache so polling stops immediately
+    queryClient.setQueriesData<{
+      pages: PaginatedResponse<ChatSessionListItem>[];
+      pageParams: number[];
+    }>({ queryKey: ["chat-sessions"] }, (old) => {
+      if (!old?.pages) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page) => ({
+          ...page,
+          items: page.items?.map((s) =>
+            s.id === sessionId || s.activeGenerationId === generationId
+              ? { ...s, activeGenerationId: null }
+              : s,
+          ),
+        })),
+      };
+    });
+
+    queryClient.invalidateQueries({
+      queryKey: ["chat-sessions"],
+      refetchType: "all",
+    });
+    if (sessionId) {
+      queryClient.invalidateQueries({
+        queryKey: ["chat-session", sessionId],
+        refetchType: "all",
+      });
+    }
+
     if (toastedRef.current.has(generationId)) return;
     toastedRef.current.add(generationId);
-
-    // Generation is done — resume standard caching for this session
-    unregisterActiveSession(sessionId);
 
     const fullResponse = getSessionResponseContent(sessionId, rawResponse);
     const sessionTitle = title || "Cognito Chat";
@@ -141,17 +173,6 @@ export function useBackgroundGenerationsEngine() {
       }
       // "cancelled" is silently ignored — it typically means the SSE client
       // disconnected (e.g. page reload/navigation), not a real failure.
-    }
-
-    queryClient.invalidateQueries({
-      queryKey: ["chat-sessions"],
-      refetchType: "all",
-    });
-    if (sessionId) {
-      queryClient.invalidateQueries({
-        queryKey: ["chat-session", sessionId],
-        refetchType: "all",
-      });
     }
   };
 
