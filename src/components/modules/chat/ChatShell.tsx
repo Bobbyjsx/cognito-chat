@@ -205,6 +205,7 @@ export function ChatShell() {
 
   // Track whether the page is currently unloading/reloading to silently suppress all stream disconnect errors
   const isUnloadingRef = useRef(false);
+  const optimisticSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     currentModelRef.current = userSelectedModel;
@@ -341,13 +342,16 @@ export function ChatShell() {
       api: "/api/chat",
     }),
     onData: (dataPart) => {
-      if (dataPart.type !== "data-session") return;
+      if (dataPart.type !== "data-session" && dataPart.type !== "data-title")
+        return;
       clearPendingGeneration();
       const data = dataPart.data as {
         sessionId?: string;
         generationId?: string;
+        title?: string;
       };
       const nextId = data?.sessionId;
+      const nextTitle = data?.title;
       if (!nextId) return;
 
       setStreamSessionId(nextId);
@@ -362,59 +366,113 @@ export function ChatShell() {
         window.history.replaceState(null, "", `/chat/${nextId}`);
       }
 
-      // Immediately stamp activeGenerationId into the sessions cache so the sidebar
-      // spinner appears without waiting for the next poll.
-      if (data.generationId) {
-        clearPendingGeneration();
-        const genId = data.generationId;
+      const genId = data.generationId;
+      if (genId) {
         registerActiveSession(nextId);
-        queryClient.setQueriesData<{
-          pages: PaginatedResponse<ChatSessionListItem>[];
-          pageParams: number[];
-        }>({ queryKey: ["chat-sessions"] }, (old) => {
-          if (!old?.pages) return old;
+      }
 
-          // Check if session already exists in any page
-          const exists = old.pages.some((page) =>
-            page.items?.some((s) => s.id === nextId),
-          );
+      const optimisticId = optimisticSessionIdRef.current;
+      if (optimisticId) {
+        optimisticSessionIdRef.current = null;
+      }
 
-          if (exists) {
-            // Update existing session entry
-            return {
-              ...old,
-              pages: old.pages.map((page) => ({
-                ...page,
-                items: page.items?.map((s) =>
-                  s.id === nextId ? { ...s, activeGenerationId: genId } : s,
-                ),
-              })),
-            };
-          }
-
-          // New session — prepend a minimal stub so the spinner shows immediately
-          const stub: ChatSessionListItem = {
-            id: nextId,
-            userId: "",
-            title: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            activeGenerationId: genId,
-          };
-
-          const [firstPage, ...rest] = old.pages;
+      // Update the session details cache if available
+      if (nextTitle) {
+        queryClient.setQueryData<any>(["chat-session", nextId], (old: any) => {
+          if (!old) return old;
           return {
             ...old,
-            pages: [
-              {
-                ...firstPage,
-                items: [stub, ...(firstPage?.items ?? [])],
-              },
-              ...rest,
-            ],
+            title: nextTitle,
           };
         });
       }
+
+      // Stamp activeGenerationId and title into sessions cache
+      queryClient.setQueriesData<{
+        pages: PaginatedResponse<ChatSessionListItem>[];
+        pageParams: number[];
+      }>({ queryKey: ["chat-sessions"] }, (old) => {
+        if (!old?.pages) return old;
+
+        // If an optimistic session was created, swap its ID and update its title with typing animation
+        const hasOptimistic =
+          optimisticId &&
+          old.pages.some((page) =>
+            page.items?.some((s) => s.id === optimisticId),
+          );
+
+        if (hasOptimistic) {
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items?.map((s) => {
+                if (s.id === optimisticId) {
+                  return {
+                    ...s,
+                    id: nextId,
+                    title: nextTitle || s.title,
+                    animateTitle: Boolean(nextTitle && nextTitle !== s.title),
+                    activeGenerationId: genId || s.activeGenerationId,
+                  };
+                }
+                return s;
+              }),
+            })),
+          };
+        }
+
+        // Check if session already exists in any page
+        const exists = old.pages.some((page) =>
+          page.items?.some((s) => s.id === nextId),
+        );
+
+        if (exists) {
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items?.map((s) =>
+                s.id === nextId
+                  ? {
+                      ...s,
+                      ...(nextTitle
+                        ? {
+                            title: nextTitle,
+                            animateTitle: nextTitle !== s.title,
+                          }
+                        : {}),
+                      ...(genId ? { activeGenerationId: genId } : {}),
+                    }
+                  : s,
+              ),
+            })),
+          };
+        }
+
+        // New session stub
+        const stub: ChatSessionListItem = {
+          id: nextId,
+          userId: "",
+          title: nextTitle ?? null,
+          animateTitle: Boolean(nextTitle),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          activeGenerationId: genId,
+        };
+
+        const [firstPage, ...rest] = old.pages;
+        return {
+          ...old,
+          pages: [
+            {
+              ...firstPage,
+              items: [stub, ...(firstPage?.items ?? [])],
+            },
+            ...rest,
+          ],
+        };
+      });
     },
     onFinish: ({ message, messages: finishMessages }) => {
       clearPendingGeneration();
@@ -699,6 +757,37 @@ export function ChatShell() {
         },
       );
 
+      if (!activeSessionId) {
+        const optimisticId = `optimistic-${Date.now()}`;
+        optimisticSessionIdRef.current = optimisticId;
+
+        queryClient.setQueriesData<{
+          pages: PaginatedResponse<ChatSessionListItem>[];
+          pageParams: number[];
+        }>({ queryKey: ["chat-sessions"] }, (old) => {
+          if (!old?.pages) return old;
+          const stub: ChatSessionListItem = {
+            id: optimisticId,
+            userId: "",
+            title: text,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            activeGenerationId: null,
+          };
+          const [firstPage, ...rest] = old.pages;
+          return {
+            ...old,
+            pages: [
+              {
+                ...firstPage,
+                items: [stub, ...(firstPage?.items ?? [])],
+              },
+              ...rest,
+            ],
+          };
+        });
+      }
+
       registerPendingGeneration(activeSessionId);
       markGlobalMutation();
 
@@ -706,13 +795,10 @@ export function ChatShell() {
       // worker / queued generation is discovered even if the user leaves immediately.
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
-      }, 800);
+      }, 3000);
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
-      }, 2000);
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["chat-sessions"] });
-      }, 4000);
+      }, 6000);
     },
     [sendMessage, activeModel, activeReasoning, activeSessionId, queryClient],
   );

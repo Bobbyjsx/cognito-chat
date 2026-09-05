@@ -318,6 +318,8 @@ export async function pipeBackendStreamToUIMessage({
             lastSessionId = payload.session_id;
             writeSession(payload.session_id, {
               generationId: payload.generation_id,
+              title:
+                typeof payload.title === "string" ? payload.title : undefined,
             });
           }
           continue;
@@ -352,7 +354,19 @@ export async function pipeBackendStreamToUIMessage({
         }
 
         const type = payload.type;
-        if (type === "reasoning" && typeof payload.token === "string") {
+        if (type === "title" && typeof payload.title === "string") {
+          writer.write({
+            type: "data-title",
+            data: {
+              title: payload.title,
+              sessionId:
+                typeof payload.session_id === "string"
+                  ? payload.session_id
+                  : lastSessionId,
+            },
+            transient: true,
+          });
+        } else if (type === "reasoning" && typeof payload.token === "string") {
           writeReasoningDelta(payload.token);
         } else if (type === "text" && typeof payload.token === "string") {
           writeTextDelta(payload.token);

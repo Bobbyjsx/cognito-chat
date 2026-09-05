@@ -15,6 +15,9 @@ import {
 import type { ChatSessionListItem, PaginatedResponse } from "@/types";
 import { useGetSessions, getGenerationPollInterval } from "./useChats";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function useBackgroundGenerationsEngine() {
   const { data: sessionPages } = useGetSessions("");
   const queryClient = useQueryClient();
@@ -26,7 +29,11 @@ export function useBackgroundGenerationsEngine() {
     () =>
       (sessionPages?.pages || []).flatMap((page) =>
         (page.items || [])
-          .filter((s) => s.activeGenerationId)
+          .filter((s) =>
+            Boolean(
+              s.activeGenerationId && UUID_REGEX.test(s.activeGenerationId),
+            ),
+          )
           .map((s) => ({
             sessionId: s.id,
             title: s.title || "New Chat",
@@ -183,7 +190,8 @@ export function useBackgroundGenerationsEngine() {
     for (const [sessionId, { generationId, title }] of Object.entries(prev)) {
       if (
         !(sessionId in currentActiveMap) &&
-        !toastedRef.current.has(generationId)
+        !toastedRef.current.has(generationId) &&
+        UUID_REGEX.test(generationId)
       ) {
         // Fetch generation record to accurately determine completed vs failed
         void (async () => {
