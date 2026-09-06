@@ -22,26 +22,133 @@ export interface UseSecureImageOptions {
   maxRetries?: number;
 }
 
+interface CachedImageRecord {
+  url: string;
+  isBlob: boolean;
+  expiresAt?: number;
+  timestamp: number;
+}
+
+const MAX_IMAGE_CACHE_SIZE = 150;
+const imageCache = new Map<string, CachedImageRecord>();
+const loadedImageUrls = new Set<string>();
+
+/**
+ * Record that a given image URL has successfully loaded in the browser.
+ */
+export function markImageLoaded(url: string | null | undefined): void {
+  if (url) {
+    loadedImageUrls.add(url);
+  }
+}
+
+/**
+ * Check whether a given image URL is already loaded and decoded in browser cache.
+ */
+export function isImagePreloaded(url: string | null | undefined): boolean {
+  return Boolean(url && loadedImageUrls.has(url));
+}
+
+/**
+ * Retrieve cached URL for a given attachment or src key.
+ */
+export function getCachedImageUrl(key: string): string | null {
+  const record = imageCache.get(key);
+  if (!record) return null;
+  if (record.expiresAt && Date.now() >= record.expiresAt) {
+    imageCache.delete(key);
+    return null;
+  }
+  return record.url;
+}
+
+/**
+ * Store a resolved URL or blob URL in the shared image cache.
+ */
+export function setCachedImageUrl(
+  key: string,
+  url: string,
+  isBlob: boolean,
+  expiresAt?: number,
+): void {
+  if (!key || !url) return;
+  if (imageCache.size >= MAX_IMAGE_CACHE_SIZE) {
+    const firstKey = imageCache.keys().next().value;
+    if (firstKey) {
+      const old = imageCache.get(firstKey);
+      if (old?.isBlob && typeof window !== "undefined") {
+        try {
+          URL.revokeObjectURL(old.url);
+        } catch {
+          // ignore
+        }
+      }
+      imageCache.delete(firstKey);
+    }
+  }
+  imageCache.set(key, {
+    url,
+    isBlob,
+    expiresAt,
+    timestamp: Date.now(),
+  });
+}
+
+/**
+ * Preload an image URL into browser cache.
+ */
+export function preloadImage(
+  src: string | null | undefined,
+  attachmentId?: string,
+): Promise<string | null> {
+  if (!src && !attachmentId) return Promise.resolve(null);
+  const key = attachmentId ? `att:${attachmentId}` : src ? `src:${src}` : "";
+  const cached = key ? getCachedImageUrl(key) : null;
+  const targetUrl = cached || src;
+
+  if (!targetUrl) return Promise.resolve(null);
+  if (isImagePreloaded(targetUrl)) {
+    return Promise.resolve(targetUrl);
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    (targetUrl.startsWith("http://") ||
+      targetUrl.startsWith("https://") ||
+      targetUrl.startsWith("blob:") ||
+      targetUrl.startsWith("/"))
+  ) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        markImageLoaded(targetUrl);
+        resolve(targetUrl);
+      };
+      img.onerror = () => resolve(null);
+      img.src = targetUrl;
+    });
+  }
+
+  return Promise.resolve(targetUrl);
+}
+
 export function useSecureImage(
   src: string | null,
   options?: UseSecureImageOptions,
 ) {
   const { attachmentId, urlExpiresAt, maxRetries = 2 } = options ?? {};
-  const [fetchedUrl, setFetchedUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+
+  const cacheKey = attachmentId
+    ? `att:${attachmentId}`
+    : src
+      ? `src:${src}`
+      : "";
+  const initialCached = cacheKey ? getCachedImageUrl(cacheKey) : null;
+
+  const [fetchedUrl, setFetchedUrl] = useState<string | null>(initialCached);
   const [retryCount, setRetryCount] = useState(0);
   const [hasAttemptedSvgFix, setHasAttemptedSvgFix] = useState(false);
-
-  // Sync retry count and error when src prop changes (React 19 pattern: adjusting state during render)
-  const [prevSrc, setPrevSrc] = useState(src);
-  if (prevSrc !== src) {
-    setPrevSrc(src);
-    setRetryCount(0);
-    setError(false);
-    setFetchedUrl(null);
-    setHasAttemptedSvgFix(false);
-  }
+  const [error, setError] = useState(false);
 
   const isBlobOrData = Boolean(
     src && (src.startsWith("blob:") || src.startsWith("data:")),
@@ -55,6 +162,29 @@ export function useSecureImage(
     !isInternalContentEndpoint,
   );
 
+  const isExpired = isUrlExpired(urlExpiresAt);
+  const needsFetch = Boolean(
+    (isExpired || retryCount > 0) && attachmentId
+      ? true
+      : !src
+        ? false
+        : isInternalContentEndpoint,
+  );
+
+  const [loading, setLoading] = useState<boolean>(!initialCached && needsFetch);
+
+  // Sync state when cacheKey changes (React 19 render-phase state adjustment)
+  const [prevKey, setPrevKey] = useState(cacheKey);
+  if (prevKey !== cacheKey) {
+    setPrevKey(cacheKey);
+    const freshCached = cacheKey ? getCachedImageUrl(cacheKey) : null;
+    setFetchedUrl(freshCached);
+    setRetryCount(0);
+    setError(false);
+    setHasAttemptedSvgFix(false);
+    setLoading(!freshCached && needsFetch);
+  }
+
   const retry = useCallback(() => {
     setError(false);
     setLoading(true);
@@ -63,21 +193,23 @@ export function useSecureImage(
 
   useEffect(() => {
     let isMounted = true;
-    let urlToRevoke: string | null = null;
-
-    const isExpired = isUrlExpired(urlExpiresAt);
-    const needsFetch =
-      (isExpired || retryCount > 0) && attachmentId
-        ? true
-        : !src
-          ? false
-          : isInternalContentEndpoint;
 
     if (!needsFetch) {
       return;
     }
 
     const load = async () => {
+      // Check shared cache first before triggering network requests
+      if (cacheKey && !isExpired && retryCount === 0) {
+        const cached = getCachedImageUrl(cacheKey);
+        if (cached) {
+          if (!isMounted) return;
+          setFetchedUrl(cached);
+          setLoading(false);
+          return;
+        }
+      }
+
       setLoading(true);
       setError(false);
 
@@ -86,6 +218,12 @@ export function useSecureImage(
           const fresh = await fetchFreshAttachmentUrl(attachmentId);
           if (!isMounted) return;
           if (fresh.url) {
+            const exp = fresh.urlExpiresAt
+              ? new Date(fresh.urlExpiresAt).getTime()
+              : undefined;
+            if (cacheKey) {
+              setCachedImageUrl(cacheKey, fresh.url, false, exp);
+            }
             setFetchedUrl(fresh.url);
             setLoading(false);
             return;
@@ -97,10 +235,20 @@ export function useSecureImage(
 
       if (src && isInternalContentEndpoint) {
         try {
+          const cachedBlob = cacheKey ? getCachedImageUrl(cacheKey) : null;
+          if (cachedBlob) {
+            if (!isMounted) return;
+            setFetchedUrl(cachedBlob);
+            setLoading(false);
+            return;
+          }
+
           const res = await api.get(src, { responseType: "blob" });
           if (!isMounted) return;
           const url = URL.createObjectURL(res.data);
-          urlToRevoke = url;
+          if (cacheKey) {
+            setCachedImageUrl(cacheKey, url, true);
+          }
           setFetchedUrl(url);
           setLoading(false);
         } catch {
@@ -119,13 +267,20 @@ export function useSecureImage(
 
     return () => {
       isMounted = false;
-      if (urlToRevoke) {
-        URL.revokeObjectURL(urlToRevoke);
-      }
     };
-  }, [src, attachmentId, urlExpiresAt, retryCount, isInternalContentEndpoint]);
+  }, [
+    src,
+    attachmentId,
+    urlExpiresAt,
+    retryCount,
+    isInternalContentEndpoint,
+    cacheKey,
+    isExpired,
+    needsFetch,
+    fetchedUrl,
+  ]);
 
-  // Derived objectUrl: prefers fresh fetched URL (e.g. from retry/refresh), then direct src
+  // Derived objectUrl: prefers fresh fetched URL (or cached URL), then direct src
   const objectUrl = fetchedUrl || (isBlobOrData || isExternalUrl ? src : null);
 
   const handleImageError = useCallback(async () => {
@@ -146,6 +301,9 @@ export function useSecureImage(
             const cleaned = sanitizeSvgMarkup(text);
             const blob = new Blob([cleaned], { type: "image/svg+xml" });
             const blobUrl = URL.createObjectURL(blob);
+            if (cacheKey) {
+              setCachedImageUrl(cacheKey, blobUrl, true);
+            }
             setFetchedUrl(blobUrl);
             setError(false);
             return true;
@@ -167,6 +325,7 @@ export function useSecureImage(
     objectUrl,
     src,
     hasAttemptedSvgFix,
+    cacheKey,
     attachmentId,
     retryCount,
     maxRetries,

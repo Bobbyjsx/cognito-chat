@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    unoptimized: isCloudflareBuild,
+    unoptimized: Boolean(process.env.NEXT_IMAGE_UNOPTIMIZED === "1"),
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
