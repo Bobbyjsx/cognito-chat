@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { api } from "@/lib/axios";
 import {
   isUrlExpired,
   fetchFreshAttachmentUrl,
@@ -152,13 +153,22 @@ export function useSecureImage(
   const isBlobOrData = Boolean(
     src && (src.startsWith("blob:") || src.startsWith("data:")),
   );
+  const isInternalContentEndpoint = Boolean(
+    src && src.includes("/agent/attachments/") && src.includes("/content"),
+  );
   const isExternalUrl = Boolean(
-    src && (src.startsWith("http://") || src.startsWith("https://")),
+    src &&
+    (src.startsWith("http://") || src.startsWith("https://")) &&
+    !isInternalContentEndpoint,
   );
 
   const isExpired = isUrlExpired(urlExpiresAt);
   const needsFetch = Boolean(
-    attachmentId && (isExpired || retryCount > 0 || !src),
+    (isExpired || retryCount > 0) && attachmentId
+      ? true
+      : !src && attachmentId
+        ? true
+        : isInternalContentEndpoint,
   );
 
   const [loading, setLoading] = useState<boolean>(!initialCached && needsFetch);
@@ -223,6 +233,30 @@ export function useSecureImage(
         }
       }
 
+      if (src && isInternalContentEndpoint) {
+        try {
+          const cachedBlob = cacheKey ? getCachedImageUrl(cacheKey) : null;
+          if (cachedBlob) {
+            if (!isMounted) return;
+            setFetchedUrl(cachedBlob);
+            setLoading(false);
+            return;
+          }
+
+          const res = await api.get(src, { responseType: "blob" });
+          if (!isMounted) return;
+          const url = URL.createObjectURL(res.data);
+          if (cacheKey) {
+            setCachedImageUrl(cacheKey, url, true);
+          }
+          setFetchedUrl(url);
+          setLoading(false);
+          return;
+        } catch {
+          if (!isMounted) return;
+        }
+      }
+
       if (!src) {
         setError(true);
         setLoading(false);
@@ -239,6 +273,7 @@ export function useSecureImage(
     attachmentId,
     urlExpiresAt,
     retryCount,
+    isInternalContentEndpoint,
     cacheKey,
     isExpired,
     needsFetch,
