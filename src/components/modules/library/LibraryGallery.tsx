@@ -34,7 +34,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
-import { api } from "@/lib/axios";
 import type { AttachmentSchema } from "@/types";
 
 type FilterType =
@@ -209,32 +208,11 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
     setDownloadingId(attachment.id);
     try {
       let downloadLink = attachment.downloadUrl || attachment.url;
-      if (!downloadLink) {
+      if (!downloadLink && attachment.id) {
         const fresh = await fetchFreshAttachmentUrl(attachment.id);
         downloadLink = fresh.downloadUrl || fresh.url;
       }
-      if (!downloadLink && attachment.id) {
-        downloadLink = `/agent/attachments/${attachment.id}/content`;
-      }
       if (downloadLink) {
-        if (
-          downloadLink.includes("/agent/attachments/") &&
-          downloadLink.includes("/content")
-        ) {
-          const response = await api.get(downloadLink, {
-            responseType: "blob",
-          });
-          const blobUrl = window.URL.createObjectURL(response.data);
-          const a = document.createElement("a");
-          a.href = blobUrl;
-          a.download = attachment.filename;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(blobUrl);
-          document.body.removeChild(a);
-          return;
-        }
-
         const a = document.createElement("a");
         a.href = downloadLink;
         a.download = attachment.filename;
@@ -311,19 +289,13 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
     if (selectedItemIndex < uniqueItems.length - 1) {
       const next = uniqueItems[selectedItemIndex + 1];
       if (next && isImage(next.mimeType)) {
-        preloadImage(
-          next.url || (next.id ? `/agent/attachments/${next.id}/content` : ""),
-          next.id,
-        );
+        preloadImage(next.url || "", next.id);
       }
     }
     if (selectedItemIndex > 0) {
       const prev = uniqueItems[selectedItemIndex - 1];
       if (prev && isImage(prev.mimeType)) {
-        preloadImage(
-          prev.url || (prev.id ? `/agent/attachments/${prev.id}/content` : ""),
-          prev.id,
-        );
+        preloadImage(prev.url || "", prev.id);
       }
     }
   }, [selectedItemIndex, uniqueItems]);
@@ -460,9 +432,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {uniqueItems.map((item, idx) => {
-              const imgUrl =
-                item.url ||
-                (item.id ? `/agent/attachments/${item.id}/content` : "");
+              const imgUrl = item.url || "";
               const isImg = isImage(item.mimeType);
               const isPdf = isPDF(item.mimeType);
 
@@ -568,12 +538,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
               <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
                 {isImage(selectedItem.mimeType) ? (
                   <OptimizedImage
-                    src={
-                      selectedItem.url ||
-                      (selectedItem.id
-                        ? `/agent/attachments/${selectedItem.id}/content`
-                        : "")
-                    }
+                    src={selectedItem.url || ""}
                     attachmentId={selectedItem.id}
                     urlExpiresAt={selectedItem.urlExpiresAt}
                     alt={selectedItem.filename}
@@ -584,12 +549,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
                 ) : isPDF(selectedItem.mimeType) ? (
                   <PdfViewer
                     key={selectedItem.url || selectedItem.id}
-                    url={
-                      selectedItem.url ||
-                      (selectedItem.id
-                        ? `/agent/attachments/${selectedItem.id}/content`
-                        : "")
-                    }
+                    url={selectedItem.url || ""}
                     filename={selectedItem.filename}
                     onDownload={() => handleDownload(selectedItem)}
                     isDownloading={downloadingId === selectedItem.id}
