@@ -3,6 +3,7 @@
 import {
   useGetLibraryAttachments,
   useDeleteAttachment,
+  fetchFreshAttachmentUrl,
 } from "@/hooks/data/useAttachments/useAttachments";
 import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
@@ -33,7 +34,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
-import { api } from "@/lib/axios";
 import type { AttachmentSchema } from "@/types";
 
 type FilterType =
@@ -207,29 +207,21 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
     if (downloadingId) return;
     setDownloadingId(attachment.id);
     try {
-      // 1. If we have a direct download_url (signed with Content-Disposition: attachment)
-      if (attachment.downloadUrl) {
+      let downloadLink = attachment.downloadUrl || attachment.url;
+      if (!downloadLink) {
+        const fresh = await fetchFreshAttachmentUrl(attachment.id);
+        downloadLink = fresh.downloadUrl || fresh.url;
+      }
+      if (downloadLink) {
         const a = document.createElement("a");
-        a.href = attachment.downloadUrl;
+        a.href = downloadLink;
         a.download = attachment.filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         return;
       }
-      // 2. Fallback: fetch blob from backend content endpoint and download via blob URL
-      const response = await api.get(
-        `/agent/attachments/${attachment.id}/content`,
-        { responseType: "blob" },
-      );
-      const url = window.URL.createObjectURL(response.data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = attachment.filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      throw new Error("No download link available");
     } catch (error) {
       console.error("Download failed", error);
       toast.error("Failed to download file");
@@ -297,19 +289,13 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
     if (selectedItemIndex < uniqueItems.length - 1) {
       const next = uniqueItems[selectedItemIndex + 1];
       if (next && isImage(next.mimeType)) {
-        preloadImage(
-          next.url || `/agent/attachments/${next.id}/content`,
-          next.id,
-        );
+        preloadImage(next.url, next.id);
       }
     }
     if (selectedItemIndex > 0) {
       const prev = uniqueItems[selectedItemIndex - 1];
       if (prev && isImage(prev.mimeType)) {
-        preloadImage(
-          prev.url || `/agent/attachments/${prev.id}/content`,
-          prev.id,
-        );
+        preloadImage(prev.url, prev.id);
       }
     }
   }, [selectedItemIndex, uniqueItems]);
@@ -446,8 +432,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {uniqueItems.map((item, idx) => {
-              const imgUrl =
-                item.url || `/agent/attachments/${item.id}/content`;
+              const imgUrl = item.url || "";
               const isImg = isImage(item.mimeType);
               const isPdf = isPDF(item.mimeType);
 
@@ -553,10 +538,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
               <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
                 {isImage(selectedItem.mimeType) ? (
                   <OptimizedImage
-                    src={
-                      selectedItem.url ||
-                      `/agent/attachments/${selectedItem.id}/content`
-                    }
+                    src={selectedItem.url || ""}
                     attachmentId={selectedItem.id}
                     urlExpiresAt={selectedItem.urlExpiresAt}
                     alt={selectedItem.filename}
@@ -567,10 +549,7 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
                 ) : isPDF(selectedItem.mimeType) ? (
                   <PdfViewer
                     key={selectedItem.url || selectedItem.id}
-                    url={
-                      selectedItem.url ||
-                      `/agent/attachments/${selectedItem.id}/content`
-                    }
+                    url={selectedItem.url || ""}
                     filename={selectedItem.filename}
                     onDownload={() => handleDownload(selectedItem)}
                     isDownloading={downloadingId === selectedItem.id}
