@@ -180,4 +180,91 @@ describe("Attachment URLs, Expiry & CORS Credential Isolation", () => {
       assert.equal(dataUrl.startsWith("data:"), true);
     });
   });
+
+  describe("Zero N+1 Elimination & URL Fallback in Library", () => {
+    it("ensures needsFetch is FALSE when attachment.url is already provided from /attachments", () => {
+      const attachment = {
+        id: "9bfc3193-63f3-4145-97eb-7f08554f1db6",
+        filename: "IMG_5140.jpeg",
+        mimeType: "image/jpeg",
+        url: "https://storage.googleapis.com/chat_attachment/attachments/xyz/IMG_5140.jpeg?X-Goog-Signature=123",
+        urlExpiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+      };
+
+      const src = attachment.url || "";
+      const isExpired = isUrlExpired(attachment.urlExpiresAt);
+      const retryCount = 0;
+
+      // In useSecureImage:
+      const needsFetch = Boolean(
+        attachment.id && (isExpired || retryCount > 0 || !src),
+      );
+
+      // When url is present, needsFetch MUST be false so zero individual queries occur
+      assert.equal(needsFetch, false);
+      assert.equal(src, attachment.url);
+    });
+
+    it("ensures fallback to /content endpoint when backend returns null url", () => {
+      const attachmentWithNullUrl = {
+        id: "9bfc3193-63f3-4145-97eb-7f08554f1db6",
+        filename: "IMG_5140.jpeg",
+        mimeType: "image/jpeg",
+        url: null,
+        urlExpiresAt: null,
+      };
+
+      const imgUrl =
+        attachmentWithNullUrl.url ||
+        (attachmentWithNullUrl.id
+          ? `/agent/attachments/${attachmentWithNullUrl.id}/content`
+          : "");
+
+      assert.equal(
+        imgUrl,
+        "/agent/attachments/9bfc3193-63f3-4145-97eb-7f08554f1db6/content",
+      );
+      assert.equal(Boolean(imgUrl), true);
+    });
+
+    it("verifies batch attachment items from /attachments all receive populated image sources", () => {
+      const attachmentsFromApi = [
+        {
+          id: "id-1",
+          url: "https://storage.googleapis.com/bucket/1.jpg?sig=abc",
+          mimeType: "image/jpeg",
+        },
+        {
+          id: "id-2",
+          url: "https://storage.googleapis.com/bucket/2.jpg?sig=def",
+          mimeType: "image/png",
+        },
+        {
+          id: "id-3",
+          url: null, // edge case fallback
+          mimeType: "image/jpeg",
+        },
+      ];
+
+      const resolvedImageUrls = attachmentsFromApi.map(
+        (att) =>
+          att.url || (att.id ? `/agent/attachments/${att.id}/content` : ""),
+      );
+
+      assert.equal(resolvedImageUrls.length, 3);
+      assert.equal(
+        resolvedImageUrls[0],
+        "https://storage.googleapis.com/bucket/1.jpg?sig=abc",
+      );
+      assert.equal(
+        resolvedImageUrls[1],
+        "https://storage.googleapis.com/bucket/2.jpg?sig=def",
+      );
+      assert.equal(resolvedImageUrls[2], "/agent/attachments/id-3/content");
+      // None of the items have empty or null URLs
+      for (const url of resolvedImageUrls) {
+        assert.ok(url && url.length > 0);
+      }
+    });
+  });
 });

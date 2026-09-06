@@ -87,7 +87,9 @@ export function LibraryGalleryModal({
             <>
               <div className="grid grid-cols-3 gap-3">
                 {uniqueItems.map((item) => {
-                  const imgUrl = item.url || "";
+                  const imgUrl =
+                    item.url ||
+                    (item.id ? `/agent/attachments/${item.id}/content` : "");
                   const isImg = isImage(item.mimeType);
 
                   return (
