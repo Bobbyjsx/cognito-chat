@@ -32,7 +32,7 @@ import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { isPreviewableType } from "@/lib/attachments";
-import { api } from "@/lib/axios";
+import { fetchFreshAttachmentUrl } from "@/hooks/data/useAttachments/useAttachments";
 import {
   AgentResponseBodySkeleton,
   AgentResponseSkeleton,
@@ -156,18 +156,17 @@ function AttachmentPart({
     if (attachmentId) {
       e.preventDefault();
       try {
-        const response = await api.get(
-          `/agent/attachments/${attachmentId}/content`,
-          { responseType: "blob" },
-        );
-        const blobUrl = window.URL.createObjectURL(response.data);
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(blobUrl);
-        document.body.removeChild(a);
+        const fresh = await fetchFreshAttachmentUrl(attachmentId);
+        const targetUrl = fresh.downloadUrl || fresh.url;
+        if (targetUrl) {
+          const a = document.createElement("a");
+          a.href = targetUrl;
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          return;
+        }
       } catch {
         if (url) window.open(url, "_blank");
       }

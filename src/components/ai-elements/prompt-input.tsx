@@ -322,7 +322,7 @@ export const PromptInputProvider = ({
           type: "file" as const,
           uploadedId: att.id,
           progress: 100,
-          url: att.url || `/agent/attachments/${att.id}/content`,
+          url: att.url || "",
         })),
       ]);
     },
@@ -718,7 +718,7 @@ export const PromptInput = ({
           type: "file" as const,
           uploadedId: att.id,
           progress: 100,
-          url: att.url || `/agent/attachments/${att.id}/content`,
+          url: att.url || "",
         })),
       ]);
     },
