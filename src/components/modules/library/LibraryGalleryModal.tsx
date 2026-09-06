@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OptimizedImage } from "@/components/ui/optimized-image";
+import { preloadImage } from "@/hooks/data/useSecureImage";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AttachmentSchema } from "@/types";
@@ -96,6 +97,11 @@ export function LibraryGalleryModal({
                       onClick={() => {
                         onSelect(item);
                         onOpenChange(false);
+                      }}
+                      onMouseEnter={() => {
+                        if (isImg && imgUrl) {
+                          preloadImage(imgUrl, item.id);
+                        }
                       }}
                       className="group border-border/60 bg-muted/30 hover:border-border focus-visible:ring-ring relative aspect-square w-full overflow-hidden rounded-xl border transition-all duration-150 hover:shadow-md focus-visible:ring-2 focus-visible:outline-none active:scale-[0.96]"
                     >

@@ -10,7 +10,10 @@
   "minify": true,
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS",
+    "binding": "ASSETS"
+  },
+  "images": {
+    "binding": "IMAGES"
   },
   "observability": {
     "enabled": false,
