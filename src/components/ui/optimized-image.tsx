@@ -5,7 +5,11 @@ import Image, { ImageProps } from "next/image";
 import { Image as ImageIcon, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { useSecureImage } from "@/hooks/data/useSecureImage";
+import {
+  useSecureImage,
+  isImagePreloaded,
+  markImageLoaded,
+} from "@/hooks/data/useSecureImage";
 
 export interface OptimizedImageProps extends Omit<ImageProps, "src"> {
   src: string | null;
@@ -56,17 +60,18 @@ export const OptimizedImage = ({
     urlExpiresAt,
   });
 
-  const [imgLoading, setImgLoading] = useState(!isPriority);
+  const isAlreadyLoaded = Boolean(objectUrl && isImagePreloaded(objectUrl));
+  const [imgLoading, setImgLoading] = useState(!isPriority && !isAlreadyLoaded);
   const [imgError, setImgError] = useState(false);
 
-  React.useEffect(() => {
-    if (!isPriority) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setImgLoading(true);
-    }
-
+  // Sync loading state during render when objectUrl changes (React 19 pattern)
+  const [prevObjectUrl, setPrevObjectUrl] = useState(objectUrl);
+  if (prevObjectUrl !== objectUrl) {
+    setPrevObjectUrl(objectUrl);
+    const preloaded = Boolean(objectUrl && isImagePreloaded(objectUrl));
+    setImgLoading(!isPriority && !preloaded);
     setImgError(false);
-  }, [src, isPriority]);
+  }
 
   const isLoading = secureLoading || imgLoading;
   const error = secureError || imgError;
@@ -203,6 +208,7 @@ export const OptimizedImage = ({
               }
             }}
             onLoad={(e) => {
+              if (objectUrl) markImageLoaded(objectUrl);
               if (!isPriority) setImgLoading(false);
               props.onLoad?.(e as any);
             }}
@@ -221,7 +227,14 @@ export const OptimizedImage = ({
           <Image
             src={objectUrl}
             alt={alt || "Image"}
-            unoptimized={props.unoptimized ?? (isBlob || isExternal)}
+            unoptimized={
+              props.unoptimized ??
+              (isBlob ||
+                (typeof objectUrl === "string" &&
+                  !objectUrl.startsWith("/") &&
+                  !objectUrl.includes("storage.googleapis.com") &&
+                  !objectUrl.includes("googleusercontent.com")))
+            }
             className={cn(
               "object-cover transition-all duration-700 ease-in-out",
               isLoading && !isPriority
@@ -238,6 +251,7 @@ export const OptimizedImage = ({
               }
             }}
             onLoad={(e) => {
+              if (objectUrl) markImageLoaded(objectUrl);
               if (!isPriority) setImgLoading(false);
               props.onLoad?.(e);
             }}

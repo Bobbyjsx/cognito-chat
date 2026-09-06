@@ -4,7 +4,7 @@ import {
   useGetLibraryAttachments,
   useDeleteAttachment,
 } from "@/hooks/data/useAttachments/useAttachments";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -18,6 +18,7 @@ import {
   File,
 } from "lucide-react";
 import { OptimizedImage } from "@/components/ui/optimized-image";
+import { preloadImage } from "@/hooks/data/useSecureImage";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -46,14 +47,15 @@ interface LibraryAttachmentCardProps {
   isPdf: boolean;
   downloadingId: string | null;
   isDeleting: boolean;
-  onSelect: () => void;
-  onDownload: () => void;
-  onDelete: () => void;
-  onGoToChat?: () => void;
+  onSelect: (index: number) => void;
+  onDownload: (item: AttachmentSchema) => void;
+  onDelete: (item: AttachmentSchema) => void;
+  onGoToChat?: (sessionId: string) => void;
 }
 
-function LibraryAttachmentCard({
+const LibraryAttachmentCard = memo(function LibraryAttachmentCard({
   item,
+  idx,
   isImg,
   isPdf,
   imgUrl,
@@ -67,13 +69,20 @@ function LibraryAttachmentCard({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isDownloading = downloadingId === item.id;
 
+  const handleMouseEnter = () => {
+    if (isImg && imgUrl) {
+      preloadImage(imgUrl, item.id);
+    }
+  };
+
   return (
     <div
-      onClick={onSelect}
+      onClick={() => onSelect(idx)}
+      onMouseEnter={handleMouseEnter}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onSelect();
+          onSelect(idx);
         }
       }}
       role="button"
@@ -113,9 +122,13 @@ function LibraryAttachmentCard({
         <LibraryAttachmentActionsMenu
           open={isMenuOpen}
           onOpenChange={setIsMenuOpen}
-          onDownload={onDownload}
-          onDelete={onDelete}
-          onGoToChat={onGoToChat}
+          onDownload={() => onDownload(item)}
+          onDelete={() => onDelete(item)}
+          onGoToChat={
+            item.sessionId && onGoToChat
+              ? () => onGoToChat(item.sessionId!)
+              : undefined
+          }
           isDownloading={isDownloading}
           isDeleting={isDeleting}
           triggerClassName="bg-background/85 hover:bg-background text-foreground size-7 rounded-lg border border-border/80 shadow-xs backdrop-blur-md"
@@ -133,7 +146,7 @@ function LibraryAttachmentCard({
       </div>
     </div>
   );
-}
+});
 
 interface LibraryGalleryProps {
   onMenuClick?: () => void;
@@ -278,6 +291,44 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
   const isImage = (mimeType: string) => mimeType.startsWith("image/");
   const isPDF = (mimeType: string) => mimeType === "application/pdf";
 
+  // Preload adjacent carousel images for instant navigation in full-screen modal
+  useEffect(() => {
+    if (selectedItemIndex === null) return;
+    if (selectedItemIndex < uniqueItems.length - 1) {
+      const next = uniqueItems[selectedItemIndex + 1];
+      if (next && isImage(next.mimeType)) {
+        preloadImage(
+          next.url || `/agent/attachments/${next.id}/content`,
+          next.id,
+        );
+      }
+    }
+    if (selectedItemIndex > 0) {
+      const prev = uniqueItems[selectedItemIndex - 1];
+      if (prev && isImage(prev.mimeType)) {
+        preloadImage(
+          prev.url || `/agent/attachments/${prev.id}/content`,
+          prev.id,
+        );
+      }
+    }
+  }, [selectedItemIndex, uniqueItems]);
+
+  const handleSelectCard = useCallback((index: number) => {
+    setSelectedItemIndex(index);
+  }, []);
+
+  const handleOpenDeleteModal = useCallback((item: AttachmentSchema) => {
+    setItemToDelete(item);
+  }, []);
+
+  const handleGoToChat = useCallback(
+    (sessionId: string) => {
+      router.push(`/chat/${sessionId}`);
+    },
+    [router],
+  );
+
   return (
     <div className="bg-background flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -413,14 +464,10 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
                     deleteAttachmentMutation.isPending &&
                     itemToDelete?.id === item.id
                   }
-                  onSelect={() => setSelectedItemIndex(idx)}
-                  onDownload={() => handleDownload(item)}
-                  onDelete={() => setItemToDelete(item)}
-                  onGoToChat={
-                    item.sessionId
-                      ? () => router.push(`/chat/${item.sessionId}`)
-                      : undefined
-                  }
+                  onSelect={handleSelectCard}
+                  onDownload={handleDownload}
+                  onDelete={handleOpenDeleteModal}
+                  onGoToChat={handleGoToChat}
                 />
               );
             })}
