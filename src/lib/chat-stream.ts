@@ -6,6 +6,50 @@ export const MAX_MESSAGE_LENGTH = 32_000;
 /** Error codes signaled by the backend chat endpoint (see services/chats.py). */
 export const CHAT_ERROR_MODEL_NOT_FOUND = "MODEL_NOT_FOUND";
 export const CHAT_ERROR_GENERATION_FAILED = "GENERATION_FAILED";
+export const CHAT_ERROR_AUTH_FAILED = "AUTHENTICATION_FAILED";
+
+export const SAFE_UNAVAILABLE_MESSAGE =
+  "The AI service is temporarily unavailable. Please try again or select another model.";
+
+/**
+ * Sanitizes backend error details to ensure internal provider infrastructure,
+ * expired tokens, AWS/IAM credentials, and raw stack traces are never leaked to clients.
+ */
+export function sanitizeStreamErrorText(detail: string, code?: string): string {
+  if (code === CHAT_ERROR_MODEL_NOT_FOUND) {
+    return "This model is no longer available. Please pick a different model and try again.";
+  }
+
+  if (code === CHAT_ERROR_AUTH_FAILED) {
+    return SAFE_UNAVAILABLE_MESSAGE;
+  }
+
+  const lower = detail.toLowerCase();
+  const sensitivePatterns = [
+    "bearer token",
+    "aws bedrock",
+    "aws_",
+    "iam credentials",
+    "api_key",
+    "api key",
+    "access key",
+    "secret key",
+    "authentication failed",
+    "token has expired",
+    "traceback",
+    'file "',
+  ];
+
+  if (sensitivePatterns.some((pat) => lower.includes(pat))) {
+    return SAFE_UNAVAILABLE_MESSAGE;
+  }
+
+  if (detail.length > 300) {
+    return "An error occurred while generating the response. Please try again.";
+  }
+
+  return detail;
+}
 
 export interface BackendSseEvent {
   event: string;
@@ -189,11 +233,12 @@ export async function pipeBackendStreamToUIMessage({
       code: code ?? null,
       sessionId: lastSessionId ?? null,
       durationMs: Date.now() - startedAt,
+      rawDetail: detail,
     };
 
+    const sanitizedErrorText = sanitizeStreamErrorText(detail, code);
+
     if (code === CHAT_ERROR_MODEL_NOT_FOUND) {
-      // The raw Gemini detail is API/setup noise ("update your code to use a
-      // newer model") — log it adequately, don't surface it to the user.
       Analytics.captureLog(
         "chat.stream.error.model_not_found",
         {
@@ -202,16 +247,14 @@ export async function pipeBackendStreamToUIMessage({
         },
         "warn",
       );
-      writer.write({
-        type: "error",
-        errorText:
-          "This model is no longer available. Please pick a different model and try again.",
-      });
-      return;
+    } else {
+      Analytics.captureError(
+        new Error(`Chat stream error [${code ?? "UNKNOWN"}]: ${detail}`),
+        context,
+      );
     }
 
-    Analytics.captureError(new Error(`Chat stream error: ${detail}`), context);
-    writer.write({ type: "error", errorText: detail });
+    writer.write({ type: "error", errorText: sanitizedErrorText });
   };
 
   const writeReasoningDelta = (token: string) => {

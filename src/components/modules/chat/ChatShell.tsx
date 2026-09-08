@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { DefaultChatTransport, type UIMessage, type FileUIPart } from "ai";
 import {
   useGetSession,
@@ -30,6 +30,7 @@ import type {
   MessageSchema,
   PaginatedResponse,
   ChatSessionListItem,
+  SessionWithPaginatedMessages,
 } from "@/types";
 import { ChatInput } from "./ChatInput";
 import { ChatMessageList } from "./ChatMessageList";
@@ -252,7 +253,7 @@ export function ChatShell() {
   }, [sessionsData, routeSessionId, streamSessionId, optimisticSessionId]);
 
   const activeGenerationId = routeSessionId
-    ? sessionPages?.pages[0]?.activeGenerationId ||
+    ? sessionPages?.pages?.[0]?.activeGenerationId ||
       sidebarSession?.activeGenerationId
     : null;
   const { data: activeGenData } = useActiveGeneration(
@@ -291,11 +292,11 @@ export function ChatShell() {
     : null;
 
   const sessionData =
-    sessionPages?.pages[0]?.session ||
-    (sessionPages?.pages[0] as any)?.items?.[0];
+    sessionPages?.pages?.[0]?.session ||
+    (sessionPages?.pages?.[0] as any)?.items?.[0];
   const allMessages = useMemo(
     () =>
-      sessionPages?.pages.flatMap(
+      sessionPages?.pages?.flatMap(
         (p) => p?.messages?.items || (p as any)?.items?.[0]?.messages || [],
       ) || [],
     [sessionPages],
@@ -428,20 +429,26 @@ export function ChatShell() {
       if (nextTitle) {
         setHeaderTitle(nextTitle);
         setAnimateHeaderTitle(true);
-        queryClient.setQueryData<any>(["chat-session", nextId], (old: any) => {
-          if (!old) {
+        queryClient.setQueryData<InfiniteData<SessionWithPaginatedMessages>>(
+          ["chat-session", nextId],
+          (old) => {
+            if (!old?.pages) return old;
             return {
-              id: nextId,
-              title: nextTitle,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
+              ...old,
+              pages: old.pages.map((page, index) =>
+                index === 0
+                  ? {
+                      ...page,
+                      session: {
+                        ...page.session,
+                        title: nextTitle,
+                      },
+                    }
+                  : page,
+              ),
             };
-          }
-          return {
-            ...old,
-            title: nextTitle,
-          };
-        });
+          },
+        );
       }
 
       // Stamp activeGenerationId and title into sessions cache

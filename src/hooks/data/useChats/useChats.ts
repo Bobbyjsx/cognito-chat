@@ -127,6 +127,20 @@ export function useGetSessions(searchQuery?: string, limit: number = 15) {
 export function useGetSession(sessionId: string | null, limit: number = 50) {
   const queryClient = useQueryClient();
 
+  // Self-healing guard: if the cache for this session was ever populated with a non-InfiniteData object, purge it
+  if (sessionId) {
+    const existing = queryClient.getQueryData<{ pages?: unknown }>([
+      "chat-session",
+      sessionId,
+    ]);
+    if (existing && !Array.isArray(existing.pages)) {
+      queryClient.removeQueries({
+        queryKey: ["chat-session", sessionId],
+        exact: true,
+      });
+    }
+  }
+
   return useInfiniteQuery({
     queryKey: ["chat-session", sessionId],
     queryFn: async ({ pageParam = 0 }) => {
