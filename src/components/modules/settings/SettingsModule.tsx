@@ -209,7 +209,10 @@ export function SettingsModule() {
                     />
                   </div>
                   <p className="text-gray-medium text-right text-[11px] italic">
-                    ⏱ Resets {q.reset6hText}
+                    ⏱{" "}
+                    {q.reset6hText.toLowerCase().startsWith("resets")
+                      ? q.reset6hText
+                      : `Resets in ${q.reset6hText}`}
                   </p>
                 </div>
 
@@ -236,7 +239,10 @@ export function SettingsModule() {
                     />
                   </div>
                   <p className="text-gray-medium text-right text-[11px] italic">
-                    ⏱ Resets {q.resetWeeklyText}
+                    ⏱{" "}
+                    {q.resetWeeklyText.toLowerCase().startsWith("resets")
+                      ? q.resetWeeklyText
+                      : `Resets in ${q.resetWeeklyText}`}
                   </p>
                 </div>
               </Card>

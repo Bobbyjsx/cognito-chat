@@ -430,12 +430,18 @@ function QuotaLimitBanner({
 
         <div className="flex shrink-0 items-center self-start pl-11 sm:self-center sm:pl-0">
           <div className="bg-surface-container-high/90 text-on-surface flex items-center gap-1.5 rounded-xl border border-[rgba(0,0,0,0.06)] px-3 py-1 font-mono text-xs font-medium">
-            <span className="text-gray-medium font-sans text-[11px]">
-              Resets in
-            </span>
-            <span className="text-on-surface font-semibold">
-              {countdownText}
-            </span>
+            {isExpired ? (
+              <span className="text-on-surface font-semibold">Resets soon</span>
+            ) : (
+              <>
+                <span className="text-gray-medium font-sans text-[11px]">
+                  Resets in
+                </span>
+                <span className="text-on-surface font-semibold">
+                  {countdownText}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

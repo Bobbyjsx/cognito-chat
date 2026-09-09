@@ -13,8 +13,8 @@ export function useProfile() {
   return useQuery({
     queryKey: profileQueryKey,
     queryFn: fetchProfile,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
     gcTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 }
