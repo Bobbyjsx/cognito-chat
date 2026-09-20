@@ -20,6 +20,7 @@ import {
 import { useProfile } from "@/hooks/data/useAuth/useAuth";
 import {
   PAID_PLANS,
+  PLAN_HIERARCHY,
   formatNgn,
   isPaidTier,
   normalizeTier,
@@ -84,6 +85,9 @@ export function PaywallDialog({
             const apiPlan = plans?.find((p) => p.tier === plan.id);
             const amount = apiPlan?.amount ?? plan.priceNgn;
             const isCurrent = currentIsPaid && currentTier === plan.id;
+            const isDowngrade =
+              currentIsPaid &&
+              PLAN_HIERARCHY[plan.id] < PLAN_HIERARCHY[currentTier];
             const isHighlight = plan.id === highlightPlan && !isCurrent;
 
             return (
@@ -127,13 +131,15 @@ export function PaywallDialog({
                 <Button
                   className="w-full"
                   variant={isHighlight ? "default" : "outline"}
-                  disabled={isCurrent || checkout.isPending}
+                  disabled={isCurrent || isDowngrade || checkout.isPending}
                   onClick={() => handleSubscribe(plan.id)}
                 >
                   {pendingTier === plan.id ? (
                     <Spinner className="size-4" />
                   ) : isCurrent ? (
                     "Current plan"
+                  ) : isDowngrade ? (
+                    "Included in your plan"
                   ) : (
                     `Upgrade to ${plan.name}`
                   )}

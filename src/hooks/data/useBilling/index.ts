@@ -175,7 +175,8 @@ export function useVerifySubscription() {
       return res.data;
     },
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
@@ -188,7 +189,8 @@ export function useCancelSubscription() {
       return res.data;
     },
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
@@ -201,7 +203,8 @@ export function useDowngradeSubscription() {
       return res.data;
     },
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
@@ -214,7 +217,8 @@ export function useCancelDowngrade() {
       return res.data;
     },
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
