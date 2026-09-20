@@ -6,7 +6,7 @@ import { noIndexRobots } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Settings",
-  description: "Manage account and token quota settings",
+  description: "Manage account, plan, and usage settings",
   robots: noIndexRobots,
 };
 

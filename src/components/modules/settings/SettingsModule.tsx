@@ -1,5 +1,20 @@
 "use client";
 
+import { SettingsPageLoading } from "@/components/loading/page-skeletons";
+import { PaywallDialog } from "@/components/modules/billing/PaywallDialog";
+import { ChatSidebar } from "@/components/modules/chat/ChatSidebar";
+import { Navbar } from "@/components/modules/chat/Navbar";
+import { CustomInstructionsCard } from "@/components/modules/settings/CustomInstructionsCard";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
+import { useProfile } from "@/hooks/data/useAuth/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
+import { normalizeTier, PLANS, type PlanTier } from "@/lib/plans";
+import { getQuotaSnapshot } from "@/lib/quota";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -12,20 +27,9 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
-import { useProfile } from "@/hooks/data/useAuth/useAuth";
-import { useNotifications } from "@/hooks/useNotifications";
-import { getQuotaSnapshot } from "@/lib/quota";
-import { cn } from "@/lib/utils";
-import { Navbar } from "@/components/modules/chat/Navbar";
-import { ChatSidebar } from "@/components/modules/chat/ChatSidebar";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -47,7 +51,8 @@ const itemVariants = {
 
 export function SettingsModule() {
   const { data: session } = useSession();
-  const { data: profile } = useProfile();
+  const { data: profile, isLoading: isProfileLoading } = useProfile();
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const {
     isSupported,
     permission,
@@ -83,10 +88,15 @@ export function SettingsModule() {
     return () => clearInterval(timer);
   }, []);
 
-  const userEmail =
-    profile?.email || session?.user?.email || "user@example.com";
+  if (isProfileLoading && !profile) {
+    return <SettingsPageLoading />;
+  }
+
+  const userEmail = profile?.email || session?.user?.email || "user@gmail.com";
   const userName = session?.user?.name || userEmail.split("@")[0];
   const q = getQuotaSnapshot(profile, nowMs, "long");
+  const planTier: PlanTier = normalizeTier(profile?.tier);
+  const plan = PLANS[planTier];
 
   return (
     <div className="bg-background font-body-md text-body-md text-on-surface flex h-full w-full overflow-hidden">
@@ -116,10 +126,10 @@ export function SettingsModule() {
                   Back to Chat
                 </Link>
                 <h1 className="text-headline-lg text-on-surface font-bold tracking-tight">
-                  Account & Quota Settings
+                  Account settings
                 </h1>
                 <p className="text-body-md text-gray-medium mt-1">
-                  Manage your account details and view your token usage quotas.
+                  Manage your account, plan, and usage.
                 </p>
               </div>
 
@@ -128,7 +138,7 @@ export function SettingsModule() {
                 className="text-on-surface border-[rgba(0,0,0,0.08)] bg-white px-3 py-1 text-xs font-semibold shadow-sm"
               >
                 <Sparkles className="text-primary mr-1.5 h-3.5 w-3.5" />
-                Active Account
+                {plan.name}
               </Badge>
             </motion.div>
 
@@ -148,7 +158,7 @@ export function SettingsModule() {
                         {userEmail}
                       </h2>
                       <p className="text-gray-medium mt-0.5 text-xs">
-                        Cognito Member
+                        Cognito {plan.name} plan
                       </p>
                     </div>
                   </div>
@@ -169,15 +179,51 @@ export function SettingsModule() {
                 </div>
               </Card>
 
+              {/* Plan & billing */}
+              <Card className="border-[rgba(0,0,0,0.06)] bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-on-surface text-sm font-semibold">
+                      Plan & billing
+                    </h3>
+                    <p className="text-gray-medium mt-1 text-xs">
+                      {planTier === "free"
+                        ? "You're on the starter allowance. Upgrade to Go or Premium for higher usage limits."
+                        : planTier === "go"
+                          ? "You're on Go. Upgrade to Premium for 1.5× higher usage limits."
+                          : "You're on Premium — the highest usage limits we offer."}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Link
+                      href="/settings/billing"
+                      className={cn(buttonVariants({ variant: "outline" }))}
+                    >
+                      Manage billing
+                    </Link>
+                    {planTier !== "premium" && (
+                      <Button onClick={() => setPaywallOpen(true)}>
+                        Upgrade
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              {/* Custom Instructions */}
+              <CustomInstructionsCard
+                onUpgradeClick={() => setPaywallOpen(true)}
+              />
+
               {/* Real-time Usage & Quotas Card */}
               <Card className="space-y-6 border-[rgba(0,0,0,0.06)] bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-[rgba(0,0,0,0.06)] pb-3">
                   <div>
                     <h3 className="text-on-surface text-sm font-semibold">
-                      Token Quota & Usage
+                      Usage
                     </h3>
                     <p className="text-gray-medium text-xs">
-                      Real-time usage across active API time windows.
+                      Real-time usage across your plan&apos;s rolling windows.
                     </p>
                   </div>
                   <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
@@ -190,8 +236,8 @@ export function SettingsModule() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-semibold">
                     <span className="text-gray-medium flex items-center gap-1.5">
-                      <Zap className="text-primary h-3.5 w-3.5" /> 6-Hour Quota
-                      Window
+                      <Zap className="text-primary h-3.5 w-3.5" /> 6-Hour usage
+                      window
                     </span>
                     <span className="text-on-surface">{q.pct6h}% used</span>
                   </div>
@@ -221,7 +267,7 @@ export function SettingsModule() {
                   <div className="flex justify-between text-xs font-semibold">
                     <span className="text-gray-medium flex items-center gap-1.5">
                       <Calendar className="text-primary h-3.5 w-3.5" /> Weekly
-                      Quota Cap
+                      usage window
                     </span>
                     <span className="text-on-surface">{q.pctWeekly}% used</span>
                   </div>
@@ -339,6 +385,12 @@ export function SettingsModule() {
           </motion.div>
         </div>
       </main>
+      <PaywallDialog
+        open={paywallOpen}
+        onOpenChange={setPaywallOpen}
+        reason="upgrade"
+        highlightPlan={planTier === "go" ? "premium" : "go"}
+      />
     </div>
   );
 }

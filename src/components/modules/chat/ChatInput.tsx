@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { toast } from "@/components/ui/toast";
 import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
   PromptInputProvider,
-  PromptInputTextarea,
   PromptInputButton,
   usePromptInputAttachments,
   usePromptInputController,
@@ -31,7 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import {
   Monitor,
   Image as ImageIcon,
@@ -40,10 +38,11 @@ import {
   Loader2,
   X,
   Check,
-  Lock,
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PaywallDialog } from "@/components/modules/billing/PaywallDialog";
+import { isPaidTier, normalizeTier } from "@/lib/plans";
 import {
   Tooltip,
   TooltipContent,
@@ -57,6 +56,19 @@ import {
 } from "@/hooks/stt/useSpeechToText";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { ModelSelector } from "./ModelSelector";
+import { ChatMentionPopover } from "./ChatMentionPopover";
+import {
+  extractActiveMention,
+  type PromptItem,
+  type PromptCategory,
+} from "@/lib/prompt-library";
+import { usePrompts } from "@/hooks/data/usePrompts";
+import { useDebounce } from "@/hooks/useDebounce";
+import {
+  InlinePromptEditor,
+  type EditorTextRange,
+  type InlinePromptEditorHandle,
+} from "./InlinePromptEditor";
 
 interface ChatInputProps {
   onSend: (
@@ -73,6 +85,8 @@ interface ChatInputProps {
   onSelectModel: (model: string) => void;
   selectedReasoning: string;
   onSelectReasoning: (reasoning: string) => void;
+  /** Raw prompt tag string (e.g. [prompt:id|title|b64]) to pre-fill on mount */
+  initialPromptTag?: string;
 }
 
 function AttachFilesButton({ disabled }: { disabled?: boolean }) {
@@ -138,6 +152,8 @@ function ChatInputForm({
   attachmentsEnabled,
   lastSentText,
   config,
+  isPremium,
+  onUpgradeClick,
 }: {
   selectedModel: string;
   onSelectModel: (model: string) => void;
@@ -150,6 +166,8 @@ function ChatInputForm({
   attachmentsEnabled: boolean;
   lastSentText: string;
   config: any;
+  isPremium: boolean;
+  onUpgradeClick: () => void;
 }) {
   const aiSttEnabled = config?.enableAiStt ?? false;
   const sttMode: SttMode = aiSttEnabled ? "ai" : "browser";
@@ -167,6 +185,19 @@ function ChatInputForm({
 
   const controller = usePromptInputController();
   const initialTextRef = useRef("");
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<InlinePromptEditorHandle>(null);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionRange, setMentionRange] = useState<EditorTextRange | null>(
+    null,
+  );
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [activeCategory, setActiveCategory] = useState<PromptCategory>("all");
+
+  const debouncedQuery = useDebounce(mentionQuery, 300);
+  const { data: filteredPrompts = [], isLoading: isLoadingPrompts } =
+    usePrompts(debouncedQuery, activeCategory, { enabled: isPremium });
 
   const handleToggle = () => {
     if (isListening || isTranscribing) {
@@ -209,46 +240,182 @@ function ChatInputForm({
     (f) => !f.uploadedId && !f.error,
   );
 
+  const handleSelectPrompt = useCallback(
+    (prompt: PromptItem) => {
+      if (!isPremium) {
+        onUpgradeClick();
+        return;
+      }
+      setMentionOpen(false);
+      if (mentionRange) editorRef.current?.insertPrompt(prompt, mentionRange);
+      setMentionRange(null);
+    },
+    [isPremium, onUpgradeClick, mentionRange],
+  );
+
+  const handleAttachClick = useCallback(() => {
+    setMentionOpen(false);
+    if (mentionRange) editorRef.current?.replaceRange(mentionRange);
+    setMentionRange(null);
+    controller.attachments.openFileDialog();
+  }, [controller.attachments, mentionRange]);
+
+  const updateMention = useCallback(
+    (val: string, cursorPos: number) => {
+      const mention = extractActiveMention(val, cursorPos);
+
+      if (mention) {
+        if (mention.query !== mentionQuery) setSelectedIndex(0);
+        setMentionQuery(mention.query);
+        setMentionRange({ start: mention.startIndex, end: mention.endIndex });
+        setMentionOpen(true);
+      } else if (mentionOpen) {
+        setMentionOpen(false);
+        setMentionRange(null);
+      }
+    },
+    [mentionOpen, mentionQuery],
+  );
+
+  useEffect(() => {
+    const el = inputContainerRef.current?.closest("form");
+    if (!el) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        !(e.target as HTMLElement).closest(
+          'button, a, input, select, textarea, [role="button"], [role="menuitem"], [data-remove-prompt]',
+        )
+      ) {
+        editorRef.current?.focus();
+      }
+    };
+    el.addEventListener("click", handleClick);
+    return () => el.removeEventListener("click", handleClick);
+  }, []);
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (mentionOpen) {
+      const hasTools = mentionQuery === "";
+      const toolsCount = hasTools && attachmentsEnabled ? 1 : 0;
+      const totalItems = toolsCount + filteredPrompts.length;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (totalItems > 0) {
+          setSelectedIndex((prev) => (prev + 1) % totalItems);
+        }
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (totalItems > 0) {
+          setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems);
+        }
+        return;
+      }
+      if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+        if (totalItems > 0) {
+          e.preventDefault();
+          if (hasTools && selectedIndex < toolsCount) {
+            handleAttachClick();
+          } else {
+            const promptIdx = hasTools
+              ? selectedIndex - toolsCount
+              : selectedIndex;
+            const chosen = filteredPrompts[promptIdx];
+            if (chosen) {
+              handleSelectPrompt(chosen);
+            }
+          }
+          return;
+        }
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionOpen(false);
+        return;
+      }
+    }
+
+    if (
+      e.key === "Backspace" &&
+      controller.textInput.value === "" &&
+      controller.attachments.files.length > 0
+    ) {
+      e.preventDefault();
+      const lastAttachment = controller.attachments.files.at(-1);
+      if (lastAttachment) controller.attachments.remove(lastAttachment.id);
+      return;
+    }
+
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      const submitButton = e.currentTarget
+        .closest("form")
+        ?.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (!submitButton?.disabled) submitButton?.form?.requestSubmit();
+    }
+  };
+
   return (
     <>
       <PromptInputBody>
         <AttachmentChips />
-        {isListening || isTranscribing ? (
-          <div className="animate-in fade-in zoom-in-95 flex min-h-[44px] w-full min-w-0 items-center gap-2 px-3 py-2 duration-200 sm:min-h-[52px] sm:px-4 sm:py-2.5">
-            {isTranscribing ? (
-              <div className="text-gray-medium flex min-w-0 flex-1 items-center justify-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                <span className="truncate">Transcribing…</span>
-              </div>
-            ) : (
-              <AudioVisualizer
-                mediaRecorder={mediaRecorder}
-                className="min-w-0 flex-1"
-              />
-            )}
-          </div>
-        ) : (
-          <PromptInputTextarea
-            id="chat-input-textarea"
-            placeholder="Ask anything"
-            disabled={isBusy}
-            className="font-body-md text-on-surface placeholder:text-gray-medium max-h-[40dvh] min-h-[44px] px-3 py-2 text-sm focus:outline-none sm:min-h-[52px] sm:px-4 sm:py-2.5"
-          />
-        )}
+        <div
+          ref={inputContainerRef}
+          className="relative flex min-h-[44px] w-full flex-1 flex-wrap items-center gap-2 px-3 py-2 sm:min-h-[52px] sm:px-4 sm:py-2.5"
+        >
+          {isListening || isTranscribing ? (
+            <div className="animate-in fade-in zoom-in-95 flex min-h-[28px] w-full min-w-0 items-center gap-2 duration-200">
+              {isTranscribing ? (
+                <div className="text-gray-medium flex min-w-0 flex-1 items-center justify-center gap-2 text-sm">
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                  <span className="truncate">Transcribing…</span>
+                </div>
+              ) : (
+                <AudioVisualizer
+                  mediaRecorder={mediaRecorder}
+                  className="min-w-0 flex-1"
+                />
+              )}
+            </div>
+          ) : (
+            <InlinePromptEditor
+              ref={editorRef}
+              value={controller.textInput.value}
+              placeholder="Ask anything (type @ for tools & prompts)"
+              disabled={isBusy}
+              onValueChange={(nextValue, cursor) => {
+                controller.textInput.setInput(nextValue);
+                updateMention(nextValue, cursor);
+              }}
+              onCaretChange={updateMention}
+              onKeyDown={handleEditorKeyDown}
+              onPasteFiles={(files) => controller.attachments.add(files)}
+              className="max-h-[40dvh] overflow-y-auto"
+            />
+          )}
+        </div>
+
+        <ChatMentionPopover
+          open={mentionOpen}
+          onOpenChange={setMentionOpen}
+          query={mentionQuery}
+          prompts={filteredPrompts}
+          isLoading={isLoadingPrompts}
+          selectedIndex={selectedIndex}
+          onSelectIndex={setSelectedIndex}
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+          onSelectPrompt={handleSelectPrompt}
+          onAttachClick={attachmentsEnabled ? handleAttachClick : undefined}
+          onUpgradeClick={onUpgradeClick}
+          isPremium={isPremium}
+          anchorRef={inputContainerRef}
+        />
       </PromptInputBody>
 
-      <PromptInputFooter
-        className="bg-surface-container-low flex cursor-text flex-wrap items-center justify-between gap-2 px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5"
-        onClick={(e) => {
-          if (
-            !(e.target as HTMLElement).closest(
-              'button, a, input, select, textarea, [role="button"], [role="menuitem"]',
-            )
-          ) {
-            document.getElementById("chat-input-textarea")?.focus();
-          }
-        }}
-      >
+      <PromptInputFooter className="bg-surface-container-low flex w-full cursor-text flex-wrap items-center justify-between gap-2 px-2 pt-1.5 pb-2 sm:px-3 sm:pb-2.5">
         <div className="flex shrink-0 items-center">
           {attachmentsEnabled && (
             <TooltipProvider>
@@ -383,6 +550,9 @@ function QuotaLimitBanner({
   onRefresh: () => void;
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const tier = normalizeTier(profile?.tier);
+  const canUpgrade = tier !== "premium";
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -419,16 +589,17 @@ function QuotaLimitBanner({
           </div>
           <div className="min-w-0">
             <h4 className="text-on-surface text-sm font-semibold tracking-tight">
-              Quota limit reached
+              Usage limit reached
             </h4>
             <p className="text-gray-medium text-xs leading-relaxed sm:text-[13px]">
-              You have reached your quota limit, messaging is paused until quota
-              resets.
+              {canUpgrade
+                ? "Messaging is paused on your current plan. Upgrade for higher usage limits, or wait until your allowance resets."
+                : "You've reached the Premium usage limit. Messaging is paused until your allowance resets."}
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center self-start pl-11 sm:self-center sm:pl-0">
+        <div className="flex shrink-0 items-center gap-2 self-start pl-11 sm:self-center sm:pl-0">
           <div className="bg-surface-container-high/90 text-on-surface flex items-center gap-1.5 rounded-xl border border-[rgba(0,0,0,0.06)] px-3 py-1 font-mono text-xs font-medium">
             {isExpired ? (
               <span className="text-on-surface font-semibold">Resets soon</span>
@@ -443,8 +614,23 @@ function QuotaLimitBanner({
               </>
             )}
           </div>
+          {canUpgrade && (
+            <Button
+              size="sm"
+              className="h-8 px-3 text-xs"
+              onClick={() => setPaywallOpen(true)}
+            >
+              Upgrade
+            </Button>
+          )}
         </div>
       </div>
+      <PaywallDialog
+        open={paywallOpen}
+        onOpenChange={setPaywallOpen}
+        reason="quota"
+        highlightPlan={isPaidTier(tier) ? "premium" : "go"}
+      />
     </div>
   );
 }
@@ -457,6 +643,7 @@ export function ChatInput({
   onSelectModel,
   selectedReasoning,
   onSelectReasoning,
+  initialPromptTag,
 }: ChatInputProps) {
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
   const {
@@ -465,6 +652,7 @@ export function ChatInput({
     refetch: refetchProfile,
   } = useProfile();
   const [lastSentText, setLastSentText] = useState("");
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const isBusy = status === "submitted" || status === "streaming";
   const canStop = isBusy && Boolean(onStop);
@@ -499,8 +687,8 @@ export function ChatInput({
   }
 
   const handleSubmit = async (message: PromptInputMessage) => {
-    const text = message.text.trim();
-    if (!text || isBusy) return;
+    const userText = message.text.trim();
+    if (!userText || isBusy) return;
 
     if (message.files.length > 0) {
       if (!attachmentsEnabled) {
@@ -537,25 +725,28 @@ export function ChatInput({
     });
 
     onSend(
-      text,
+      userText,
       selectedModel,
       selectedReasoning,
       attachmentIds,
       message.files,
       attachmentMeta,
     );
+    setLastSentText(userText);
   };
 
+  const isPremium = normalizeTier(profile?.tier) === "premium";
+
   return (
-    <div className="bg-background/60 pointer-events-none absolute inset-x-0 bottom-0 z-10 shrink-0 [mask-image:linear-gradient(to_bottom,transparent,black_20%)] px-3 pt-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-6 sm:pb-4 md:px-6 md:pt-6 md:pb-6">
+    <div className="bg-background/80 pointer-events-none absolute inset-x-0 bottom-0 z-10 shrink-0 [mask-image:linear-gradient(to_bottom,transparent,black_20%)] px-3 pt-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:px-4 sm:pt-6 sm:pb-4 md:px-6 md:pt-6 md:pb-6">
       <div className="pointer-events-auto relative mx-auto w-full max-w-[800px]">
         {isQuotaExceeded ? (
           <QuotaLimitBanner profile={profile} onRefresh={refetchProfile} />
         ) : (
-          <PromptInputProvider>
+          <PromptInputProvider initialInput={initialPromptTag ?? ""}>
             <PromptInput
               onSubmit={handleSubmit}
-              className="ambient-shadow bg-surface-container-low w-full overflow-hidden rounded-[24px] border border-[rgba(0,0,0,0.06)] transition-all duration-200 [&_[data-slot=input-group]]:!border-0 [&_[data-slot=input-group]]:!ring-0"
+              className="ambient-shadow bg-surface-container-low w-full overflow-hidden rounded-[24px] border border-[rgba(0,0,0,0.06)] transition-all duration-200 [&_[data-slot=input-group]]:!h-auto [&_[data-slot=input-group]]:!border-0 [&_[data-slot=input-group]]:!ring-0"
               accept={attachmentsEnabled ? accept : undefined}
               multiple
               maxFiles={maxFiles}
@@ -574,11 +765,20 @@ export function ChatInput({
                 attachmentsEnabled={attachmentsEnabled}
                 lastSentText={lastSentText}
                 config={config}
+                isPremium={isPremium}
+                onUpgradeClick={() => setPaywallOpen(true)}
               />
             </PromptInput>
           </PromptInputProvider>
         )}
       </div>
+
+      <PaywallDialog
+        open={paywallOpen}
+        onOpenChange={setPaywallOpen}
+        reason="upgrade"
+        highlightPlan="premium"
+      />
     </div>
   );
 }

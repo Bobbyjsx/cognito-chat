@@ -17,6 +17,7 @@ import {
   Search,
   FileText,
   File,
+  Menu,
 } from "lucide-react";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { preloadImage } from "@/hooks/data/useSecureImage";
@@ -150,9 +151,13 @@ const LibraryAttachmentCard = memo(function LibraryAttachmentCard({
 
 interface LibraryGalleryProps {
   onMenuClick?: () => void;
+  headerTabs?: React.ReactNode;
 }
 
-export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
+export function LibraryGallery({
+  onMenuClick,
+  headerTabs,
+}: LibraryGalleryProps) {
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -318,32 +323,22 @@ export function LibraryGallery({ onMenuClick }: LibraryGalleryProps) {
   return (
     <div className="bg-background flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b px-4 lg:px-6">
-        <div className="flex items-center gap-4">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[rgba(0,0,0,0.06)] bg-white px-4 lg:px-6">
+        <div className="flex items-center gap-3 sm:gap-4">
           {onMenuClick && (
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="text-muted-foreground hover:text-foreground h-8 w-8 md:hidden"
               onClick={onMenuClick}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
+              <Menu className="h-5 w-5" />
             </Button>
           )}
-          <h1 className="text-lg font-semibold">Library</h1>
+          <h1 className="text-on-surface text-base font-semibold tracking-tight sm:text-lg">
+            Library
+          </h1>
+          {headerTabs}
         </div>
         <div className="flex items-center gap-2">
           <div className="relative hidden sm:block">

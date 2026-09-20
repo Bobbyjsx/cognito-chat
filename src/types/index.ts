@@ -10,6 +10,10 @@ export interface UserProfile {
   weeklyResetAt: string | null;
   pctWeekly?: number;
   resetCountdownWeekly?: string;
+  tier?: string;
+  subscriptionStatus?: string | null;
+  isSubscribed?: boolean;
+  customInstructions?: string | null;
 }
 
 export interface UserCreateRequest {

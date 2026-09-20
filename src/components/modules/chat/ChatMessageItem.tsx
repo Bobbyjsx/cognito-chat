@@ -29,7 +29,14 @@ import {
 import { isToolUIPart, type UIMessage } from "ai";
 import { AlertCircle, Check, Copy, FileTextIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { parsePromptTags, tokenizePromptText } from "@/lib/prompt-library";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { isPreviewableType } from "@/lib/attachments";
 import { fetchFreshAttachmentUrl } from "@/hooks/data/useAttachments/useAttachments";
@@ -80,7 +87,8 @@ function CopyMessageButton({ text }: { text: string }) {
   const handleCopy = useCallback(async () => {
     if (!text) return;
     try {
-      await navigator.clipboard.writeText(text);
+      const textToCopy = parsePromptTags(text).cleanText || text;
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -473,9 +481,58 @@ export function ChatMessageItem({
                 }
               />
             ))}
-            {userText ? (
-              <div className="break-words whitespace-pre-wrap">{userText}</div>
-            ) : null}
+            {(() => {
+              if (!userText) return null;
+              const parts = tokenizePromptText(userText);
+              if (!parts.some((part) => part.type === "prompt")) {
+                return (
+                  <div className="break-words whitespace-pre-wrap">
+                    {userText}
+                  </div>
+                );
+              }
+              return (
+                <div className="leading-7 break-words whitespace-pre-wrap">
+                  {parts.map((part, idx) => {
+                    if (part.type === "text") {
+                      return <span key={`text-${idx}`}>{part.text}</span>;
+                    }
+
+                    const { tag } = part;
+                    return (
+                      <TooltipProvider key={`${tag.id}-${idx}`}>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Badge
+                                variant="secondary"
+                                className="border-primary/20 bg-primary/10 text-primary mx-0.5 inline-flex max-w-[min(18rem,70vw)] items-center gap-1 rounded-md border px-2 py-0.5 align-baseline text-xs font-semibold select-none"
+                              >
+                                <span className="text-[11px] font-bold">@</span>
+                                <span className="truncate">{tag.title}</span>
+                              </Badge>
+                            }
+                          />
+                          {tag.promptText && (
+                            <TooltipContent
+                              side="top"
+                              className="max-w-xs p-2.5 text-xs"
+                            >
+                              <p className="text-xs font-semibold">
+                                {tag.title}
+                              </p>
+                              <p className="text-muted-foreground mt-1 line-clamp-4 text-[11px] leading-relaxed whitespace-pre-wrap">
+                                {tag.promptText}
+                              </p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </MessageContent>
           {showCopy ? <CopyMessageButton text={plainText} /> : null}
         </Message>
