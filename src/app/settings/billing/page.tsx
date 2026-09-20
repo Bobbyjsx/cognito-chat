@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Check, Zap } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Zap } from "lucide-react";
 import {
   useBillingStatus,
   usePlans,
@@ -15,13 +15,14 @@ import {
   openCheckoutUrl,
 } from "@/hooks/data/useBilling";
 import { BillingPageLoading } from "@/components/loading/page-skeletons";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toast";
 import { Navbar } from "@/components/modules/chat/Navbar";
 import { ChatSidebar } from "@/components/modules/chat/ChatSidebar";
 import {
   PAID_PLANS,
+  PLAN_HIERARCHY,
   formatNgn,
   normalizeTier,
   type PlanTier,
@@ -47,9 +48,14 @@ function BillingPageInner() {
   const downgrade = useDowngradeSubscription();
   const cancelDowngrade = useCancelDowngrade();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [pendingTier, setPendingTier] = React.useState<string | null>(null);
+  const verifiedRef = React.useRef<string | null>(null);
+
+  const isVerifying = Boolean(checkoutRef);
 
   useEffect(() => {
-    if (!checkoutRef) return;
+    if (!checkoutRef || verifiedRef.current === checkoutRef) return;
+    verifiedRef.current = checkoutRef;
 
     verifySub.mutate(checkoutRef, {
       onSuccess: () => {
@@ -57,12 +63,82 @@ function BillingPageInner() {
         void refetchBilling();
         router.replace("/settings/billing");
       },
-      onError: () => {
+      onError: (err) => {
+        const detail =
+          err &&
+          typeof err === "object" &&
+          "response" in err &&
+          err.response &&
+          typeof err.response === "object" &&
+          "data" in err.response
+            ? (err.response as { data?: { detail?: string } }).data?.detail
+            : null;
+        toast.error(
+          detail || "Payment verification could not be confirmed immediately.",
+        );
         void refetchBilling();
-        router.replace("/settings/billing");
       },
     });
-  }, [checkoutRef, refetchBilling, router]);
+  }, [checkoutRef, refetchBilling, router, verifySub]);
+
+  if (isVerifying) {
+    return (
+      <div className="bg-background font-body-md text-body-md text-on-surface flex h-full w-full overflow-hidden">
+        <ChatSidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
+        <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
+          <Navbar onMenuClick={() => setSidebarOpen(true)} />
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-xl space-y-6 px-4 py-12 sm:px-6 md:py-20">
+              <div className="rounded-2xl border border-[rgba(0,0,0,0.06)] bg-white p-8 text-center shadow-xs md:p-12">
+                {verifySub.isError ? (
+                  <>
+                    <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+                      <AlertCircle className="size-7" />
+                    </div>
+                    <h2 className="text-xl font-bold tracking-tight text-[#111111]">
+                      Verification pending
+                    </h2>
+                    <p className="text-muted-foreground mx-auto mt-2 max-w-sm text-sm">
+                      We couldn&apos;t immediately confirm your payment with
+                      Paystack. If your account was debited, your plan will
+                      activate automatically once the provider webhook arrives.
+                    </p>
+                    <div className="mt-6 flex justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => router.replace("/settings/billing")}
+                      >
+                        Continue to Billing
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-[#111111]/5">
+                      <Spinner className="size-7 text-[#111111]" />
+                    </div>
+                    <h2 className="text-xl font-bold tracking-tight text-[#111111]">
+                      Verifying your payment...
+                    </h2>
+                    <p className="text-muted-foreground mx-auto mt-2 max-w-sm text-sm">
+                      Please hold on while we confirm your transaction and
+                      update your subscription. This should only take a moment.
+                    </p>
+                    <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[rgba(0,0,0,0.06)] bg-[#FBFBFA] px-3.5 py-1 text-xs text-[#787774]">
+                      <span>Reference:</span>
+                      <span className="font-mono font-medium text-[#111111]">
+                        {checkoutRef}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const currentTier: PlanTier = normalizeTier(status?.tier);
   const isActivePaid =
@@ -92,10 +168,12 @@ function BillingPageInner() {
   }
 
   const handleSubscribe = async (planTier: string) => {
+    setPendingTier(planTier);
     try {
       const data = await checkout.mutateAsync(planTier);
       openCheckoutUrl(data.checkoutUrl);
     } catch {
+      setPendingTier(null);
       toast.error("Failed to initialize checkout");
     }
   };
@@ -261,7 +339,13 @@ function BillingPageInner() {
 
                 // Determine if this plan is a downgrade from current
                 const isDowngrade =
-                  isActivePaid && currentTier === "premium" && plan.id === "go";
+                  isActivePaid &&
+                  PLAN_HIERARCHY[plan.id] < PLAN_HIERARCHY[currentTier];
+
+                // Determine if this plan is an upgrade from current
+                const isUpgrade =
+                  isActivePaid &&
+                  PLAN_HIERARCHY[plan.id] > PLAN_HIERARCHY[currentTier];
 
                 // Determine if this plan is the target of a scheduled downgrade
                 const isScheduledDowngradeTarget =
@@ -333,26 +417,47 @@ function BillingPageInner() {
                         onClick={() => handleDowngrade(plan.id)}
                         disabled={isActionDisabled || isDowngradeScheduled}
                       >
-                        {downgrade.isPending
-                          ? "Scheduling..."
-                          : `Downgrade to ${plan.name}`}
-                      </Button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={cn(
-                          buttonVariants({
-                            variant: isHighlight ? "default" : "outline",
-                          }),
-                          "w-full",
+                        {downgrade.isPending ? (
+                          <>
+                            <Spinner className="mr-2 size-4" />
+                            Scheduling...
+                          </>
+                        ) : (
+                          `Downgrade to ${plan.name}`
                         )}
+                      </Button>
+                    ) : isUpgrade ? (
+                      <Button
+                        variant={isHighlight ? "default" : "outline"}
+                        className="w-full"
                         onClick={() => handleSubscribe(plan.id)}
                         disabled={isActionDisabled || isDowngradeScheduled}
                       >
-                        {checkout.isPending
-                          ? "Redirecting..."
-                          : `Subscribe to ${plan.name}`}
-                      </button>
+                        {pendingTier === plan.id && checkout.isPending ? (
+                          <>
+                            <Spinner className="mr-2 size-4" />
+                            Upgrading...
+                          </>
+                        ) : (
+                          `Upgrade to ${plan.name}`
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant={isHighlight ? "default" : "outline"}
+                        className="w-full"
+                        onClick={() => handleSubscribe(plan.id)}
+                        disabled={isActionDisabled || isDowngradeScheduled}
+                      >
+                        {pendingTier === plan.id && checkout.isPending ? (
+                          <>
+                            <Spinner className="mr-2 size-4" />
+                            Redirecting...
+                          </>
+                        ) : (
+                          `Subscribe to ${plan.name}`
+                        )}
+                      </Button>
                     )}
                   </div>
                 );
