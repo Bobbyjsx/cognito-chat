@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, Zap } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { GsapMagnetic } from "@/components/modules/landing/LandingMotion";
 import { MotionReveal } from "@/components/modules/landing/LandingMotion";
 import { HoverLift } from "@/components/modules/landing/LandingMotion";
@@ -104,7 +104,6 @@ export function LandingPricingCta() {
                   <span className="text-xs font-bold tracking-wider text-[#111111] uppercase">
                     Premium
                   </span>
-                  <Zap className="size-3.5 fill-[#f0a500] text-[#f0a500]" />
                 </div>
                 <div className="mt-2 flex items-end gap-1.5">
                   <span className="text-4xl font-extrabold text-[#111111]">

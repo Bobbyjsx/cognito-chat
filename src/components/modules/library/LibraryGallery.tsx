@@ -6,8 +6,10 @@ import {
   fetchFreshAttachmentUrl,
 } from "@/hooks/data/useAttachments/useAttachments";
 import React, { useState, useRef, useEffect, useCallback, memo } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { Logo } from "@/components/ui/logo";
 import {
   Download,
   X,
@@ -17,7 +19,6 @@ import {
   Search,
   FileText,
   File,
-  Menu,
 } from "lucide-react";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { preloadImage } from "@/hooks/data/useSecureImage";
@@ -155,7 +156,7 @@ interface LibraryGalleryProps {
 }
 
 export function LibraryGallery({
-  onMenuClick,
+  onMenuClick: _onMenuClick,
   headerTabs,
 }: LibraryGalleryProps) {
   const [filterType, setFilterType] = useState<FilterType>("all");
@@ -324,31 +325,31 @@ export function LibraryGallery({
     <div className="bg-background flex h-full flex-col overflow-hidden">
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-[rgba(0,0,0,0.06)] bg-white px-4 lg:px-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          {onMenuClick && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground h-8 w-8 md:hidden"
-              onClick={onMenuClick}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
+        <div className="flex items-center gap-2.5 sm:gap-4">
+          <Link
+            href="/chat"
+            className="flex items-center transition-opacity select-none hover:opacity-85 md:hidden"
+            aria-label="Cognito Chat home"
+          >
+            <Logo logoOnly iconClassName="size-6 text-[#111111]" />
+          </Link>
+          <span className="font-light text-neutral-300 select-none md:hidden">
+            /
+          </span>
           <h1 className="text-on-surface text-base font-semibold tracking-tight sm:text-lg">
             Library
           </h1>
-          {headerTabs}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {headerTabs}
           <div className="relative hidden sm:block">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-[#787774]" />
             <input
               type="text"
               placeholder="Search library..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-input focus:ring-ring h-9 w-64 rounded-full border bg-transparent pr-4 pl-9 text-sm focus:ring-1 focus:outline-none"
+              className="h-8.5 w-56 rounded-md border border-[#EAEAEA] bg-white pr-4 pl-8 text-xs text-[#111111] transition-colors placeholder:text-[#787774] focus:border-[#111111] focus:ring-0 focus:outline-none dark:border-white/10 dark:bg-neutral-900 dark:text-white"
             />
           </div>
         </div>
@@ -410,7 +411,7 @@ export function LibraryGallery({
       </div>
 
       {/* Grid */}
-      <main className="flex-1 overflow-y-auto px-4 pb-4 lg:px-6">
+      <main className="flex-1 overflow-y-auto px-4 pb-20 sm:pb-20 md:pb-6 lg:px-6">
         {status === "pending" ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 12 }).map((_, idx) => (

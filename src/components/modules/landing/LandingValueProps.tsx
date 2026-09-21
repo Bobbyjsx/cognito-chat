@@ -6,7 +6,7 @@ import {
   SplitSquareVertical,
   History,
   FolderArchive,
-  Sparkles,
+  Layers,
 } from "lucide-react";
 import {
   MotionReveal,
@@ -54,7 +54,7 @@ const CARDS = [
       "Upload a document once and use it across your conversations. Whether you're analyzing a PDF, reviewing a document, studying, or working on a project, your files stay organized inside your workspace.",
   },
   {
-    icon: Sparkles,
+    icon: Layers,
     title: "One workspace for everything.",
     subtitle: "Built for Everyday AI",
     description:

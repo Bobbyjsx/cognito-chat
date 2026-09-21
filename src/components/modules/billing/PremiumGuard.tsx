@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Lock, Sparkles, ArrowRight } from "lucide-react";
+import { Lock, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -158,7 +158,6 @@ export function PremiumGuard({
               onClick={handleUpgrade}
               className="shrink-0 self-start text-xs font-medium sm:self-center"
             >
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
               Upgrade to Premium
             </Button>
           </div>
@@ -244,7 +243,6 @@ export function PremiumGuard({
             onClick={handleUpgrade}
             className="mt-1 h-7.5 px-3 text-xs font-medium"
           >
-            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             Upgrade to Unlock
             <ArrowRight className="ml-1.5 h-3 w-3" />
           </Button>

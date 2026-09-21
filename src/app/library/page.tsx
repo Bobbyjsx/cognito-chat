@@ -6,7 +6,8 @@ import { ChatSidebar } from "@/components/modules/chat/ChatSidebar";
 import { LibraryGallery } from "@/components/modules/library/LibraryGallery";
 import { PromptLibraryView } from "@/components/modules/library/PromptLibraryView";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Sparkles } from "lucide-react";
+import { FolderOpen, BookMarked } from "lucide-react";
+import { BottomNav } from "@/components/modules/settings/BottomNav";
 
 type LibraryTab = "files" | "prompts";
 
@@ -45,19 +46,19 @@ function LibraryPageContent() {
       onValueChange={handleTabChange}
       className="inline-flex"
     >
-      <TabsList className="bg-surface-container-low h-8 rounded-full border border-black/[0.04] p-0.5">
+      <TabsList className="h-8 rounded-lg border border-[#EAEAEA] bg-[#F7F6F3] p-0.5">
         <TabsTrigger
           value="files"
-          className="data-active:text-on-surface gap-1.5 rounded-full px-3 py-1 text-xs font-medium data-active:bg-white data-active:font-semibold data-active:shadow-xs"
+          className="gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-[#787774] transition-colors data-active:bg-white data-active:font-semibold data-active:text-[#111111] data-active:shadow-xs"
         >
           <FolderOpen className="h-3.5 w-3.5" />
           <span>Files</span>
         </TabsTrigger>
         <TabsTrigger
           value="prompts"
-          className="data-active:text-on-surface gap-1.5 rounded-full px-3 py-1 text-xs font-medium data-active:bg-white data-active:font-semibold data-active:shadow-xs"
+          className="gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-[#787774] transition-colors data-active:bg-white data-active:font-semibold data-active:text-[#111111] data-active:shadow-xs"
         >
-          <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+          <BookMarked className="h-3.5 w-3.5 text-[#111111]" />
           <span>Prompts</span>
         </TabsTrigger>
       </TabsList>
@@ -65,21 +66,16 @@ function LibraryPageContent() {
   );
 
   return (
-    <div className="bg-background font-body-md text-body-md text-on-surface flex h-full overflow-hidden">
+    <div className="font-body-md text-body-md text-on-surface flex h-full w-full overflow-hidden bg-[#FBFBFA]">
       <ChatSidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
-      <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
+      <main className="relative flex h-full w-full min-w-0 flex-1 flex-col">
         {currentTab === "prompts" ? (
-          <PromptLibraryView
-            onMenuClick={() => setSidebarOpen(true)}
-            headerTabs={tabSwitcher}
-          />
+          <PromptLibraryView headerTabs={tabSwitcher} />
         ) : (
-          <LibraryGallery
-            onMenuClick={() => setSidebarOpen(true)}
-            headerTabs={tabSwitcher}
-          />
+          <LibraryGallery headerTabs={tabSwitcher} />
         )}
       </main>
+      <BottomNav />
     </div>
   );
 }
