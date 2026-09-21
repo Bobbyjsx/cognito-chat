@@ -1,5 +1,8 @@
-import { useState, ReactNode, useEffect, useCallback } from "react";
+"use client";
+
+import { useState, ReactNode, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Search,
   Plus,
@@ -9,11 +12,14 @@ import {
   PenTool,
   Lightbulb,
   Briefcase,
-  Sparkles,
-  ArrowRight,
+  BookMarked,
   Trash2,
-  Menu,
-  Lock,
+  X,
+  RefreshCw,
+  AlertCircle,
+  MessageSquare,
+  Maximize2,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -25,10 +31,10 @@ import {
 } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Logo } from "@/components/ui/logo";
 import { toast } from "@/components/ui/toast";
 import {
   PromptCategory,
@@ -39,6 +45,7 @@ import {
 import { useProfile } from "@/hooks/data/useAuth/useAuth";
 import { normalizeTier } from "@/lib/plans";
 import { PaywallDialog } from "@/components/modules/billing/PaywallDialog";
+import { PromptLibraryLockedView } from "./PromptLibraryLockedView";
 import { cn } from "@/lib/utils";
 import {
   usePrompts,
@@ -49,7 +56,6 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2 } from "lucide-react";
 
 const createPromptSchema = z.object({
   title: z.string().min(1, "Title is required").max(60),
@@ -58,12 +64,40 @@ const createPromptSchema = z.object({
 });
 type CreatePromptValues = z.infer<typeof createPromptSchema>;
 
-const CATEGORY_ICONS: Record<string, ReactNode> = {
-  engineering: <Code2 className="h-4 w-4" />,
-  writing: <PenTool className="h-4 w-4" />,
-  product: <Briefcase className="h-4 w-4" />,
-  thinking: <Lightbulb className="h-4 w-4" />,
-  custom: <Sparkles className="h-4 w-4" />,
+const CATEGORY_META: Record<
+  string,
+  { icon: typeof Code2; label: string; bg: string; text: string }
+> = {
+  engineering: {
+    icon: Code2,
+    label: "Engineering",
+    bg: "bg-[#E1F3FE]",
+    text: "text-[#1F6C9F]",
+  },
+  writing: {
+    icon: PenTool,
+    label: "Writing",
+    bg: "bg-[#F7F6F3]",
+    text: "text-[#5A5A57]",
+  },
+  product: {
+    icon: Briefcase,
+    label: "Product",
+    bg: "bg-[#EDF3EC]",
+    text: "text-[#346538]",
+  },
+  thinking: {
+    icon: Lightbulb,
+    label: "Thinking",
+    bg: "bg-[#FBF3DB]",
+    text: "text-[#956400]",
+  },
+  custom: {
+    icon: BookMarked,
+    label: "Custom",
+    bg: "bg-[#F7F6F3]",
+    text: "text-[#111111]",
+  },
 };
 
 interface PromptLibraryViewProps {
@@ -73,7 +107,7 @@ interface PromptLibraryViewProps {
 
 export function PromptLibraryView({
   headerTabs,
-  onMenuClick,
+  onMenuClick: _onMenuClick,
 }: PromptLibraryViewProps) {
   const router = useRouter();
   const { data: profile, isLoading: isProfileLoading } = useProfile();
@@ -86,16 +120,24 @@ export function PromptLibraryView({
   const [selectedCategory, setSelectedCategory] =
     useState<PromptCategory>("all");
 
-  const { data: prompts = [], isLoading } = usePrompts(
-    debouncedQuery,
-    selectedCategory,
-    { enabled: isPremium },
-  );
+  const {
+    data: prompts = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = usePrompts(debouncedQuery, selectedCategory, { enabled: isPremium });
+
   const createMutation = useCreatePrompt();
   const deleteMutation = useDeletePrompt();
 
-  // Create Prompt State
+  // Create & Inspect Dialog States
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [inspectPrompt, setInspectPrompt] = useState<PromptItem | null>(null);
+  const [promptToDelete, setPromptToDelete] = useState<PromptItem | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
   const form = useForm<CreatePromptValues>({
     resolver: zodResolver(createPromptSchema),
     defaultValues: {
@@ -104,9 +146,6 @@ export function PromptLibraryView({
       prompt: "",
     },
   });
-
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const handleCopy = useCallback(async (item: PromptItem) => {
     try {
@@ -117,6 +156,17 @@ export function PromptLibraryView({
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
       toast.error("Failed to copy prompt");
+    }
+  }, []);
+
+  const handleCopyRaw = useCallback(async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      toast.success("Template copied to clipboard");
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error("Failed to copy template");
     }
   }, []);
 
@@ -141,24 +191,28 @@ export function PromptLibraryView({
 
     try {
       await createMutation.mutateAsync({
-        title: values.title,
-        description: values.description || "",
-        prompt: values.prompt,
+        title: values.title.trim(),
+        description: values.description?.trim() || "",
+        prompt: values.prompt.trim(),
         tags: ["Custom"],
       });
-      toast.success("Custom prompt created.");
+      toast.success("Custom prompt created");
       setCreateDialogOpen(false);
       form.reset();
     } catch {
-      toast.error("Failed to create prompt.");
+      toast.error("Failed to create prompt");
     }
   };
 
-  const handleDeletePrompt = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const confirmDeletePrompt = async () => {
+    if (!promptToDelete) return;
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteMutation.mutateAsync(promptToDelete.id);
       toast.success("Prompt deleted");
+      setPromptToDelete(null);
+      if (inspectPrompt?.id === promptToDelete.id) {
+        setInspectPrompt(null);
+      }
     } catch {
       toast.error("Failed to delete prompt");
     }
@@ -173,175 +227,259 @@ export function PromptLibraryView({
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="bg-surface-container-low sticky top-0 z-10 flex h-14 items-center justify-between border-b px-4 py-3 lg:px-6">
-        <div className="flex items-center gap-3">
-          {onMenuClick && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:bg-surface-container hover:text-on-surface h-9 w-9 shrink-0 md:hidden"
-              onClick={onMenuClick}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
-          <h1 className="text-on-surface text-base font-semibold tracking-tight sm:text-lg">
+    <div className="flex h-full flex-col bg-[#FBFBFA]">
+      {/* ── Top Header ── */}
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[#EAEAEA] bg-[#FBFBFA]/95 px-4 backdrop-blur-md lg:px-6">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <Link
+            href="/chat"
+            className="flex items-center transition-opacity select-none hover:opacity-85 md:hidden"
+            aria-label="Cognito Chat home"
+          >
+            <Logo logoOnly iconClassName="size-6 text-[#111111]" />
+          </Link>
+          <span className="font-light text-neutral-300 select-none md:hidden">
+            /
+          </span>
+          <h1 className="text-base font-semibold tracking-tight text-[#111111] sm:text-lg">
             Library
           </h1>
           {headerTabs}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative hidden sm:block">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+
+        {/* Desktop Search & Actions */}
+        <div className="hidden items-center gap-2.5 sm:flex">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-[#787774]" />
             <input
               type="text"
               placeholder="Search prompts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-input focus:ring-ring h-9 w-64 rounded-full border bg-transparent pr-4 pl-9 text-sm focus:ring-1 focus:outline-none"
+              className="h-8.5 w-56 rounded-md border border-[#EAEAEA] bg-white pr-7 pl-8 text-xs text-[#111111] transition-colors placeholder:text-[#787774] focus:border-[#111111] focus:ring-0 focus:outline-none"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-[#787774] hover:text-[#111111]"
+                aria-label="Clear search"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
+
+          <Button
+            onClick={handleOpenCreate}
+            size="sm"
+            className="inline-flex h-8.5 items-center gap-1.5 rounded-full bg-[#111111] px-3.5 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-[#222222] active:scale-95 dark:bg-white dark:text-[#111111] dark:hover:bg-neutral-100"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Create Prompt</span>
+          </Button>
+        </div>
+
+        {/* Mobile Create Action */}
+        <div className="flex items-center gap-1.5 sm:hidden">
+          <Button
+            onClick={handleOpenCreate}
+            size="sm"
+            className="inline-flex h-8.5 items-center gap-1.5 rounded-full bg-[#111111] px-3.5 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-[#222222] active:scale-95 dark:bg-white dark:text-[#111111] dark:hover:bg-neutral-100"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>New</span>
+          </Button>
         </div>
       </header>
 
-      {/* Filter Row */}
-      <div className="flex items-center justify-between px-4 py-3 lg:px-6">
-        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
-          {PROMPT_CATEGORIES.map((cat) => (
-            <Button
-              key={cat.id}
-              variant={selectedCategory === cat.id ? "default" : "ghost"}
-              className="h-8 rounded-full px-4 whitespace-nowrap"
-              onClick={() => setSelectedCategory(cat.id)}
+      {/* ── Mobile Search Bar ── */}
+      <div className="border-b border-[#EAEAEA] bg-white px-4 py-2 sm:hidden">
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#787774]" />
+          <input
+            type="text"
+            placeholder="Search prompt templates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9 w-full rounded-md border border-[#EAEAEA] bg-[#FBFBFA] pr-8 pl-8.5 text-xs text-[#111111] placeholder:text-[#787774] focus:border-[#111111] focus:bg-white focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute top-1/2 right-2.5 -translate-y-1/2 text-[#787774] hover:text-[#111111]"
+              aria-label="Clear search"
             >
-              {cat.label}
-            </Button>
-          ))}
-        </div>
-
-        <Button
-          onClick={handleOpenCreate}
-          size="sm"
-          className={cn(
-            "hidden h-8 rounded-full sm:flex",
-            !isPremium &&
-              "border-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600",
+              <X className="h-3.5 w-3.5" />
+            </button>
           )}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Custom
-        </Button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#FDFDFD] p-4">
-        <div className="mx-auto h-full max-w-5xl">
-          {!isPremium && !isProfileLoading ? (
-            <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-8 text-center shadow-xs">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-                <Lock className="h-7 w-7" />
-              </div>
-              <Badge
-                variant="outline"
-                className="mb-3 border-amber-200 bg-amber-50 text-[11px] font-semibold text-amber-800"
+      {/* ── Filter Row ── */}
+      <div className="border-b border-[#EAEAEA] bg-[#FBFBFA] px-4 py-2.5 lg:px-6">
+        <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto">
+          {PROMPT_CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={cn(
+                  "flex h-7.5 shrink-0 items-center rounded-md px-3 text-xs font-medium transition-colors select-none",
+                  isSelected
+                    ? "bg-[#111111] text-white"
+                    : "bg-transparent text-[#787774] hover:bg-[#F7F6F3] hover:text-[#111111]",
+                )}
               >
-                Cognito Premium Exclusive
-              </Badge>
-              <h3 className="text-on-surface mb-2 text-xl font-semibold tracking-tight">
-                Prompt Library is locked
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Main Content Area ── */}
+      <div className="flex-1 overflow-y-auto p-4 pb-20 sm:p-6 sm:pb-20 md:pb-6">
+        <div className="mx-auto max-w-5xl">
+          {/* 1. Gated Showcase State (Non-Premium) */}
+          {!isPremium && !isProfileLoading ? (
+            <PromptLibraryLockedView onUnlock={() => setPaywallOpen(true)} />
+          ) : isError ? (
+            /* 2. Error State (R-27) */
+            <div className="mx-auto flex min-h-[320px] max-w-md flex-col items-center justify-center rounded-xl border border-red-200 bg-red-50/50 p-8 text-center">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-700">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <h3 className="mb-1 text-sm font-semibold text-red-900">
+                Unable to load prompt library
               </h3>
-              <p className="text-muted-foreground mb-6 max-w-md text-sm">
-                Upgrade to Cognito Premium to browse, search, and insert our
-                curated library of engineering, writing, and analysis prompts,
-                plus create your own custom prompt templates.
+              <p className="mb-4 text-xs leading-relaxed text-red-700">
+                {error instanceof Error
+                  ? error.message
+                  : "We could not fetch prompt templates at this time."}
               </p>
               <Button
-                onClick={() => setPaywallOpen(true)}
-                className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-6 font-medium text-white shadow-sm hover:from-amber-600 hover:to-orange-600"
+                size="sm"
+                variant="outline"
+                onClick={() => refetch()}
+                className="h-8 gap-1.5 border-red-200 bg-white text-xs text-red-800 hover:bg-red-50"
               >
-                <Sparkles className="mr-2 h-4 w-4" />
-                Upgrade to Premium
+                <RefreshCw className="h-3.5 w-3.5" />
+                Retry
               </Button>
             </div>
           ) : isLoading || isProfileLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            /* 3. Loading State (R-27) */
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
-                <Card key={i} className="p-4 shadow-xs">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Skeleton className="h-7 w-7 rounded-lg" />
-                    <Skeleton className="h-4 w-16" />
+                <div
+                  key={i}
+                  className="rounded-xl border border-[#EAEAEA] bg-white p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <Skeleton className="h-6 w-24 rounded-md" />
+                    <Skeleton className="h-5 w-12 rounded" />
                   </div>
-                  <Skeleton className="mb-1 h-5 w-3/4" />
-                  <Skeleton className="mb-3 h-4 w-full" />
-                  <Skeleton className="mb-3 h-16 w-full rounded-lg" />
-                  <div className="mb-3 flex gap-1">
-                    <Skeleton className="h-4 w-10" />
-                    <Skeleton className="h-4 w-12" />
+                  <Skeleton className="mb-2 h-4 w-3/4 rounded" />
+                  <Skeleton className="mb-3 h-3.5 w-full rounded" />
+                  <Skeleton className="mb-3 h-16 w-full rounded-md" />
+                  <div className="flex gap-2 border-t border-[#EAEAEA] pt-3">
+                    <Skeleton className="h-8 flex-1 rounded-md" />
+                    <Skeleton className="h-8 flex-1 rounded-md" />
                   </div>
-                  <div className="flex gap-2 border-t pt-2">
-                    <Skeleton className="h-7 flex-1" />
-                    <Skeleton className="h-7 flex-1" />
-                  </div>
-                </Card>
+                </div>
               ))}
             </div>
           ) : prompts.length === 0 ? (
-            <div className="flex h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-[rgba(0,0,0,0.1)] bg-white p-8 text-center">
-              <div className="bg-primary/10 text-primary mb-4 rounded-full p-4">
-                <Sparkles className="h-8 w-8" />
+            /* 4. Empty State (R-27) */
+            <div className="flex min-h-[360px] flex-col items-center justify-center rounded-xl border border-dashed border-[#EAEAEA] bg-white p-8 text-center">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#F7F6F3] text-[#787774]">
+                <BookMarked className="h-5 w-5" />
               </div>
-              <h3 className="text-on-surface mb-2 text-lg font-semibold">
-                No prompts found
-              </h3>
-              <p className="text-muted-foreground max-w-sm text-sm">
+              <h3 className="mb-1 text-sm font-semibold text-[#111111]">
                 {searchQuery
-                  ? "We couldn't find any prompts matching your search."
+                  ? "No matching prompts"
                   : selectedCategory === "custom"
-                    ? "You haven't created any custom prompts yet."
-                    : "No prompts in this category."}
+                    ? "No custom prompts yet"
+                    : "No prompts in this category"}
+              </h3>
+              <p className="max-w-sm text-xs leading-relaxed text-[#787774]">
+                {searchQuery
+                  ? `We could not find any prompts matching "${searchQuery}".`
+                  : selectedCategory === "custom"
+                    ? "Create your first reusable prompt template to quickly insert instructions in chat."
+                    : "There are currently no prompts listed under this filter."}
               </p>
+              {searchQuery ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSearchQuery("")}
+                  className="mt-4 h-8 rounded-md border-[#EAEAEA] text-xs text-[#111111] hover:bg-[#F7F6F3]"
+                >
+                  Clear search
+                </Button>
+              ) : selectedCategory === "custom" ? (
+                <Button
+                  size="sm"
+                  onClick={handleOpenCreate}
+                  className="mt-4 h-8 rounded-md bg-[#111111] text-xs font-medium text-white hover:bg-[#222222]"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Create prompt
+                </Button>
+              ) : null}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            /* 5. Content Cards Grid */
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {prompts.map((prompt) => {
                 const isCopied = copiedId === prompt.id;
+                const meta =
+                  CATEGORY_META[prompt.category] || CATEGORY_META.custom;
+                const CategoryIcon = meta.icon;
 
                 return (
                   <Card
                     key={prompt.id}
-                    className="group flex flex-col justify-between overflow-hidden border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-xs transition-all hover:border-[rgba(0,0,0,0.12)] hover:shadow-md"
+                    className="group flex flex-col justify-between rounded-xl border border-[#EAEAEA] bg-white p-4 transition-colors hover:border-[#CCCCCC]"
                   >
                     <div>
-                      {/* Header */}
-                      <div className="mb-2 flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="bg-primary/10 text-primary flex h-7 w-7 items-center justify-center rounded-lg">
-                            {CATEGORY_ICONS[prompt.category] || (
-                              <Sparkles className="h-3.5 w-3.5" />
+                      {/* Card Header */}
+                      <div className="mb-2.5 flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <div
+                            className={cn(
+                              "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium",
+                              meta.bg,
+                              meta.text,
                             )}
-                          </div>
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] font-medium capitalize"
                           >
-                            {prompt.category}
-                          </Badge>
+                            <CategoryIcon className="h-3 w-3" />
+                            <span className="capitalize">{meta.label}</span>
+                          </div>
+
                           {prompt.isCustom && (
-                            <Badge
-                              variant="outline"
-                              className="border-primary/20 bg-primary/10 text-primary text-[10px] font-semibold"
-                            >
+                            <span className="rounded border border-[#EAEAEA] bg-[#FBFBFA] px-1.5 py-0.5 text-[10px] font-medium text-[#787774]">
                               Custom
-                            </Badge>
+                            </span>
                           )}
                         </div>
 
+                        {/* Actions for Custom Prompt */}
                         {prompt.isCustom && (
                           <button
                             type="button"
-                            onClick={(e) => handleDeletePrompt(prompt.id, e)}
-                            className="text-muted-foreground hover:bg-surface-container rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-600"
-                            title="Delete prompt"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPromptToDelete(prompt);
+                            }}
+                            className="rounded p-1 text-[#787774] transition-colors hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                            title="Delete custom prompt"
+                            aria-label={`Delete ${prompt.title}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -349,16 +487,36 @@ export function PromptLibraryView({
                       </div>
 
                       {/* Title & Description */}
-                      <h3 className="text-on-surface mb-1 line-clamp-1 text-sm font-semibold">
+                      <h3 className="line-clamp-1 text-sm font-semibold tracking-tight text-[#111111]">
                         {prompt.title}
                       </h3>
-                      <p className="text-muted-foreground mb-3 line-clamp-2 text-xs leading-relaxed">
-                        {prompt.description}
+                      <p className="mt-1 mb-3 line-clamp-2 min-h-[32px] text-xs leading-relaxed text-[#787774]">
+                        {prompt.description || "No description provided."}
                       </p>
 
-                      {/* Template Snippet Box */}
-                      <div className="bg-surface-container-low/60 text-muted-foreground mb-3 line-clamp-3 rounded-lg border border-[rgba(0,0,0,0.04)] p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap select-text">
-                        {prompt.prompt}
+                      {/* Template Preview Box (Clickable to inspect) */}
+                      <div
+                        onClick={() => setInspectPrompt(prompt)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setInspectPrompt(prompt);
+                          }
+                        }}
+                        className="group/box relative mb-3 cursor-pointer rounded-md border border-[#EAEAEA] bg-[#FBFBFA] p-2.5 text-[11px] leading-relaxed transition-colors hover:bg-[#F7F6F3]"
+                        title="Click to view full prompt"
+                      >
+                        <div className="line-clamp-3 font-mono text-[#444444] select-text">
+                          {prompt.prompt}
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#787774]">
+                          <span>{prompt.prompt.length} chars</span>
+                          <span className="flex items-center gap-0.5 font-medium group-hover/box:text-[#111111]">
+                            <Maximize2 className="h-2.5 w-2.5" /> View
+                          </span>
+                        </div>
                       </div>
 
                       {/* Tags */}
@@ -367,7 +525,7 @@ export function PromptLibraryView({
                           {prompt.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="bg-surface-container text-muted-foreground rounded px-1.5 py-0.5 text-[9px] font-medium"
+                              className="rounded bg-[#F7F6F3] px-1.5 py-0.5 font-mono text-[10px] text-[#787774]"
                             >
                               #{tag}
                             </span>
@@ -377,23 +535,21 @@ export function PromptLibraryView({
                     </div>
 
                     {/* Actions Footer */}
-                    <div className="flex items-center gap-2 border-t border-[rgba(0,0,0,0.04)] pt-2">
+                    <div className="flex items-center gap-2 border-t border-[#EAEAEA] pt-2.5">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleCopy(prompt)}
-                        className="h-7 flex-1 gap-1.5 text-xs"
+                        className="h-8.5 flex-1 gap-1.5 rounded-md border-[#EAEAEA] bg-white text-xs font-medium text-[#111111] hover:bg-[#F7F6F3]"
                       >
                         {isCopied ? (
                           <>
                             <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="font-medium text-emerald-600">
-                              Copied
-                            </span>
+                            <span className="text-emerald-600">Copied</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="h-3 w-3" />
+                            <Copy className="h-3 w-3 text-[#787774]" />
                             <span>Copy</span>
                           </>
                         )}
@@ -402,10 +558,10 @@ export function PromptLibraryView({
                       <Button
                         size="sm"
                         onClick={() => handleUseInChat(prompt)}
-                        className="h-7 flex-1 gap-1 text-xs"
+                        className="h-8.5 flex-1 gap-1 rounded-md bg-[#111111] text-xs font-medium text-white transition-colors hover:bg-[#222222]"
                       >
+                        <MessageSquare className="h-3 w-3" />
                         <span>Use in Chat</span>
-                        <ArrowRight className="h-3 w-3" />
                       </Button>
                     </div>
                   </Card>
@@ -416,12 +572,132 @@ export function PromptLibraryView({
         </div>
       </div>
 
-      {/* Dialog: Create Custom Prompt */}
+      {/* ── Dialog: Prompt Detail / Inspection (C-2 Functional Completeness) ── */}
+      <Dialog
+        open={Boolean(inspectPrompt)}
+        onOpenChange={(open) => !open && setInspectPrompt(null)}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          {inspectPrompt && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 pb-1">
+                  {(() => {
+                    const meta =
+                      CATEGORY_META[inspectPrompt.category] ||
+                      CATEGORY_META.custom;
+                    const Icon = meta.icon;
+                    return (
+                      <span
+                        className={cn(
+                          "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium",
+                          meta.bg,
+                          meta.text,
+                        )}
+                      >
+                        <Icon className="h-3 w-3" />
+                        <span className="capitalize">{meta.label}</span>
+                      </span>
+                    );
+                  })()}
+                  {inspectPrompt.isCustom && (
+                    <span className="rounded border border-[#EAEAEA] bg-[#FBFBFA] px-1.5 py-0.5 text-[10px] font-medium text-[#787774]">
+                      Custom
+                    </span>
+                  )}
+                </div>
+                <DialogTitle className="text-base font-semibold text-[#111111]">
+                  {inspectPrompt.title}
+                </DialogTitle>
+                {inspectPrompt.description && (
+                  <DialogDescription className="text-xs text-[#787774]">
+                    {inspectPrompt.description}
+                  </DialogDescription>
+                )}
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                <div className="flex items-center justify-between text-xs text-[#787774]">
+                  <span className="font-medium">Prompt Template</span>
+                  <span>{inspectPrompt.prompt.length} characters</span>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto rounded-md border border-[#EAEAEA] bg-[#F7F6F3] p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-[#111111] select-text">
+                  {inspectPrompt.prompt}
+                </div>
+
+                {inspectPrompt.tags && inspectPrompt.tags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1 pt-1">
+                    {inspectPrompt.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded bg-[#EAEAEA] px-1.5 py-0.5 font-mono text-[10px] text-[#555555]"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                <div>
+                  {inspectPrompt.isCustom && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setPromptToDelete(inspectPrompt);
+                      }}
+                      className="h-8.5 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleCopyRaw(inspectPrompt.prompt, inspectPrompt.id)
+                    }
+                    className="h-8.5 rounded-md border-[#EAEAEA] text-xs font-medium text-[#111111] hover:bg-[#F7F6F3]"
+                  >
+                    <Copy className="mr-1.5 h-3 w-3 text-[#787774]" />
+                    Copy Template
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      handleUseInChat(inspectPrompt);
+                      setInspectPrompt(null);
+                    }}
+                    className="h-8.5 rounded-md bg-[#111111] text-xs font-medium text-white hover:bg-[#222222]"
+                  >
+                    <MessageSquare className="mr-1.5 h-3 w-3" />
+                    Use in Chat
+                  </Button>
+                </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Create Custom Prompt ── */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Custom Prompt</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base font-semibold text-[#111111]">
+              Create Custom Prompt
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#787774]">
               Add a reusable prompt template to your library. It will appear in
               your @ mention menu in chat.
             </DialogDescription>
@@ -430,34 +706,42 @@ export function PromptLibraryView({
           <form onSubmit={form.handleSubmit(handleCreatePrompt)}>
             <div className="space-y-4 py-2">
               <div className="space-y-1.5">
-                <label className="text-on-surface text-xs font-semibold">
+                <label
+                  htmlFor="prompt-title-input"
+                  className="text-xs font-semibold text-[#111111]"
+                >
                   Prompt Title <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  placeholder="e.g., Code Review & Security Audit"
+                  id="prompt-title-input"
+                  placeholder="e.g. Code Review & Architecture Audit"
                   {...form.register("title")}
                   maxLength={60}
-                  className="text-xs"
+                  className="h-9 rounded-md border-[#EAEAEA] text-xs focus:border-[#111111] focus:ring-0"
                 />
                 {form.formState.errors.title && (
-                  <p className="text-[10px] text-red-500">
+                  <p className="text-[11px] text-red-500">
                     {form.formState.errors.title.message}
                   </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-on-surface text-xs font-semibold">
+                <label
+                  htmlFor="prompt-desc-input"
+                  className="text-xs font-semibold text-[#111111]"
+                >
                   Description (Optional)
                 </label>
                 <Input
-                  placeholder="Short summary of what this prompt does"
+                  id="prompt-desc-input"
+                  placeholder="Brief note on what this prompt does"
                   {...form.register("description")}
                   maxLength={120}
-                  className="text-xs"
+                  className="h-9 rounded-md border-[#EAEAEA] text-xs focus:border-[#111111] focus:ring-0"
                 />
                 {form.formState.errors.description && (
-                  <p className="text-[10px] text-red-500">
+                  <p className="text-[11px] text-red-500">
                     {form.formState.errors.description.message}
                   </p>
                 )}
@@ -465,36 +749,40 @@ export function PromptLibraryView({
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-on-surface text-xs font-semibold">
-                    Prompt Instructions / Template{" "}
-                    <span className="text-red-500">*</span>
+                  <label
+                    htmlFor="prompt-template-input"
+                    className="text-xs font-semibold text-[#111111]"
+                  >
+                    Prompt Instructions <span className="text-red-500">*</span>
                   </label>
-                  <span className="text-muted-foreground text-[10px]">
+                  <span className="text-[10px] text-[#787774]">
                     {form.watch("prompt").length} / 1500 chars
                   </span>
                 </div>
                 <Textarea
-                  placeholder="Enter instructions, questions, or context that the AI should follow..."
+                  id="prompt-template-input"
+                  placeholder="Enter the template instructions, context, and steps..."
                   {...form.register("prompt")}
                   maxLength={1500}
-                  rows={5}
-                  className="font-mono text-xs"
+                  rows={6}
+                  className="rounded-md border-[#EAEAEA] font-mono text-xs leading-relaxed focus:border-[#111111] focus:ring-0"
                 />
                 {form.formState.errors.prompt && (
-                  <p className="text-[10px] text-red-500">
+                  <p className="text-[11px] text-red-500">
                     {form.formState.errors.prompt.message}
                   </p>
                 )}
               </div>
             </div>
 
-            <DialogFooter className="mt-4">
+            <DialogFooter className="mt-4 gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setCreateDialogOpen(false)}
                 disabled={createMutation.isPending}
+                className="h-8.5 rounded-md border-[#EAEAEA] text-xs text-[#111111] hover:bg-[#F7F6F3]"
               >
                 Cancel
               </Button>
@@ -502,9 +790,10 @@ export function PromptLibraryView({
                 type="submit"
                 size="sm"
                 disabled={createMutation.isPending}
+                className="h-8.5 rounded-md bg-[#111111] text-xs font-medium text-white hover:bg-[#222222]"
               >
                 {createMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 )}
                 Save Prompt
               </Button>
@@ -513,6 +802,47 @@ export function PromptLibraryView({
         </DialogContent>
       </Dialog>
 
+      {/* ── Dialog: Confirm Delete Custom Prompt ── */}
+      <Dialog
+        open={Boolean(promptToDelete)}
+        onOpenChange={(open) => !open && setPromptToDelete(null)}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-[#111111]">
+              Delete Custom Prompt?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#787774]">
+              Are you sure you want to delete &ldquo;{promptToDelete?.title}
+              &rdquo;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-3 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPromptToDelete(null)}
+              disabled={deleteMutation.isPending}
+              className="h-8.5 rounded-md border-[#EAEAEA] text-xs text-[#111111] hover:bg-[#F7F6F3]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={confirmDeletePrompt}
+              disabled={deleteMutation.isPending}
+              className="h-8.5 rounded-md text-xs font-medium"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Prompt"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Paywall Dialog */}
       <PaywallDialog
         open={paywallOpen}
         onOpenChange={setPaywallOpen}

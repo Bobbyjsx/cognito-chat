@@ -6,6 +6,8 @@ import {
   History,
   SquarePen,
   Image as ImageIcon,
+  BookMarked,
+  FolderOpen,
   Settings,
   Brain,
   ArrowRight,
@@ -257,14 +259,24 @@ export function GlobalSearchModal({
         },
       },
       {
-        id: "library",
+        id: "prompt-library",
         title: "Prompt Library",
-        description: "Browse prompt templates and saved artifacts",
+        description: "Browse curated and custom prompt templates",
         shortcut: "⌘L",
-        icon: ImageIcon,
+        icon: BookMarked,
         onSelect: () => {
           onOpenChange(false);
-          router.push("/library");
+          router.push("/library?tab=prompts");
+        },
+      },
+      {
+        id: "files-library",
+        title: "Files & Artifacts",
+        description: "Browse generated code, images, and documents",
+        icon: FolderOpen,
+        onSelect: () => {
+          onOpenChange(false);
+          router.push("/library?tab=files");
         },
       },
       {

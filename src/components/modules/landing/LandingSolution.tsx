@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  RefreshCw,
-  FolderGit2,
-  Sparkles,
-  Sliders,
-} from "lucide-react";
+import { ArrowRight, RefreshCw, FolderGit2, Sliders } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import {
@@ -26,7 +20,7 @@ export function LandingSolution() {
       <div className="mx-auto mb-14 max-w-3xl text-center">
         <MotionReveal variant="fade-up">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(0,0,0,0.06)] bg-[#F7F6F3] px-3 py-1">
-            <Sparkles className="size-3.5 text-[#111111]" />
+            <span className="size-1.5 rounded-full bg-[#111111]" />
             <span className="text-xs font-semibold tracking-wider text-[#5a5a57] uppercase">
               Meet Cognito
             </span>

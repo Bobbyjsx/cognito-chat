@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   History,
   Loader2,
@@ -90,7 +89,7 @@ export function ChatSidebar({
   activeSessionId = null,
   onSelectSession,
   onNewChat,
-  open = false,
+  open: _open = false,
   onOpenChange,
   activeModel,
   onSelectModel,
@@ -298,57 +297,6 @@ export function ChatSidebar({
           collapsedContent
         )}
       </nav>
-
-      {/* Mobile slide-over */}
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={closeSidebar}
-              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs md:hidden"
-            />
-            <motion.nav
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-sidebar border-border fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[85vw] flex-col border-r shadow-2xl md:hidden"
-            >
-              <SidebarExpandedContent
-                isMobile
-                sessions={sessions}
-                isLoading={isLoading}
-                activeSessionId={activeSessionId}
-                onSelectSession={onSelectSession}
-                onNewChat={onNewChat}
-                closeSidebar={closeSidebar}
-                onOpenSearch={() => {
-                  setSearchDefaultTab("chats");
-                  setSearchModalOpen(true);
-                }}
-                pathname={pathname}
-                router={router}
-                isDeletingSessionId={
-                  deleteSessionMutation.isPending
-                    ? (deleteSessionMutation.variables ?? null)
-                    : null
-                }
-                isAnyDeleting={deleteSessionMutation.isPending}
-                onDeleteSession={handleDeleteSession}
-                onShareSession={setShareModalSession}
-                hasNextPage={hasNextPage}
-                isFetchingNextPage={isFetchingNextPage}
-                fetchNextPage={fetchNextPage}
-                dataPagesLength={data?.pages?.length}
-              />
-            </motion.nav>
-          </>
-        )}
-      </AnimatePresence>
 
       <ShareChatModal
         sessionId={shareModalSession?.id ?? null}

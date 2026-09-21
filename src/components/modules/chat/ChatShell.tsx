@@ -1144,7 +1144,7 @@ export function ChatShell() {
 
       <main className="bg-background relative flex h-full min-w-0 flex-1 flex-col">
         <Navbar
-          onMenuClick={() => setSidebarOpen(true)}
+          onBackClick={() => router.push("/chats")}
           onNewChat={activeSessionId ? handleNewChat : undefined}
           onShareClick={
             activeSessionId ? () => setIsShareModalOpen(true) : undefined

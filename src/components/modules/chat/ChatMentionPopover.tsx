@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import {
-  Sparkles,
+  BookMarked,
   Paperclip,
   Code2,
   PenTool,
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  all: <Sparkles className="h-3.5 w-3.5" />,
+  all: <BookMarked className="h-3.5 w-3.5" />,
   engineering: <Code2 className="h-3.5 w-3.5" />,
   writing: <PenTool className="h-3.5 w-3.5" />,
   product: <Compass className="h-3.5 w-3.5" />,
@@ -220,7 +220,6 @@ export function ChatMentionPopover({
                     onClick={onUpgradeClick}
                     className="inline-flex cursor-pointer items-center gap-1 pt-1 text-xs font-semibold text-amber-700 hover:text-amber-800 hover:underline"
                   >
-                    <Sparkles className="h-3 w-3" />
                     Upgrade to Premium
                   </button>
                 )}
@@ -253,7 +252,7 @@ export function ChatMentionPopover({
                   >
                     <div className="bg-primary/10 text-primary mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md">
                       {CATEGORY_ICONS[prompt.category] || (
-                        <Sparkles className="h-3 w-3" />
+                        <BookMarked className="h-3 w-3" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">

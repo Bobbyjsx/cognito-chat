@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   Search,
-  Sparkles,
+  BookMarked,
   Lock,
   Plus,
   Trash2,
@@ -62,7 +62,7 @@ interface PromptLibraryModalProps {
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  all: <Sparkles className="h-3.5 w-3.5" />,
+  all: <BookMarked className="h-3.5 w-3.5" />,
   engineering: <Code2 className="h-3.5 w-3.5" />,
   writing: <PenTool className="h-3.5 w-3.5" />,
   product: <Compass className="h-3.5 w-3.5" />,
@@ -166,7 +166,7 @@ export function PromptLibraryModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
-                <Sparkles className="h-4 w-4" />
+                <BookMarked className="h-4 w-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -372,7 +372,7 @@ export function PromptLibraryModal({
             <div className="flex-1 space-y-2.5 overflow-y-auto p-5">
               {filteredPrompts.length === 0 ? (
                 <div className="text-gray-medium py-12 text-center">
-                  <Sparkles className="mx-auto mb-2 h-8 w-8 opacity-30" />
+                  <BookMarked className="mx-auto mb-2 h-8 w-8 opacity-30" />
                   <p className="text-xs font-medium">No prompts found</p>
                   <p className="mt-0.5 text-[11px] text-neutral-400">
                     {searchQuery

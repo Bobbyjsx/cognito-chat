@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { RefreshCw, X, Sparkles } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
@@ -169,7 +169,7 @@ export function PwaUpdatePrompt() {
           >
             <div className="flex items-start gap-3.5">
               <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-                <Sparkles className="h-5 w-5 animate-pulse" />
+                <RefreshCw className="h-5 w-5" />
               </div>
 
               <div className="min-w-0 flex-1 space-y-1">

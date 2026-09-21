@@ -10,7 +10,7 @@ import {
   ContextTrigger,
 } from "@/components/ai-elements/context";
 import { getQuotaSnapshot } from "@/lib/quota";
-import { Zap, Calendar, Clock, RefreshCw } from "lucide-react";
+import { Calendar, Clock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DonutQuotaIndicator() {
@@ -57,12 +57,13 @@ export function DonutQuotaIndicator() {
           <div className="space-y-0.5">
             <div className="flex items-center justify-between">
               <span className="text-on-surface flex items-center gap-1.5 font-medium">
-                <Zap className="text-on-surface/70 h-3.5 w-3.5" /> 6-Hour Limit
+                <Clock className="text-on-surface/70 h-3.5 w-3.5" /> 6-Hour
+                Limit
               </span>
               <span className="text-on-surface font-semibold">{q.pct6h}%</span>
             </div>
             <div className="text-gray-medium mt-1 text-[11px] font-medium italic">
-              ⏱ 6-Hour {q.reset6hText}
+              6-Hour {q.reset6hText}
             </div>
           </div>
 
@@ -79,7 +80,7 @@ export function DonutQuotaIndicator() {
               </span>
             </div>
             <div className="text-gray-medium mt-1 text-[11px] font-medium italic">
-              ⏱ Weekly {q.resetWeeklyText}
+              Weekly {q.resetWeeklyText}
             </div>
           </div>
         </ContextContentBody>

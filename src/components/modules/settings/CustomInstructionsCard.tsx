@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Sparkles, Sliders, CheckCircle2 } from "lucide-react";
+import { Lock, Sliders, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +74,7 @@ export function CustomInstructionsCard({
 
   return (
     <>
-      <Card className="border-[rgba(0,0,0,0.06)] bg-white p-6 shadow-sm">
+      <Card className="border-[rgba(0,0,0,0.06)] bg-white p-5 shadow-2xs sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1 space-y-1.5 pr-2">
             <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ export function CustomInstructionsCard({
             )}
           </div>
 
-          <div className="shrink-0 pt-1">
+          <div className="shrink-0 self-end pt-1 sm:self-auto">
             <Button
               variant={isPremium ? "outline" : "default"}
               size="sm"
@@ -135,10 +135,7 @@ export function CustomInstructionsCard({
                   {currentInstructions ? "Edit Instructions" : "Configure"}
                 </>
               ) : (
-                <>
-                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                  Upgrade to Unlock
-                </>
+                "Upgrade to Unlock"
               )}
             </Button>
           </div>

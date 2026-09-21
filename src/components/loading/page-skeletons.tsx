@@ -113,7 +113,7 @@ export function SettingsPageLoading() {
 
         {/* Content area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 sm:px-6 md:py-10">
+          <div className="mx-auto w-full max-w-2xl space-y-6 px-4 pt-4 pb-28 sm:px-6 md:py-10 md:pb-12">
             {/* Header */}
             <div className="space-y-1">
               <Bone className="h-7 w-32 rounded-lg" />
@@ -121,19 +121,19 @@ export function SettingsPageLoading() {
             </div>
 
             {/* Profile Card */}
-            <div className="flex items-center justify-between rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-6 shadow-xs">
-              <div className="flex items-center gap-4">
-                <Bone className="h-12 w-12 rounded-full" />
+            <div className="flex items-center justify-between rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-5 shadow-2xs sm:p-6">
+              <div className="flex items-center gap-3.5">
+                <Bone className="h-13 w-13 rounded-full" />
                 <div className="space-y-2">
                   <Bone className="h-4 w-44 rounded" />
                   <Bone className="h-3 w-28 rounded" />
                 </div>
               </div>
-              <Bone className="h-9 w-24 rounded-lg" />
+              <Bone className="h-8 w-20 rounded-lg" />
             </div>
 
             {/* Plan & billing Card */}
-            <div className="flex flex-col justify-between gap-4 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-6 shadow-xs sm:flex-row sm:items-center">
+            <div className="flex flex-col justify-between gap-4 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-5 shadow-2xs sm:flex-row sm:items-center sm:p-6">
               <div className="space-y-2">
                 <Bone className="h-4 w-28 rounded" />
                 <Bone className="h-3 w-64 rounded" />
@@ -224,7 +224,7 @@ export function BillingPageLoading() {
 
         {/* Content area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:px-6 md:py-10">
+          <div className="mx-auto w-full max-w-3xl space-y-6 px-4 pt-4 pb-28 sm:px-6 md:py-10 md:pb-12">
             {/* Header with back link */}
             <div className="space-y-2">
               <Bone className="h-4 w-28 rounded" />
@@ -233,17 +233,23 @@ export function BillingPageLoading() {
             </div>
 
             {/* Current Plan Card */}
-            <div className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-xs">
+            <div className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-5 shadow-2xs sm:p-6">
               <Bone className="h-3 w-20 rounded uppercase" />
               <Bone className="mt-3 h-6 w-36 rounded" />
               <Bone className="mt-2 h-4 w-60 rounded" />
               <Bone className="mt-1 h-3.5 w-44 rounded" />
             </div>
 
+            {/* Mobile Compare Plans toggle skeleton */}
+            <div className="flex items-center justify-between md:hidden">
+              <Bone className="h-4 w-24 rounded" />
+              <Bone className="h-7 w-28 rounded-lg" />
+            </div>
+
             {/* Paid Plans Grid */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Plan Card 1 */}
-              <div className="flex flex-col rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-6 shadow-xs">
+              <div className="flex flex-col rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-5 shadow-2xs sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <Bone className="h-4 w-12 rounded uppercase" />
                 </div>
