@@ -73,7 +73,7 @@ export function useGetSessionAttachments(sessionId: string | null) {
           params: { session_id: sessionId },
         },
       );
-      return data.items;
+      return data?.items ?? [];
     },
     enabled: Boolean(sessionId),
     staleTime: 5 * 60 * 1000,

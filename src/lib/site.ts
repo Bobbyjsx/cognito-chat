@@ -101,4 +101,10 @@ export const FAQS = [
     answer:
       "No. Cognito is the workspace. It brings multiple AI models together so you can choose the right intelligence for the task at hand.",
   },
+  {
+    id: "pricing",
+    question: "How much does Cognito cost?",
+    answer:
+      "Cognito Go is ₦5,999/month, with usage built for everyday work across every frontier model. Premium is ₦9,999/month and includes 1.5× higher usage limits than Go, plus more headroom for long sessions. You can try Cognito free with a starter allowance, then upgrade when you need more.",
+  },
 ] as const;

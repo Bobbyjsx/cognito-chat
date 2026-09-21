@@ -61,7 +61,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "Settings",
         short_name: "Settings",
-        description: "Manage account and token quota",
+        description: "Manage account, plan, and usage",
         url: "/settings",
         icons: [
           {

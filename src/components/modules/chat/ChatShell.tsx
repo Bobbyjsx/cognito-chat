@@ -18,7 +18,12 @@ import {
   registerActiveSession,
   unregisterActiveSession,
 } from "@/lib/axios";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { notifyServerError } from "@/lib/server-error";
 import {
@@ -163,8 +168,27 @@ export function ChatShell() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { data: config } = useGetConfig();
+
+  // Capture the ?prompt= deep-link param once (reading searchParams in the
+  // initializer is safe — it's a pure read with no side effects).
+  const [initialPromptTag] = useState<string | undefined>(
+    () => searchParams.get("prompt") ?? undefined,
+  );
+
+  // Clean the URL *after* the first render — replaceState must not be called
+  // during render because Next.js wraps it and triggers a router state update,
+  // which React detects as "setState during render".
+  useEffect(() => {
+    if (initialPromptTag) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("prompt");
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty — run exactly once on mount
 
   const routeSessionId = sessionIdFromParams(params);
   const isNewChatRoute = pathname === "/chat" || pathname === "/chat/";
@@ -1183,6 +1207,7 @@ export function ChatShell() {
           onSelectModel={handleSelectModel}
           selectedReasoning={activeReasoning}
           onSelectReasoning={handleSelectReasoning}
+          initialPromptTag={initialPromptTag}
         />
       </main>
 

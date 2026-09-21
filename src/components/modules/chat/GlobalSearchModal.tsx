@@ -269,8 +269,8 @@ export function GlobalSearchModal({
       },
       {
         id: "settings",
-        title: "Settings & Token Quota",
-        description: "Manage account preferences and quotas",
+        title: "Settings",
+        description: "Manage account, plan, and usage",
         shortcut: "⌘,",
         icon: Settings,
         onSelect: () => {

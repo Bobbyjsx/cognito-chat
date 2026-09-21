@@ -37,6 +37,23 @@ export class AuthManager {
     if (!newAccessToken) return;
 
     const current = this.browserSessionCache?.session;
+
+    // Skip the expensive unstable_update server action if the token hasn't
+    // actually changed. Every API response that carries x-new-access-token was
+    // calling updateSessionTokens() → unstable_update(), which invalidates the
+    // RSC cache and causes Next.js to re-render all server components (e.g.
+    // AuthGate on /settings), triggering more API calls — creating an infinite loop.
+    const existingAccessToken =
+      current?.accessToken || current?.user?.accessToken;
+    if (
+      newAccessToken === existingAccessToken &&
+      (!newRefreshToken ||
+        newRefreshToken ===
+          (current?.refreshToken || current?.user?.refreshToken))
+    ) {
+      return;
+    }
+
     const updatedSession: AuthSession = {
       ...current,
       accessToken: newAccessToken,
@@ -75,7 +92,12 @@ export class AuthManager {
     }
 
     this.browserSessionPromise ??= import("next-auth/react")
-      .then(({ getSession }) => getSession())
+      // broadcast: false — prevents getSession() from posting a BroadcastChannel
+      // message. Without this, every axios request (which calls getBrowserSession)
+      // would broadcast "session" → SessionProvider's storage listener fires →
+      // _getSession({ event: "storage" }) always re-fetches /api/auth/session →
+      // which triggers more React Query refetches → more axios requests → infinite loop.
+      .then(({ getSession }) => getSession({ broadcast: false }))
       .then((nextSession) => {
         const session = nextSession as AuthSession | null;
         this.browserSessionCache = {
