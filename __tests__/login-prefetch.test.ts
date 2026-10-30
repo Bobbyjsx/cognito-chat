@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { GET } from "../src/app/(auth)/login/route";
+import { GET } from "../src/app/api/auth/oauth/authorize/route";
 import {
   parseInFlightOAuth,
   appendInFlightOAuth,
@@ -8,7 +8,7 @@ import {
 } from "../src/lib/auth/oauth-manager";
 import { NextRequest } from "next/server";
 
-describe("Login Route & Prefetch Safety", () => {
+describe("Authorize Route & Prefetch Safety", () => {
   it("should return 204 No Content for Next.js prefetch requests and never redirect", async () => {
     const prefetchHeaders: Record<string, string>[] = [
       { purpose: "prefetch" },
@@ -19,9 +19,12 @@ describe("Login Route & Prefetch Safety", () => {
     ];
 
     for (const headers of prefetchHeaders) {
-      const req = new NextRequest("http://localhost:3000/login", {
-        headers,
-      });
+      const req = new NextRequest(
+        "http://localhost:3000/api/auth/oauth/authorize",
+        {
+          headers,
+        },
+      );
 
       const res = await GET(req);
       assert.equal(
@@ -33,18 +36,22 @@ describe("Login Route & Prefetch Safety", () => {
     }
   });
 
-  it("should return 307/308 redirect with OAuth authorize URL on intentional user visit", async () => {
-    const req = new NextRequest("http://localhost:3000/login", {
-      headers: {
-        host: "localhost:3000",
+  it("should return JSON with redirectUrl on intentional authorize call", async () => {
+    const req = new NextRequest(
+      "http://localhost:3000/api/auth/oauth/authorize",
+      {
+        headers: {
+          host: "localhost:3000",
+        },
       },
-    });
+    );
 
     const res = await GET(req);
-    assert.ok(res.status === 307 || res.status === 302 || res.status === 308);
-    const location = res.headers.get("location");
-    assert.ok(location?.includes("/api/v1/oauth/authorize"));
-    assert.ok(location?.includes("redirect_uri="));
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.success, true);
+    assert.ok(typeof data.redirectUrl === "string");
+    assert.ok(data.redirectUrl.includes("redirect_uri="));
 
     const setCookie = res.headers.get("set-cookie");
     assert.ok(setCookie?.includes("oauth_in_flight="));

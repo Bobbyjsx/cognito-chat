@@ -7,13 +7,14 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
+import type { Session } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
 import { AppProgressBar as ProgressBar } from "next-nprogress-bar";
 import { toast } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ArtifactProvider } from "@/hooks/useArtifactStore";
 import { Analytics } from "@/lib/analytics";
-import { authManager } from "@/lib/auth-manager";
+import { authManager, type AuthSession } from "@/lib/auth-manager";
 
 // Devtools only in development — never in production bundle usage path
 const ReactQueryDevtools =
@@ -131,12 +132,38 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  session?: Session | null;
+}
+
+export function Providers({
+  children,
+  session: serverSession,
+}: ProvidersProps) {
+  // Synchronously seed the in-memory auth manager cache so subsequent API requests
+  // never trigger a blocking round trip to /api/auth/session on page load
+  if (serverSession) {
+    authManager.seedSession(serverSession as unknown as AuthSession);
+  }
+
+  useEffect(() => {
+    if (serverSession) {
+      authManager.seedSession(serverSession as unknown as AuthSession);
+    }
+  }, [serverSession]);
+
   const queryClient = getQueryClient();
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const { data: session, status } = useSession();
   const identifiedUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (session) {
+      authManager.seedSession(session as unknown as AuthSession);
+    }
+  }, [session]);
 
   // Keep Sentry's user in sync with the auth session (identify on sign in, clear on sign out)
   useEffect(() => {

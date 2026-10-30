@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/toast";
+import { auth } from "@/auth";
 
 import "./globals.css";
 import "katex/dist/katex.min.css";
@@ -128,11 +129,13 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html
       lang="en"
@@ -189,8 +192,8 @@ html.skip-startup .startup-screen{display:none!important}
         )}
       >
         <AppStartupScreen />
-        <SessionProvider refetchInterval={0}>
-          <Providers>
+        <SessionProvider session={session} refetchInterval={0}>
+          <Providers session={session}>
             {children}
             <Toaster />
             <ServiceWorkerRegister />
