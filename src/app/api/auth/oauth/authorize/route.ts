@@ -5,8 +5,9 @@ import {
 } from "@/lib/auth/oauth-manager";
 import { type NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
-  // Prevent Next.js link prefetching from generating PKCE state and calling OAuth authorize
   const isPrefetch =
     request.headers.get("purpose") === "prefetch" ||
     request.headers.get("sec-purpose") === "prefetch" ||
@@ -33,13 +34,37 @@ export async function GET(request: NextRequest) {
   const { url, state, codeVerifier } =
     await oauthManager.generateAuthorizeUrl(redirectUri);
 
-  const redirectTarget = url.startsWith("http")
+  let redirectTarget = url.startsWith("http")
     ? url
     : new URL(url, request.url).toString();
 
+  // Fast path: resolve the identity transaction redirect server-side so the browser
+  // executes only a single direct hop, bypassing an intermediate browser redirect hop and TLS round-trip.
+  try {
+    const res = await fetch(redirectTarget, {
+      redirect: "manual",
+      headers: {
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(1500),
+    });
+    const loc = res.headers.get("location");
+    if (
+      loc &&
+      (res.status === 301 ||
+        res.status === 302 ||
+        res.status === 307 ||
+        res.status === 308)
+    ) {
+      redirectTarget = loc;
+    }
+  } catch {
+    // Non-blocking fallback: redirect browser to authorize url if fast-path times out
+  }
+
   const returnTo =
     request.nextUrl.searchParams.get("callbackUrl") ||
-    request.nextUrl.searchParams.get("callback") ||
     request.nextUrl.searchParams.get("returnTo") ||
     undefined;
 
@@ -54,7 +79,11 @@ export async function GET(request: NextRequest) {
     returnTo,
   );
 
-  const response = NextResponse.redirect(redirectTarget);
+  const response = NextResponse.json({
+    success: true,
+    redirectUrl: redirectTarget,
+  });
+
   response.cookies.set("oauth_in_flight", JSON.stringify(updatedInFlight), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

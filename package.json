@@ -27,6 +27,9 @@
   "dependencies": {
     "@ai-sdk/react": "^3.0.238",
     "@base-ui/react": "^1.6.0",
+    "@bobslab/auth": "^0.0.2",
+    "@bobslab/ui": "^0.0.3",
+    "@bobslab/utils": "^0.0.4",
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.5.7",
     "@opennextjs/cloudflare": "^1.20.2",

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
-import { GET as loginRouteGET } from "../src/app/(auth)/login/route";
+import { GET as authorizeRouteGET } from "../src/app/api/auth/oauth/authorize/route";
 import {
   parseInFlightOAuth,
   appendInFlightOAuth,
@@ -34,10 +34,10 @@ describe("OAuth State & ReturnTo Callback Preservation", () => {
     assert.equal(parsed[0].r, callbackUrl);
   });
 
-  it("should extract callbackUrl from request params and persist to cookie in /login", async () => {
+  it("should extract callbackUrl from request params and persist to cookie in /authorize", async () => {
     const targetUrl = "/share/snapshot-456?action=continue";
     const req = new NextRequest(
-      `http://localhost:3000/login?callbackUrl=${encodeURIComponent(targetUrl)}`,
+      `http://localhost:3000/api/auth/oauth/authorize?callbackUrl=${encodeURIComponent(targetUrl)}`,
       {
         headers: {
           host: "localhost:3000",
@@ -45,8 +45,8 @@ describe("OAuth State & ReturnTo Callback Preservation", () => {
       },
     );
 
-    const res = await loginRouteGET(req);
-    assert.ok(res.status === 307 || res.status === 302 || res.status === 308);
+    const res = await authorizeRouteGET(req);
+    assert.equal(res.status, 200);
 
     const setCookie = res.headers.get("set-cookie");
     assert.ok(setCookie?.includes("oauth_in_flight="));

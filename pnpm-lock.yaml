@@ -14,6 +14,15 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@bobslab/auth':
+        specifier: ^0.0.2
+        version: 0.0.2
+      '@bobslab/ui':
+        specifier: ^0.0.3
+        version: 0.0.3(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@bobslab/utils':
+        specifier: ^0.0.4
+        version: 0.0.4
       '@gsap/react':
         specifier: ^2.1.2
         version: 2.1.2(gsap@3.15.0)(react@19.2.4)
@@ -661,6 +670,37 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@bobslab/auth@0.0.2':
+    resolution: {integrity: sha512-eiWIAxfelXolFgCrnjngz8z7Dloyk8zmZImwKkPNwGhpsFGbst5scM/1193JpTuyUx6UBK4A/PJpKm89Ubky5g==}
+
+  '@bobslab/config@0.0.1':
+    resolution: {integrity: sha512-ZDPO1bdCQIcJaIzGnUGPfvsygZ/wsgHV7IXhSM4xmjp4r6UuYClg08Z1pZXjSArlY2Hq9tx+Gn1pVHgSq/l0+w==}
+
+  '@bobslab/hooks@0.0.1':
+    resolution: {integrity: sha512-X625SbfVFeYnu95wG1F7P6QjOrKSruJjsNGgRsBuAOrEQg+Ko7TQ0AzrDFpzOSiDLUZyFDSGH/nD+pEU2cP3bQ==}
+    peerDependencies:
+      react: ^19.0.0 || ^18.0.0
+
+  '@bobslab/icons@0.0.1':
+    resolution: {integrity: sha512-3pBd6wrWRzhFgcmRFwtBmcPKfsQulQuH2cz2Ml/+aR2uL+WV1wf1hOFA1NLkZs+sBv1wJUVX5hIMsP0EFGDEpg==}
+    peerDependencies:
+      react: ^19.0.0 || ^18.0.0
+
+  '@bobslab/ui@0.0.3':
+    resolution: {integrity: sha512-DgxjN4qTVL9Sov1zD5+QXCTsGZCrKaII3H70egVVw39xO0Xchc9VKBhPEEMS7+uUg4H5/sfzqkMccEw+WF2buA==}
+    peerDependencies:
+      react: ^19.0.0 || ^18.0.0
+      react-dom: ^19.0.0 || ^18.0.0
+
+  '@bobslab/utils@0.0.1':
+    resolution: {integrity: sha512-ehCIbwVxFWbNXYk3v5e5hpQPMocqyMD2T47lGDCGYn8RzxJVjsuHRAQ5Ze+CBL7tRD1YWHS4nqwtWy2HtKfoBg==}
+
+  '@bobslab/utils@0.0.3':
+    resolution: {integrity: sha512-AbqfS3u+gshVbbQKg470ujDhCo5i9XlLfgXAT7HiD+2ptFgg4/KYh1dYI6myEgLiJ+c18F7TJb/0ImrllxydDw==}
+
+  '@bobslab/utils@0.0.4':
+    resolution: {integrity: sha512-ZmwgK5sl1v4a3haa5dFMLl20jw9FJF+E0XnLjmOxxpdaX43mGum1lJ2RwUbZS/ai2QZN+dOkg3lJQ2Su4RsSlA==}
 
   '@braintree/sanitize-url@7.1.2':
     resolution: {integrity: sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA==}
@@ -7524,6 +7564,54 @@ snapshots:
       use-sync-external-store: 1.6.0(react@19.2.4)
     optionalDependencies:
       '@types/react': 19.2.17
+
+  '@bobslab/auth@0.0.2':
+    dependencies:
+      '@bobslab/utils': 0.0.3
+
+  '@bobslab/config@0.0.1': {}
+
+  '@bobslab/hooks@0.0.1(react@19.2.4)':
+    dependencies:
+      '@bobslab/utils': 0.0.1
+      react: 19.2.4
+
+  '@bobslab/icons@0.0.1(react@19.2.4)':
+    dependencies:
+      '@bobslab/utils': 0.0.1
+      react: 19.2.4
+
+  '@bobslab/ui@0.0.3(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@base-ui/react': 1.6.0(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@bobslab/config': 0.0.1
+      '@bobslab/hooks': 0.0.1(react@19.2.4)
+      '@bobslab/icons': 0.0.1(react@19.2.4)
+      '@bobslab/utils': 0.0.1
+      class-variance-authority: 0.7.1
+      clsx: 2.1.1
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      tailwind-merge: 3.6.0
+    transitivePeerDependencies:
+      - '@date-fns/tz'
+      - '@types/react'
+      - date-fns
+
+  '@bobslab/utils@0.0.1':
+    dependencies:
+      clsx: 2.1.1
+      tailwind-merge: 3.6.0
+
+  '@bobslab/utils@0.0.3':
+    dependencies:
+      clsx: 2.1.1
+      tailwind-merge: 3.6.0
+
+  '@bobslab/utils@0.0.4':
+    dependencies:
+      clsx: 2.1.1
+      tailwind-merge: 3.6.0
 
   '@braintree/sanitize-url@7.1.2': {}
 

@@ -2,6 +2,24 @@ import { OAUTH_BASE_URL, OAUTH_CLIENT_ID } from "@/lib/api-config";
 import axios from "axios";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import dns from "node:dns";
+import http from "node:http";
+import https from "node:https";
+
+// Prefer IPv4 in server runtime to prevent Happy Eyeballs IPv6 timeout on dual-stack hosts without IPv6 routing
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {}
+
+const httpAgent = new http.Agent({ keepAlive: true, family: 4 });
+const httpsAgent = new https.Agent({ keepAlive: true, family: 4 });
+
+const oauthHttpClient = axios.create({
+  httpAgent,
+  httpsAgent,
+  family: 4,
+  timeout: 20000,
+});
 
 export interface OAuthStateEntry {
   s: string; // state
@@ -85,7 +103,7 @@ export class OAuthTransitionManager {
       response_type: "code",
       client_id: OAUTH_CLIENT_ID,
       redirect_uri: redirectUri,
-      scope: "email profile",
+      scope: "openid email profile",
       state: state,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
@@ -132,6 +150,7 @@ export class OAuthTransitionManager {
     codeVerifier: string;
     redirectUri: string;
   }) {
+    const baseUrl = OAUTH_BASE_URL.replace(/\/$/, "");
     const body = new URLSearchParams({
       grant_type: "authorization_code",
       client_id: OAUTH_CLIENT_ID,
@@ -146,8 +165,8 @@ export class OAuthTransitionManager {
 
     let tokens;
     try {
-      const tokenRes = await axios.post(
-        `${OAUTH_BASE_URL}/api/v1/oauth/token`,
+      const tokenRes = await oauthHttpClient.post(
+        `${baseUrl}/api/v1/oauth/token`,
         body,
         {
           headers: {
@@ -167,19 +186,59 @@ export class OAuthTransitionManager {
       throw new Error(`Failed to exchange token: ${errorText}`);
     }
 
-    let user;
-    try {
-      const userRes = await axios.get(`${OAUTH_BASE_URL}/api/v1/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
-      });
-      user = userRes.data;
-    } catch {
-      throw new Error("Failed to fetch user profile");
+    let user: { id: string; email?: string; name?: string } | null = null;
+
+    // Fast path: Extract user profile directly from id_token without a second HTTP round-trip
+    if (tokens && typeof tokens.id_token === "string") {
+      try {
+        const parts = tokens.id_token.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(
+            Buffer.from(parts[1], "base64url").toString("utf-8"),
+          );
+          user = {
+            id: payload.sub || payload.id,
+            email: payload.email,
+            name: payload.name || payload.preferred_username,
+          };
+        }
+      } catch (parseErr) {
+        console.warn(
+          "Failed to parse id_token claims, falling back to /auth/me:",
+          parseErr,
+        );
+      }
     }
 
-    return { tokens, user };
+    // Fallback: If id_token was missing or could not be parsed, fetch /auth/me
+    if (!user) {
+      try {
+        const userRes = await oauthHttpClient.get(`${baseUrl}/api/v1/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+          },
+        });
+        user = userRes.data;
+      } catch (err: unknown) {
+        const errorText =
+          axios.isAxiosError(err) && err.response?.data
+            ? JSON.stringify(err.response.data)
+            : err instanceof Error
+              ? err.message
+              : String(err);
+        console.error("Fetch User Profile Error:", errorText);
+        throw new Error(`Failed to fetch user profile: ${errorText}`);
+      }
+    }
+
+    if (!user) {
+      throw new Error("Failed to resolve user profile from identity provider");
+    }
+
+    return {
+      tokens,
+      user: user as { id: string; email?: string; name?: string },
+    };
   }
 
   async getOAuthRedirectURI() {
