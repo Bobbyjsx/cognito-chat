@@ -5,7 +5,7 @@ import {
   OAUTH_APP_ID_HEADER,
   OAUTH_BASE_URL,
 } from "./api-config";
-import { keysToCamel, keysToSnake } from "./case-transform";
+import { keysToCamel, keysToSnake } from "@bobslab/utils";
 
 export const oauthBaseURL = OAUTH_BASE_URL;
 

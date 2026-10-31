@@ -70,38 +70,39 @@ export async function POST(request: NextRequest) {
 
     cleanExpiredServerCache();
 
-    // 1. Check in-flight deduplication and cache
-    let exchangeResult = serverExchangeCache.get(code);
+    // 1. Verify caller holds a valid in-flight cookie matching this state before cache/exchange lookup
+    const inFlightRaw = request.cookies.get("oauth_in_flight")?.value;
+    const inFlight = parseInFlightOAuth(inFlightRaw);
+    const matched = inFlight.find((item) => item.s === state);
+    const returnTo = matched?.r;
+
+    const legacyState = request.cookies.get("oauth_state")?.value;
+    const legacyVerifier = request.cookies.get("oauth_code_verifier")?.value;
+
+    let codeVerifier: string | undefined = matched?.v;
+    if (!codeVerifier && legacyState === state && legacyVerifier) {
+      codeVerifier = legacyVerifier;
+    }
+
+    if (!codeVerifier) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Invalid or expired login session. Please try logging in again.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // 2. Check in-flight deduplication and cache bound to code:state
+    const cacheKey = `${code}:${state}`;
+    let exchangeResult = serverExchangeCache.get(cacheKey);
 
     if (!exchangeResult) {
-      let inFlightPromise = serverInFlightExchanges.get(code);
+      let inFlightPromise = serverInFlightExchanges.get(cacheKey);
       if (!inFlightPromise) {
         inFlightPromise = (async () => {
-          const inFlightRaw = request.cookies.get("oauth_in_flight")?.value;
-          const inFlight = parseInFlightOAuth(inFlightRaw);
-          const matched = inFlight.find((item) => item.s === state);
-          const returnTo = matched?.r;
-
-          const legacyState = request.cookies.get("oauth_state")?.value;
-          const legacyVerifier = request.cookies.get(
-            "oauth_code_verifier",
-          )?.value;
-
-          let codeVerifier: string | undefined = matched?.v;
-          if (!codeVerifier && legacyState === state && legacyVerifier) {
-            codeVerifier = legacyVerifier;
-          }
-
-          if (!codeVerifier) {
-            return {
-              tokens: null,
-              user: null,
-              returnTo: undefined,
-              error:
-                "Invalid or expired login session. Please try logging in again.",
-            };
-          }
-
           const oauthManager = new OAuthTransitionManager();
           const host = request.headers.get("host") || "localhost:3000";
           const protocol =
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
 
           const result = await oauthManager.exchangeToken({
             code,
-            codeVerifier,
+            codeVerifier: codeVerifier!,
             redirectUri,
           });
 
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
             throw new Error("Missing tokens or user from exchange");
           }
 
-          serverExchangeCache.set(code, {
+          serverExchangeCache.set(cacheKey, {
             tokens: result.tokens,
             user: result.user,
             returnTo,
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
           };
         })();
 
-        serverInFlightExchanges.set(code, inFlightPromise);
+        serverInFlightExchanges.set(cacheKey, inFlightPromise);
       }
 
       try {
@@ -151,11 +152,12 @@ export async function POST(request: NextRequest) {
           timestamp: Date.now(),
         };
       } finally {
-        serverInFlightExchanges.delete(code);
+        serverInFlightExchanges.delete(cacheKey);
       }
     }
 
-    const { tokens, user, returnTo } = exchangeResult;
+    const { tokens, user, returnTo: cachedReturnTo } = exchangeResult;
+    const finalReturnTo = cachedReturnTo || returnTo;
 
     // 2. Prepare NextAuth Session Token Payload
     const isSecure =
@@ -188,10 +190,17 @@ export async function POST(request: NextRequest) {
       salt: sessionCookieName,
     });
 
-    const targetPath =
-      returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
-        ? returnTo
-        : "/chat";
+    let targetPath = "/chat";
+    if (finalReturnTo) {
+      try {
+        const parsed = new URL(finalReturnTo, request.url);
+        if (parsed.origin === request.nextUrl.origin) {
+          targetPath = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+        }
+      } catch {
+        // Fallback to /chat on parse error
+      }
+    }
 
     const response = NextResponse.json({
       success: true,
@@ -223,8 +232,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Clean up redeemed in-flight cookies
-    const inFlightRaw = request.cookies.get("oauth_in_flight")?.value;
-    const inFlight = parseInFlightOAuth(inFlightRaw);
     const remaining = inFlight.filter((item) => item.s !== state);
     if (remaining.length > 0) {
       response.cookies.set("oauth_in_flight", JSON.stringify(remaining), {

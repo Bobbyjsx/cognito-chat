@@ -14,7 +14,30 @@ import { toast } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ArtifactProvider } from "@/hooks/useArtifactStore";
 import { Analytics } from "@/lib/analytics";
-import { authManager, type AuthSession } from "@/lib/auth-manager";
+import { authManager, type AuthSession } from "@bobslab/auth";
+
+// Configure NextAuth session resolver and background token sync handler
+if (typeof window !== "undefined") {
+  authManager.setSessionResolver(async () => {
+    const { getSession } = await import("next-auth/react");
+    const session = await getSession({ broadcast: false });
+    return session as AuthSession | null;
+  });
+
+  authManager.setTokenSyncHandler(async ({ accessToken, refreshToken }) => {
+    try {
+      const { updateSessionTokens } = await import("@/lib/actions/auth");
+      await updateSessionTokens({
+        accessToken,
+        refreshToken,
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.debug("Background token sync warning:", err);
+      }
+    }
+  });
+}
 
 // Devtools only in development — never in production bundle usage path
 const ReactQueryDevtools =
@@ -141,17 +164,23 @@ export function Providers({
   children,
   session: serverSession,
 }: ProvidersProps) {
-  // Synchronously seed the in-memory auth manager cache so subsequent API requests
+  // Synchronously seed the in-memory auth manager cache in browser so subsequent API requests
   // never trigger a blocking round trip to /api/auth/session on page load
-  if (serverSession) {
-    authManager.seedSession(serverSession as unknown as AuthSession);
-  }
-
-  useEffect(() => {
-    if (serverSession) {
+  const [prevServerSession, setPrevServerSession] = useState(() => {
+    if (typeof window !== "undefined" && serverSession) {
       authManager.seedSession(serverSession as unknown as AuthSession);
     }
-  }, [serverSession]);
+    return serverSession;
+  });
+
+  if (
+    typeof window !== "undefined" &&
+    serverSession &&
+    serverSession !== prevServerSession
+  ) {
+    setPrevServerSession(serverSession);
+    authManager.seedSession(serverSession as unknown as AuthSession);
+  }
 
   const queryClient = getQueryClient();
   const [sessionExpired, setSessionExpired] = useState(false);

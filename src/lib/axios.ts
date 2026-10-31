@@ -1,8 +1,8 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { Analytics } from "./analytics";
 import { API_BASE_URL } from "./api-config";
-import { authManager } from "./auth-manager";
-import { keysToCamel, keysToSnake } from "./case-transform";
+import { authManager } from "@bobslab/auth";
+import { keysToCamel, keysToSnake } from "@bobslab/utils";
 
 declare module "axios" {
   export interface AxiosRequestConfig {
