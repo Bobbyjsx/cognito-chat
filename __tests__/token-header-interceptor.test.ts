@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { authManager } from "../src/lib/auth-manager";
+import { authManager } from "@bobslab/auth";
 
 describe("Frontend Token Header Interceptor & Session Sync", () => {
   beforeEach(() => {

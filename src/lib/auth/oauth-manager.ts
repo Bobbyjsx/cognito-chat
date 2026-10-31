@@ -196,11 +196,14 @@ export class OAuthTransitionManager {
           const payload = JSON.parse(
             Buffer.from(parts[1], "base64url").toString("utf-8"),
           );
-          user = {
-            id: payload.sub || payload.id,
-            email: payload.email,
-            name: payload.name || payload.preferred_username,
-          };
+          const id = payload?.sub || payload?.id;
+          if (typeof id === "string" && id.trim()) {
+            user = {
+              id: id.trim(),
+              email: payload.email,
+              name: payload.name || payload.preferred_username,
+            };
+          }
         }
       } catch (parseErr) {
         console.warn(

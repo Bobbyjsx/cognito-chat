@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { isUrlExpired } from "../src/hooks/data/useAttachments/useAttachments";
-import { authManager } from "../src/lib/auth-manager";
+import { authManager } from "@bobslab/auth";
 import { api, baseURL } from "../src/lib/axios";
 
 describe("Attachment URLs, Expiry & CORS Credential Isolation", () => {

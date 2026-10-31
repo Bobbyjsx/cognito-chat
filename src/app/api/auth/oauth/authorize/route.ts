@@ -57,16 +57,28 @@ export async function GET(request: NextRequest) {
         res.status === 307 ||
         res.status === 308)
     ) {
-      redirectTarget = loc;
+      redirectTarget = new URL(loc, redirectTarget).toString();
     }
   } catch {
     // Non-blocking fallback: redirect browser to authorize url if fast-path times out
   }
 
-  const returnTo =
+  const rawReturnTo =
     request.nextUrl.searchParams.get("callbackUrl") ||
     request.nextUrl.searchParams.get("returnTo") ||
     undefined;
+
+  let returnTo: string | undefined;
+  if (rawReturnTo) {
+    try {
+      const parsed = new URL(rawReturnTo, request.url);
+      if (parsed.origin === request.nextUrl.origin) {
+        returnTo = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      }
+    } catch {
+      // Invalid URL, discard
+    }
+  }
 
   const existingInFlight = parseInFlightOAuth(
     request.cookies.get("oauth_in_flight")?.value,
