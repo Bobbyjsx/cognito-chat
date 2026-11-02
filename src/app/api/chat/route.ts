@@ -81,8 +81,13 @@ export async function POST(req: Request) {
       {
         responseType: "stream",
         validateStatus: () => true, // Prevent throwing on 4xx/5xx so we can parse error streams
+        isAuthReq: true,
         headers: {
           Accept: "text/event-stream",
+          Authorization: `Bearer ${session.accessToken}`,
+          ...(session.refreshToken
+            ? { "X-Refresh-Token": session.refreshToken }
+            : {}),
         },
       },
     );

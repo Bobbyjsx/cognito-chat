@@ -191,8 +191,10 @@ export function Providers({
   useEffect(() => {
     if (session) {
       authManager.seedSession(session as unknown as AuthSession);
+    } else if (status === "unauthenticated") {
+      authManager.clearBrowserSessionCache();
     }
-  }, [session]);
+  }, [session, status]);
 
   // Keep Sentry's user in sync with the auth session (identify on sign in, clear on sign out)
   useEffect(() => {
