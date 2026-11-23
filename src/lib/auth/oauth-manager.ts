@@ -1,25 +1,6 @@
 import { OAUTH_BASE_URL, OAUTH_CLIENT_ID } from "@/lib/api-config";
-import axios from "axios";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import dns from "node:dns";
-import http from "node:http";
-import https from "node:https";
-
-// Prefer IPv4 in server runtime to prevent Happy Eyeballs IPv6 timeout on dual-stack hosts without IPv6 routing
-try {
-  dns.setDefaultResultOrder("ipv4first");
-} catch {}
-
-const httpAgent = new http.Agent({ keepAlive: true, family: 4 });
-const httpsAgent = new https.Agent({ keepAlive: true, family: 4 });
-
-const oauthHttpClient = axios.create({
-  httpAgent,
-  httpsAgent,
-  family: 4,
-  timeout: 20000,
-});
 
 export interface OAuthStateEntry {
   s: string; // state
@@ -163,25 +144,28 @@ export class OAuthTransitionManager {
       body.append("client_secret", process.env.OAUTH_CLIENT_SECRET);
     }
 
-    let tokens;
+    let tokens: {
+      access_token: string;
+      refresh_token?: string;
+      id_token?: string;
+      [key: string]: unknown;
+    };
     try {
-      const tokenRes = await oauthHttpClient.post(
-        `${baseUrl}/api/v1/oauth/token`,
-        body,
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
+      const tokenRes = await fetch(`${baseUrl}/api/v1/oauth/token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
         },
-      );
-      tokens = tokenRes.data;
+        body: body.toString(),
+      });
+      const data = await tokenRes.json();
+      if (!tokenRes.ok) {
+        throw new Error(JSON.stringify(data));
+      }
+      tokens = data;
     } catch (err: unknown) {
-      const errorText =
-        axios.isAxiosError(err) && err.response?.data
-          ? JSON.stringify(err.response.data)
-          : err instanceof Error
-            ? err.message
-            : String(err);
+      const errorText = err instanceof Error ? err.message : String(err);
       console.error("Token Exchange Error:", errorText);
       throw new Error(`Failed to exchange token: ${errorText}`);
     }
@@ -216,19 +200,19 @@ export class OAuthTransitionManager {
     // Fallback: If id_token was missing or could not be parsed, fetch /auth/me
     if (!user) {
       try {
-        const userRes = await oauthHttpClient.get(`${baseUrl}/api/v1/auth/me`, {
+        const userRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
           headers: {
             Authorization: `Bearer ${tokens.access_token}`,
+            Accept: "application/json",
           },
         });
-        user = userRes.data;
+        if (!userRes.ok) {
+          const errData = await userRes.text();
+          throw new Error(errData);
+        }
+        user = await userRes.json();
       } catch (err: unknown) {
-        const errorText =
-          axios.isAxiosError(err) && err.response?.data
-            ? JSON.stringify(err.response.data)
-            : err instanceof Error
-              ? err.message
-              : String(err);
+        const errorText = err instanceof Error ? err.message : String(err);
         console.error("Fetch User Profile Error:", errorText);
         throw new Error(`Failed to fetch user profile: ${errorText}`);
       }
