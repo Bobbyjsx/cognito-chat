@@ -36,7 +36,8 @@ export function usePrewarmServices() {
         endpoints.push(`${API_BASE_URL}/health`);
       }
 
-      if (OAUTH_BASE_URL) {
+      // Avoid duplicate ping if OAUTH_BASE_URL resolves to the same unified API_BASE_URL
+      if (OAUTH_BASE_URL && OAUTH_BASE_URL !== API_BASE_URL) {
         endpoints.push(`${OAUTH_BASE_URL}/health`);
       }
 
