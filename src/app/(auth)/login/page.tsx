@@ -9,7 +9,16 @@ function LoginContent() {
   const [error, setError] = React.useState<string | null>(null);
   const initiatedRef = React.useRef(false);
 
-  const startLoginFlow = React.useCallback(async () => {
+  const startLoginFlow = React.useCallback(async (force = false) => {
+    if (!force) {
+      const urlError = searchParams?.get("error");
+      const errorDescription = searchParams?.get("error_description");
+      if (urlError || errorDescription) {
+        setError(errorDescription || urlError || "Authentication error occurred.");
+        return;
+      }
+    }
+
     setError(null);
     try {
       const query = searchParams ? searchParams.toString() : "";
@@ -53,7 +62,7 @@ function LoginContent() {
       error={error}
       onRetry={() => {
         initiatedRef.current = false;
-        void startLoginFlow();
+        void startLoginFlow(true);
       }}
       retryLabel="Retry Sign In"
     />
